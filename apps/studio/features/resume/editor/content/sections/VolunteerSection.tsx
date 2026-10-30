@@ -3,6 +3,7 @@
 import type { BaseSectionProps } from "./section-types";
 
 import { CheckboxField, TextAreaField, TextInputField } from "@/features/documents/editor/form";
+import { endBeforeStartError } from "@/features/resume/utils/validation";
 import TypedSectionEditor from "./TypedSectionEditor";
 
 const VolunteerSection = (props: BaseSectionProps) => {
@@ -48,6 +49,11 @@ const VolunteerSection = (props: BaseSectionProps) => {
               label="End date (YYYY-MM)"
               disabled={volunteer.current}
               value={volunteer.endDate}
+              error={
+                volunteer.current
+                  ? undefined
+                  : endBeforeStartError(volunteer.startDate, volunteer.endDate)
+              }
               onValueChange={(endDate) => update({ endDate })}
             />
 

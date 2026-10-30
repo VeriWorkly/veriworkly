@@ -21,6 +21,7 @@ import {
   toSingleValueParams,
   type AdminSearchParams,
 } from "@/features/admin/utils/admin-search-params";
+import { accountName } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Admin · Portfolios",
@@ -74,7 +75,7 @@ const columns: Array<AdminTableColumn<AdminPortfolioRow>> = [
           href={`/admin/users/${encodeURIComponent(row.user.id)}`}
           className="text-foreground text-sm hover:underline"
         >
-          {row.user.name || row.user.email}
+          {accountName(row.user.name) ?? row.user.email}
         </Link>
         <p className="text-muted truncate text-xs">{row.user.email}</p>
       </div>

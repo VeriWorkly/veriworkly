@@ -2,7 +2,7 @@
 
 import type { BaseSectionProps } from "./section-types";
 
-import { TextAreaField, TextInputField } from "@/features/documents/editor/form";
+import { CheckboxField, TextAreaField, TextInputField } from "@/features/documents/editor/form";
 import TypedSectionEditor from "./TypedSectionEditor";
 
 const AwardsSection = (props: BaseSectionProps) => {
@@ -46,6 +46,14 @@ const AwardsSection = (props: BaseSectionProps) => {
               value={award.website ?? ""}
               onValueChange={(website) => update({ website })}
             />
+
+            <CheckboxField
+              className="md:col-span-2"
+              checked={award.showLink}
+              onCheckedChange={(showLink) => update({ showLink })}
+            >
+              Show the link on the resume
+            </CheckboxField>
           </div>
 
           <div className="mt-4">

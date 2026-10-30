@@ -15,13 +15,17 @@ import { useUserStore } from "@/store/useUserStore";
 import { fetchApiData } from "@/utils/fetchApiData";
 import { listDocuments } from "@/features/documents/services/document-workspace-service";
 import {
+  countDocumentsPerType,
   hasUnlimitedDocuments,
   importDraftWithinLimit,
   FREE_DOCUMENTS_PER_TYPE,
 } from "@/features/documents/services/document-limit";
 
 /** Whether restoring the backup in `file` would take any type past the free limit. */
-async function backupExceedsFreeLimit(file: File): Promise<boolean> {
+async function backupExceedsFreeLimit(
+  file: File,
+  existing?: Partial<Record<DocumentType, number>>,
+): Promise<boolean> {
   const { documents = [] } = JSON.parse(await file.text()) as {
     documents?: Array<{ type?: DocumentType }>;
   };
@@ -32,7 +36,8 @@ async function backupExceedsFreeLimit(file: File): Promise<boolean> {
   }
 
   return [...added].some(
-    ([type, count]) => listDocuments(type).length + count > FREE_DOCUMENTS_PER_TYPE,
+    ([type, count]) =>
+      Math.max(listDocuments(type).length, existing?.[type] ?? 0) + count > FREE_DOCUMENTS_PER_TYPE,
   );
 }
 
@@ -44,12 +49,33 @@ async function backupExceedsFreeLimit(file: File): Promise<boolean> {
 export async function resolveDocumentsPerType(
   isLoggedIn: boolean,
   file: File,
+  existing?: Partial<Record<DocumentType, number>>,
 ): Promise<number | null> {
-  if (!isLoggedIn || !(await backupExceedsFreeLimit(file))) return FREE_DOCUMENTS_PER_TYPE;
+  if (!isLoggedIn || !(await backupExceedsFreeLimit(file, existing))) {
+    return FREE_DOCUMENTS_PER_TYPE;
+  }
 
   const billing = await fetchApiData<BillingSummary>("/billing/me", { method: "GET" });
 
   return hasUnlimitedDocuments(billing) ? null : FREE_DOCUMENTS_PER_TYPE;
+}
+
+/**
+ * Reads a JSON file for import. A backup is restored within the free limit counting the
+ * account's cloud documents too (asked once, only for a backup): a free account on a new device,
+ * restoring from the empty library before its pull lands, would otherwise get a second document
+ * the server refuses (S-409).
+ */
+export function importJsonWithinLimits(type: DocumentType, file: File, isLoggedIn: boolean) {
+  let existing: Promise<Record<DocumentType, number>> | null = null;
+  const countExisting = () => (existing ??= countDocumentsPerType(isLoggedIn));
+
+  return importJsonFile(
+    type,
+    file,
+    async () => resolveDocumentsPerType(isLoggedIn, file, await countExisting()),
+    countExisting,
+  );
 }
 
 /**
@@ -105,7 +131,7 @@ export function useDocumentJsonImport(type: DocumentType, onMessage: (message: s
       let outcome;
 
       try {
-        outcome = await importJsonFile(type, file, () => resolveDocumentsPerType(isLoggedIn, file));
+        outcome = await importJsonWithinLimits(type, file, isLoggedIn);
       } catch (error) {
         const failure =
           error instanceof SyntaxError || !(error instanceof Error)

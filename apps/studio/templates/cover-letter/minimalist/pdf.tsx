@@ -235,7 +235,7 @@ export function MinimalistCoverLetterPdf({ content }: { content: CoverLetterCont
   }
 
   return (
-    <Document {...getPdfMetadata(state.senderName, "Cover Letter")}>
+    <Document {...getPdfMetadata(state.senderName, "Cover Letter", content.language)}>
       <Page
         size={[state.page.widthPt, state.page.heightPt]}
         style={[

@@ -17,6 +17,7 @@ import {
   toSingleValueParams,
   type AdminSearchParams,
 } from "@/features/admin/utils/admin-search-params";
+import { accountName } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Admin · Affiliates",
@@ -65,7 +66,7 @@ const columns: Array<AdminTableColumn<AdminAffiliateRow>> = [
           href={`/admin/affiliates/${encodeURIComponent(row.id)}`}
           className="text-foreground font-medium hover:underline"
         >
-          {row.name || row.email}
+          {accountName(row.name) ?? row.email}
         </Link>
         <p className="text-muted truncate text-xs">
           {row.email} · {row.affiliateCode || "no code"}

@@ -34,7 +34,8 @@ import { coverLetterTemplateRegistry } from "@/templates/cover-letter/registry";
  * What the export can actually draw.
  *
  * A character the embedded fonts have no glyph for does not fail loudly — it
- * resolves to `.notdef`, which has zero width and no ink. The preview hides
+ * is dropped from the layout (S-366: before, it was drawn as `.notdef`, no ink but junk in the
+ * text layer). The preview hides
  * this completely, because a browser is free to borrow a face from the reader's
  * system when the CSS stack runs out; a PDF only contains what it embeds. So a
  * name renders perfectly on screen and is simply absent from the download.
@@ -56,7 +57,7 @@ interface Glyph {
 }
 interface Node {
   type?: string;
-  lines?: { runs?: { glyphs?: Glyph[] }[] }[];
+  lines?: { string?: string; runs?: { glyphs?: Glyph[] }[] }[];
   children?: Node[];
 }
 
@@ -90,8 +91,13 @@ const UNSUPPORTED = {
   thai: "วิศวกรซอฟต์แวร์",
 };
 
-function countBlanks(node: Node, acc = { total: 0, blank: 0 }) {
+/** Characters that leave ink, counted by code point. */
+const inked = (text: string) => [...text].filter((char) => !/[\p{White_Space}\p{Cf}]/u.test(char));
+
+function countBlanks(node: Node, acc = { total: 0, blank: 0, laidOut: "" }) {
   for (const line of node.lines ?? []) {
+    acc.laidOut += line.string ?? "";
+
     for (const run of line.runs ?? []) {
       for (const glyph of run.glyphs ?? []) {
         if (glyph.name === "space") continue;
@@ -130,7 +136,11 @@ async function blanksFor(fontId: FontFamilyId, text: string) {
   };
 
   await instance.toBuffer();
-  return countBlanks(await resolveLayoutEngine<Node>()(instance.container.document, Font));
+  const counted = countBlanks(await resolveLayoutEngine<Node>()(instance.container.document, Font));
+  // A character no font has is left out of the layout; it is as blank as a `.notdef`.
+  const dropped = Math.max(0, inked(text).length - inked(counted.laidOut).length);
+
+  return { total: counted.total + dropped, blank: counted.blank + dropped };
 }
 
 describe("the PDF can draw every script the editor is meant to accept", () => {
@@ -211,7 +221,8 @@ describe("the PDF can draw every script the editor is meant to accept", () => {
 function coverageOf(family: string): string {
   const entry = Object.values(FONT_REGISTRY).find((font) => font.primaryFamily === family)!;
   const [regular, ...others] = entry.pdfFonts.map(
-    (face) => new Set(fontkit.openSync(join(process.cwd(), "public", face.src)).characterSet),
+    (face) =>
+      new Set(fontkit.openSync(join(`${__dirname}/../..`, "public", face.src)).characterSet),
   );
   const points = [...regular].filter((point) => others.every((set) => set.has(point)));
   const ranges: [number, number][] = [];
@@ -341,10 +352,13 @@ describe("the last-resort PDF family is fetched only when a document needs it", 
     const counts = pages.reduce((acc, page) => countBlanks(page as unknown as Node, acc), {
       total: 0,
       blank: 0,
+      laidOut: "",
     });
 
     expect(counts.total).toBeGreaterThan(0);
     expect(counts.blank).toBe(0);
+    // Drawn, not left out of the layout (S-366).
+    expect(inked(SYMBOLS).filter((char) => !counts.laidOut.includes(char))).toEqual([]);
   }, 60_000);
 
   it("a cover letter template draws them too", async () => {
@@ -356,8 +370,10 @@ describe("the last-resort PDF family is fetched only when a document needs it", 
     const counts = pages.reduce((acc, page) => countBlanks(page as unknown as Node, acc), {
       total: 0,
       blank: 0,
+      laidOut: "",
     });
 
     expect(counts.blank).toBe(0);
+    expect(inked(SYMBOLS).filter((char) => !counts.laidOut.includes(char))).toEqual([]);
   }, 60_000);
 });

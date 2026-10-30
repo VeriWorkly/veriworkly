@@ -48,11 +48,15 @@ describe("OTP mail rendering", () => {
 describe("login alert mail", () => {
   it("points to the published security contact", async () => {
     const { renderLoginAlertEmail } = await import("../../src/mail/auth/loginAlert.js");
-    const html = renderLoginAlertEmail("user@example.test", {
-      ip: "203.0.113.5",
-      device: "Firefox on Linux",
-      timestamp: "2026-10-28T10:00:00.000Z",
-    });
+    const html = renderLoginAlertEmail(
+      "user@example.test",
+      {
+        ip: "203.0.113.5",
+        device: "Firefox on Linux",
+        timestamp: "2026-10-28T10:00:00.000Z",
+      },
+      "https://app.example.com/profile?focus=sessions",
+    );
     expect(html).toContain("grievance@veriworkly.com");
     expect(html).not.toContain("security@veriworkly.com");
   });

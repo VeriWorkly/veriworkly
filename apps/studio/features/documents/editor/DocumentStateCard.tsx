@@ -88,7 +88,12 @@ export function DocumentLoadStateCard({
   }
 
   if (!isReady) {
-    return <DocumentStateCard title={`Loading ${noun}`} message="Preparing your editor." />;
+    return (
+      <DocumentStateCard
+        title={`Loading ${noun}`}
+        message={(load.status === "loading" && load.message) || "Preparing your editor."}
+      />
+    );
   }
 
   return null;

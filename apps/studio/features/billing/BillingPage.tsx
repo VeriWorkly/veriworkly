@@ -72,7 +72,8 @@ const STATUS_LABELS: Record<string, string> = {
 
 const ENTITLEMENT_LABELS: Record<string, string> = {
   ai_credits: "AI features on your credits",
-  portfolio_publish: "Portfolio publishing",
+  // Every portfolio publishes on its own subdomain; the plan adds the premium templates (S-391).
+  portfolio_publish: "Premium portfolio templates",
   seo_controls: "SEO controls",
   analytics: "Portfolio analytics",
   watermark_removal: "No VeriWorkly badge",
@@ -100,16 +101,27 @@ function historyLabel(type: string) {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
-/**
- * A renewal that failed: the provider retries the card until `graceEndsAt`, then access ends.
- * The summary can already read INACTIVE and FREE by then, so the grace date is the signal.
- */
-function dunningEndsAt(billing: BillingSummary): { endsAt: string | null } | null {
-  if (billing.graceEndsAt && Date.parse(billing.graceEndsAt) > Date.now()) {
-    return { endsAt: billing.graceEndsAt };
-  }
+type Dunning = { paused: boolean; graceEndsAt: string | null };
 
-  return billing.status === "PAST_DUE" ? { endsAt: billing.currentPeriodEnd } : null;
+/**
+ * A subscription that failed to renew or is paused. Its Pro features stop at once; a portfolio
+ * keeps its plan until `graceEndsAt`, then drops to the free template (S-388). The summary can
+ * already read INACTIVE and FREE meanwhile, so a running grace date is a signal too. A pause owes
+ * nothing, and the server says so itself (`subscriptionPaused`), from the subscription in
+ * dunning rather than the row `status` describes (S-387).
+ */
+function dunningState(billing: BillingSummary): Dunning | null {
+  const graceRunning = Boolean(billing.graceEndsAt && Date.parse(billing.graceEndsAt) > Date.now());
+  if (!graceRunning && billing.status !== "PAST_DUE" && !isPaused(billing)) return null;
+
+  return {
+    paused: isPaused(billing),
+    graceEndsAt: graceRunning ? billing.graceEndsAt : null,
+  };
+}
+
+function isPaused(billing: BillingSummary) {
+  return billing.subscriptionPaused === true;
 }
 
 export function BillingPage({
@@ -134,11 +146,12 @@ export function BillingPage({
   // replicate that admin check on the client — doing so would require shipping an
   // admin identity into the public bundle and would only ever be an unreliable guess.
 
-  const dunning = billing ? dunningEndsAt(billing) : null;
+  const dunning = billing ? dunningState(billing) : null;
   const tier = billing?.access.tier;
-  // A lapsed subscriber is "free" or "credits" again and must be able to buy again. During a
-  // failed renewal the card is fixed instead: no second subscription is offered.
-  const canBuy = !dunning && (!billing || tier === "free" || tier === "credits");
+  // A lapsed subscriber is "free" or "credits" again and must be able to buy again, and a pass
+  // holder may subscribe (`checkoutOverlap` ignores passes). During a failed renewal the card is
+  // fixed instead: no second subscription is offered.
+  const canBuy = !dunning && (!billing || tier === "free" || tier === "credits" || tier === "pass");
   const recurringTier = tier === "ai_credits" || tier === "portfolio_pro" || tier === "bundle";
   // The server refuses AI Credits beside any live subscription (`checkoutOverlap`), so it is
   // offered only to an account without one.
@@ -146,8 +159,11 @@ export function BillingPage({
     dunning || recurringTier
       ? undefined
       : billing?.catalog.find((product) => product.key === "ai_credits");
-  // The portal holds receipts for every purchase, and manages a subscription only while one runs.
-  const canOpenPortal = Boolean(billing?.productKey || billing?.access.isPaying);
+  // The portal holds receipts for every purchase, spent and ended ones included (S-330), and
+  // manages a subscription only while one runs.
+  const canOpenPortal = Boolean(
+    billing?.hasBillingAccount || billing?.productKey || billing?.access.isPaying,
+  );
   const managesSubscription = Boolean(dunning) || (recurringTier && billing?.access.isPaying);
   // V-202: a live Creator Pro or AI Credits subscription can become the bundle in place, at the
   // interval it is billed on. The server refuses it for an ending plan and for a pass.
@@ -311,14 +327,22 @@ export function BillingPage({
             <p className="flex flex-1 items-start gap-2">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>
-                Payment failed
-                {dunning.endsAt ? (
+                {dunning.paused
+                  ? "Your subscription is paused. Pro features are off"
+                  : "Payment failed. Pro features are paused"}
+                {/* A pause and a failed payment both keep the portfolio's plan until grace ends. */}
+                {billing?.productKey === "ai_credits" ? (
+                  "."
+                ) : dunning.graceEndsAt ? (
                   <>
-                    {" "}
-                    — access ends <LocalDate value={dunning.endsAt} />
+                    ; your portfolio keeps its plan until <LocalDate value={dunning.graceEndsAt} />.
                   </>
-                ) : null}{" "}
-                — update your card to keep your plan.
+                ) : (
+                  "; your portfolio is now on the free template."
+                )}{" "}
+                {dunning.paused
+                  ? "Resume it from Manage billing to restore them."
+                  : "Update your card to restore them."}
               </span>
             </p>
             <Button
@@ -327,7 +351,7 @@ export function BillingPage({
               loading={loading === "portal"}
               onClick={() => void openPortal()}
             >
-              Update card
+              {dunning.paused ? "Manage billing" : "Update card"}
             </Button>
           </div>
         ) : null}
@@ -556,7 +580,11 @@ function PlanDetails({ billing, inDunning }: { billing: BillingSummary; inDunnin
     // They are shown only when that row is the plan named here; otherwise the date is when
     // this plan's own access runs to.
     const ownRow = billing.productKey === recurringKey;
-    const status = ownRow ? STATUS_LABELS[billing.status] : undefined;
+    const status = !ownRow
+      ? undefined
+      : isPaused(billing)
+        ? "Paused"
+        : STATUS_LABELS[billing.status];
     const ending = billing.cancelAtPeriodEnd || billing.status === "CANCELED";
     const paidThrough =
       recurringKey === "ai_credits"

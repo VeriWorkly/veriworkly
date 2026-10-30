@@ -9,7 +9,7 @@ import { Badge } from "@veriworkly/ui";
 
 import AuthCard from "../component/AuthCard";
 
-import { finishSignIn, rememberReferralCode } from "@/lib/sign-in";
+import { finishSignIn, rememberReferralCode, takeSocialSignInStarted } from "@/lib/sign-in";
 import { getSafeAuthCallback } from "@/lib/auth-redirect";
 import { ApiRequestError, fetchApiData } from "@/utils/fetchApiData";
 
@@ -26,22 +26,28 @@ const LoginCallbackPage = () => {
     async function processLogin() {
       try {
         const searchParams = new URLSearchParams(window.location.search);
+        const targetPath = getSafeAuthCallback(searchParams.get("callbackURL"));
+        // This page is open to signed-in accounts, so only a sign-in this tab started is
+        // finished here: a link to it must not attach a referral to an existing account (S-373).
+        const startedHere = takeSocialSignInStarted();
 
         // A social sign-in leaves the site, so a code from this URL is remembered before use.
         const referralCode = searchParams.get("ref");
-        if (referralCode) rememberReferralCode(referralCode);
+        if (startedHere && referralCode) rememberReferralCode(referralCode);
 
         // A provider can land here without a session (a refused or abandoned sign-in): say so
         // instead of announcing a sign-in that did not happen.
         await fetchApiData("/users/me", { redirectOnInvalidSession: false });
 
+        if (!startedHere) {
+          router.replace(targetPath);
+          return;
+        }
+
         const { referralError } = await finishSignIn();
 
         toast.success("Successfully signed in!");
         if (referralError) toast.info(`Referral not applied: ${referralError}`);
-
-        const callbackURL = searchParams.get("callbackURL");
-        const targetPath = getSafeAuthCallback(callbackURL);
 
         router.push(targetPath);
         router.refresh();

@@ -1641,7 +1641,7 @@ export class BillingService {
       await Promise.all([
         prisma.user.findUnique({
           where: { id: userId },
-          select: { id: true },
+          select: { id: true, billingCustomerId: true },
         }),
         prisma.subscription.findMany({
           where: { userId },
@@ -1728,6 +1728,14 @@ export class BillingService {
           : "SUSPENDED",
       entitlements,
       access,
+      // The portal holds the receipts for every purchase, spent or ended ones included, and opens
+      // from the same customer ids `createPortal` reads (S-330).
+      hasBillingAccount: Boolean(
+        user.billingCustomerId || subscriptions.some((item) => item.providerCustomerId),
+      ),
+      // A pause owes nothing, so it is said apart from a failed payment (`access.paymentIssue`),
+      // from the same subscription in dunning, whatever row `status` describes (S-387).
+      subscriptionPaused: dunning?.rawStatus === "paused",
       credits: wallet,
       catalog: publicCatalog(),
       creditEconomics: publicCreditEconomics(),

@@ -12,6 +12,7 @@ import AuthCard from "./AuthCard";
 import { authClient } from "@/lib/auth-client";
 import { finishSignIn } from "@/lib/sign-in";
 import { getSafeAuthCallback } from "@/lib/auth-redirect";
+import { OTP_SIGN_UP_PLACEHOLDER_NAME } from "@/lib/constants";
 
 const OtpForm = ({
   sentTo,
@@ -38,12 +39,14 @@ const OtpForm = ({
     if (!sentTo || code.length !== 6 || isLoading) return;
 
     setIsLoading(true);
+    // After a sign-in the button stays disabled while the page navigates: the code is spent.
+    let signedIn = false;
 
     try {
       const { error: authError } = await authClient.signIn.emailOtp({
         email: sentTo,
         otp: code,
-        name: "Veriworkly User",
+        name: OTP_SIGN_UP_PLACEHOLDER_NAME,
       });
 
       if (authError) {
@@ -51,6 +54,7 @@ const OtpForm = ({
         return;
       }
 
+      signedIn = true;
       toast.success("Successfully signed in!");
 
       const { referralError } = await finishSignIn();
@@ -77,7 +81,7 @@ const OtpForm = ({
         err instanceof Error ? err.message : "Verification failed. Please check your connection.";
       toast.error(message);
     } finally {
-      setIsLoading(false);
+      if (!signedIn) setIsLoading(false);
     }
   };
 

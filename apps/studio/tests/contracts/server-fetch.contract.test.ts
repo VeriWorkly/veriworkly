@@ -97,6 +97,18 @@ describe("server fetch contract", () => {
     expect(sentHeaders(1).has("x-forwarded-client-ip")).toBe(false);
   });
 
+  it("S-397: forwards the browser's user agent with the internal key, so the API can tell a link-preview bot from a reader", async () => {
+    respondWith(200, { data: {} });
+    request.headers = new Headers({ "x-real-ip": "203.0.113.9", "user-agent": "Slackbot 1.0" });
+
+    await serverFetch("/shares/public/jane/resume");
+    expect(sentHeaders().get("x-forwarded-client-user-agent")).toBe("Slackbot 1.0");
+
+    vi.stubEnv("INTERNAL_API_KEY", "");
+    await serverFetch("/shares/public/jane/resume");
+    expect(sentHeaders(1).has("x-forwarded-client-user-agent")).toBe(false);
+  });
+
   it("S-171 S-162: every call has a timeout, and Content-Type only travels with a body", async () => {
     respondWith(200, { data: {} });
 
@@ -137,7 +149,7 @@ describe("server fetch contract", () => {
   it("S-087 V-193: a program switched off on the server is 'unavailable', not an empty dashboard", async () => {
     const { readFileSync } = await import("node:fs");
     const flagSource = readFileSync(
-      `${process.cwd()}/../server/src/middleware/featureFlag.ts`,
+      `${__dirname}/../../../server/src/middleware/featureFlag.ts`,
       "utf8",
     );
     const code = flagSource.match(/code: "([A-Z_]+)"/)?.[1];
@@ -197,7 +209,7 @@ describe("server fetch contract", () => {
     const { join } = await import("node:path");
     const { isCorsRejection } = await import("@/lib/server-fetch-core");
     const source = readFileSync(
-      join(process.cwd(), "..", "server", "src", "middleware", "cors.ts"),
+      join(`${__dirname}/../..`, "..", "server", "src", "middleware", "cors.ts"),
       "utf8",
     );
     const [, message] = /new ApiError\(403, "([^"]+)"\)/.exec(source) ?? [];

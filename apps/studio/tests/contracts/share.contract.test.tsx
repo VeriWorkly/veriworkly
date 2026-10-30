@@ -182,6 +182,22 @@ describe("share contract", () => {
       expect(isShareSnapshotStale(null, "2026-10-27T10:00:00.000Z")).toBe(false);
     });
 
+    it("S-254 a view after the edit does not hide the warning: the snapshot time is compared", async () => {
+      const { isShareSnapshotStale } = await import("@/components/modals/ShareDocumentModal");
+      const { shareSnapshotTime } = await import("@/features/documents/services/share-service");
+
+      // Shared at T0, edited at T1, then the view flush moved `updatedAt` to T2.
+      const link = {
+        updatedAt: "2026-10-27T12:00:00.000Z",
+        snapshotAt: "2026-10-27T10:00:00.000Z",
+      };
+
+      expect(shareSnapshotTime(link)).toBe("2026-10-27T10:00:00.000Z");
+      expect(isShareSnapshotStale("2026-10-27T11:00:00.000Z", shareSnapshotTime(link))).toBe(true);
+      // A list cached before the server sent `snapshotAt` falls back to `updatedAt`.
+      expect(shareSnapshotTime({ updatedAt: link.updatedAt })).toBe(link.updatedAt);
+    });
+
     it("S-254 a stale link offers to update the shared version; a current one does not", async () => {
       const { SharedVersionNotice } = await import("@/components/modals/ShareDocumentModal");
       const notice = (stale: boolean) =>
@@ -314,6 +330,46 @@ describe("share contract", () => {
       );
       // A public read cached before the setting existed carries none: the buttons stay.
       expect(await renderPage(200, { data })).toContain("lucide-download");
+    });
+
+    it("S-399 the share page's PDF download warns first when characters would print blank", async () => {
+      const { pdfCharacterWarning } =
+        await import("@/features/documents/export/pdf-unsupported-text");
+      const resume = structuredClone(defaultResume);
+      resume.basics.fullName = "राहुल शर्मा";
+
+      expect(pdfCharacterWarning({ type: "RESUME", content: resume })).toMatch(
+        /^These characters will be blank in the PDF: Name \(/,
+      );
+      expect(pdfCharacterWarning({ type: "RESUME", content: defaultResume })).toBeNull();
+
+      // The reader's Download menu runs the editor's check and dialog before the PDF.
+      const source = readFileSync(
+        join(__dirname, "..", "..", "app/share/components/DownloadActions.tsx"),
+        "utf8",
+      );
+      expect(source).toMatch(/pdfCharacterWarning\(\{ type: "RESUME", content: resume \}\)/);
+      expect(source).toContain("<PdfCharacterWarning");
+    });
+
+    it("S-398 the modal offers the download switch only where the page has a Download button", async () => {
+      const { shareOffersDownloads, toShareSnapshot } =
+        await import("@/features/documents/services/share-service");
+      const letter = createDefaultCoverLetter("letter-1");
+
+      const html = await renderPage(200, {
+        data: {
+          passwordRequired: false,
+          documentTitle: "Letter",
+          expiresAt: null,
+          allowDownload: true,
+          snapshot: toShareSnapshot(letter),
+        },
+      });
+
+      expect(html).not.toContain("lucide-download");
+      expect(shareOffersDownloads("COVER_LETTER")).toBe(false);
+      expect(shareOffersDownloads("RESUME")).toBe(true);
     });
 
     it("S-044 401 and 403 say the document is not available", async () => {
@@ -548,7 +604,7 @@ describe("share-link expiry (owner decision B)", () => {
       "Never",
     ]);
     expect(source).toContain('useState<ShareExpiryChoice>("7")');
-    expect(source).toContain('setExpiryChoice(links.length > 0 ? "keep" : "7")');
+    expect(source).toContain('setExpiryChoice(canKeepShareExpiry(links[0]) ? "keep" : "7")');
   });
 
   it("each period becomes an expiresAt that many days from now; Never sends null", async () => {
@@ -561,7 +617,7 @@ describe("share-link expiry (owner decision B)", () => {
       });
     }
 
-    expect(shareExpiryPayload("never", inDaysFrom(3), now)).toEqual({
+    expect(shareExpiryPayload("never", { expiresAt: inDaysFrom(3) }, now)).toEqual({
       expiresAt: null,
       noExpiry: true,
     });
@@ -570,10 +626,111 @@ describe("share-link expiry (owner decision B)", () => {
   it("an existing link keeps its stored expiry, including none", async () => {
     const { shareExpiryPayload } = await import("@/features/documents/services/share-expiry");
 
-    expect(shareExpiryPayload("keep", "2026-12-01T00:00:00.000Z", now)).toEqual({
+    expect(shareExpiryPayload("keep", { expiresAt: "2026-12-01T00:00:00.000Z" }, now)).toEqual({
       expiresAt: "2026-12-01T00:00:00.000Z",
       noExpiry: false,
     });
-    expect(shareExpiryPayload("keep", null, now)).toEqual({ expiresAt: null, noExpiry: true });
+    expect(shareExpiryPayload("keep", { expiresAt: null }, now)).toEqual({
+      expiresAt: null,
+      noExpiry: true,
+    });
+  });
+
+  it("S-393 keep with no link left (revoked) is the 7-day default, never permanent", async () => {
+    const { effectiveShareExpiryChoice, shareExpiryPayload } =
+      await import("@/features/documents/services/share-expiry");
+
+    expect(effectiveShareExpiryChoice("keep", undefined, now)).toBe("7");
+    expect(shareExpiryPayload("keep", undefined, now)).toEqual({
+      expiresAt: inDaysFrom(7),
+      noExpiry: false,
+    });
+  });
+
+  it("S-394 an expired link cannot keep its past date; updating it renews for 7 days", async () => {
+    const { canKeepShareExpiry, effectiveShareExpiryChoice, shareExpiryPayload } =
+      await import("@/features/documents/services/share-expiry");
+    const expired = { expiresAt: inDaysFrom(-1) };
+
+    expect(canKeepShareExpiry(expired, now)).toBe(false);
+    expect(effectiveShareExpiryChoice("keep", expired, now)).toBe("7");
+    expect(shareExpiryPayload("keep", expired, now)).toEqual({
+      expiresAt: inDaysFrom(7),
+      noExpiry: false,
+    });
+    expect(canKeepShareExpiry({ expiresAt: inDaysFrom(1) }, now)).toBe(true);
+  });
+
+  it("S-393 S-394 the modal sends and shows the same choice, and marks expired links", () => {
+    const source = readFileSync(
+      join(__dirname, "..", "..", "components/modals/ShareDocumentModal.tsx"),
+      "utf8",
+    );
+
+    expect(source).toContain("effectiveShareExpiryChoice(expiryChoice, activeLink)");
+    expect(source).toContain("shareExpiryPayload(shownExpiryChoice, activeLink)");
+    expect(source).toContain("value={shownExpiryChoice}");
+    expect(source).toContain('"Expired" : "Expires"');
+  });
+});
+
+describe("S-402 the password gate sends one unlock at a time", () => {
+  // Finds the password input in the gate's element tree, to press Enter on it.
+  function findById(node: unknown, id: string): { props: Record<string, unknown> } | null {
+    if (!node || typeof node !== "object") return null;
+    if (Array.isArray(node)) {
+      for (const child of node) {
+        const found = findById(child, id);
+        if (found) return found;
+      }
+      return null;
+    }
+    const element = node as { props?: Record<string, unknown> };
+    if (!element.props) return null;
+    if (element.props.id === id) return element as { props: Record<string, unknown> };
+    return findById(element.props.children, id);
+  }
+
+  it("S-402 Enter while a check is in flight does not post again (5 tries per 5 minutes)", async () => {
+    const { PasswordGateModal } = await import("@/app/share/components/PasswordGateModal");
+    const pressEnter = (verifying: boolean) => {
+      const onUnlock = vi.fn();
+      const tree = PasswordGateModal({
+        password: "wrong",
+        verifying,
+        error: null,
+        onUnlock,
+        onPasswordChange: () => {},
+      });
+      const input = findById(tree, "share-password");
+      (input?.props.onKeyDown as (event: { key: string }) => void)({ key: "Enter" });
+      return onUnlock.mock.calls.length;
+    };
+
+    expect(pressEnter(false)).toBe(1);
+    // The button is disabled while verifying; Enter must be too.
+    expect(pressEnter(true)).toBe(0);
+  });
+});
+
+describe("S-400 the renamed-title warning", () => {
+  it("S-400 compares the link with the server's document slug, not a client re-slug of the title", async () => {
+    const { isShareSlugOutOfSync } = await import("@/components/modals/ShareDocumentModal");
+
+    // Titles the server slugs differently from an ASCII `\w` slugify: never renamed.
+    for (const [token, documentSlug] of [
+      ["resume", "resume"], // "Résumé"
+      ["jane-o-neil-cv", "jane-o-neil-cv"], // "Jane O'Neil CV"
+      ["my_resume", "my_resume"], // "my_resume"
+      ["document", "document"], // "रिज्यूमे"
+      ["cafe-2026-2", "cafe-2026"], // a second link took the -2 suffix
+    ]) {
+      expect(isShareSlugOutOfSync({ token, documentSlug })).toBe(false);
+    }
+
+    expect(isShareSlugOutOfSync({ token: "old-title", documentSlug: "new-title" })).toBe(true);
+    expect(isShareSlugOutOfSync({ token: "cafe-old", documentSlug: "cafe" })).toBe(true);
+    // A list cached before the server sent `documentSlug`: nothing to compare, no alarm.
+    expect(isShareSlugOutOfSync({ token: "anything" })).toBe(false);
   });
 });

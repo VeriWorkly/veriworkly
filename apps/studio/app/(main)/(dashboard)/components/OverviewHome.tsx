@@ -15,6 +15,9 @@ import SyncDetailsModal from "@/components/modals/SyncDetailsModal";
 import ShareDocumentModal from "@/components/modals/ShareDocumentModal";
 import RenameDocumentModal from "@/components/modals/RenameDocumentModal";
 
+import { subscribeToDocumentLibrary } from "@/features/documents/services/document-library";
+import { hasDocumentsAwaitingAnswer } from "@/features/documents/services/workspace-owner";
+
 import { useDocumentsWorkspace } from "../documents/useDocumentsWorkspace";
 import { CreateDocumentActions } from "../documents/components/CreateDocumentActions";
 import { PendingCloudDocuments } from "../documents/components/DocumentPagination";
@@ -99,9 +102,18 @@ const OverviewHome = () => {
     () => false,
   );
 
+  // Documents made on this device before signing in are not the account's until the user
+  // answers the dialog: no "0 documents" or first-run guide under it meanwhile (S-368).
+  const awaitingAnswer = useSyncExternalStore(
+    subscribeToDocumentLibrary,
+    hasDocumentsAwaitingAnswer,
+    () => false,
+  );
+
   return (
     <section className="flex flex-col gap-7" aria-label="Studio overview">
       <OverviewHomeHeader
+        hideCounts={awaitingAnswer}
         totalCount={totalCount}
         resumeCount={resumeCount}
         coverLetterCount={coverLetterCount}
@@ -145,6 +157,10 @@ const OverviewHome = () => {
                     onSyncDetailsAction={setSyncDetailsTargetId}
                   />
                 ))
+              ) : awaitingAnswer ? (
+                <p className="text-muted col-span-full min-h-48 text-sm" role="status">
+                  Choose what happens to the documents already on this device to see them here.
+                </p>
               ) : isPullingFromCloud ? (
                 // A returning user on a new device: their documents are still on the way.
                 <p className="text-muted col-span-full min-h-48 text-sm" role="status">

@@ -32,7 +32,7 @@ Guest mode works with no backend. Sign-in, sync, sharing, AI, ATS and billing ne
 
 **Signed out means 401 or 403.** `fetchCurrentUser` returns `null` only for those. Any other failure throws to an error boundary. A rejected session cookie goes to `app/auth/session-expired`, which clears it and sends the user to `/login`.
 
-**Error boundaries.** `app/error.tsx`, `app/global-error.tsx`, `app/(main)/(dashboard)/error.tsx`, `app/admin/error.tsx`, `app/share/error.tsx` and the preview's `error.tsx`.
+**Error boundaries.** `app/error.tsx`, `app/global-error.tsx`, `app/(main)/(dashboard)/error.tsx`, `app/(main)/checkout/error.tsx`, `app/admin/error.tsx`, `app/share/error.tsx` and the preview's `error.tsx`.
 
 **Security headers** ship with the app. `proxy.ts` sets the Content-Security-Policy with a fresh nonce per request (`lib/content-security-policy.ts`): scripts run only with that nonce or when a nonced script loads them, so an injected inline script does not run. Reading the nonce in the root layout renders every page per request. HSTS, `X-Frame-Options` and the rest are set in `next.config.ts`.
 

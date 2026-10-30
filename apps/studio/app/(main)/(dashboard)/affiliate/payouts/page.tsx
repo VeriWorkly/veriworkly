@@ -19,6 +19,10 @@ export default async function AffiliatePayoutsPage() {
   // Payouts are for an active affiliate only, as on the overview: a pending or suspended account
   // keeps its history but cannot request a withdrawal.
   const canRequest = data?.affiliateStatus === "ACTIVE";
+  // One withdrawal at a time: the server refuses another while one is open (S-392).
+  const openWithdrawal = data?.withdrawals.find(
+    (item) => item.status === "REQUESTED" || item.status === "APPROVED",
+  );
   const withdrawable = data ? withdrawableCents(data) : 0;
   // Money owed back from a commission refunded after it was released (V-321) is repaid first.
   const owed = data ? Math.max(0, data.wallet.availableCents - withdrawable) : 0;
@@ -43,7 +47,14 @@ export default async function AffiliatePayoutsPage() {
               balance first. You can withdraw {formatCents(withdrawable)}.
             </p>
           ) : null}
-          {canRequest ? (
+          {canRequest && openWithdrawal ? (
+            <p className="text-muted mt-5 text-sm">
+              Payout of {formatCents(openWithdrawal.amountCents, openWithdrawal.currency)}{" "}
+              {openWithdrawal.status === "APPROVED"
+                ? "approved, awaiting payment."
+                : "requested, awaiting review."}
+            </p>
+          ) : canRequest ? (
             <>
               <p className="text-muted mt-2 text-xs">
                 Minimum payout {formatCents(data.minimumWithdrawalCents)}

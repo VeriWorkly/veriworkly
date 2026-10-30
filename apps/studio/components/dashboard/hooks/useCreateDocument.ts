@@ -29,8 +29,12 @@ export function reportCreateFailure(
   if (result.reason === "busy") return;
 
   if (result.reason === "limit") {
+    // A subscriber whose card failed fixes the card; they are never sold the plan again (S-386).
     toast.error(result.message, {
-      action: { label: "Upgrade", onClick: () => router.push("/billing") },
+      action: {
+        label: result.paymentIssue ? "Update card" : "Upgrade",
+        onClick: () => router.push("/billing"),
+      },
     });
     return;
   }

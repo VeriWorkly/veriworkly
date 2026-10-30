@@ -858,3 +858,80 @@ describe("Decision 9: a resume's paper size reaches every output", () => {
     ).toBe("a4");
   });
 });
+
+describe("S-395: a skill group without a name", () => {
+  beforeAll(() => {
+    registerPdfTestFonts();
+  });
+
+  function namelessSkills(): ResumeData {
+    const resume = structuredClone(defaultResume) as ResumeData;
+    resume.skills = [
+      { id: "skills-nameless", name: "", keywords: ["React", "Node", "SQL"] },
+      { id: "skills-named", name: "Tools", keywords: ["Git"] },
+    ];
+    return resume;
+  }
+
+  it("S-395 prints its keywords alone in the preview of every template", async () => {
+    const resume = namelessSkills();
+
+    for (const template of templateRegistry) {
+      const Template = await loadTemplateComponentById(template.id);
+      const text = renderToStaticMarkup(
+        <Template resume={{ ...resume, templateId: template.id }} />,
+      ).replace(/<[^>]+>/g, "");
+
+      expect(text, template.id).toContain("React, Node, SQL");
+      expect(text, template.id).not.toMatch(/:\s*React/);
+      expect(text, template.id).toContain("Tools: Git");
+    }
+  });
+
+  it("S-395 prints its keywords alone in every export format", async () => {
+    const files = await exportAllFormats(namelessSkills());
+
+    for (const format of ["pdf", "docx", "html", "markdown", "txt"] as const) {
+      const text = files[format].replace(/<[^>]+>/g, "");
+      expect(text, format).toMatch(/React,\s*Node,\s*SQL/);
+      expect(text, format).not.toMatch(/:\s*\**\s*React/);
+    }
+  }, 60_000);
+});
+
+describe("S-396: a document still under its default title", () => {
+  it("S-396 a resume's file is named after the person, not 'untitled-resume'", async () => {
+    const { getResumeFileBaseName } = await import("@/features/resume/services/resume-formatters");
+    const resume = structuredClone(defaultResume) as ResumeData;
+    resume.basics.fullName = "Jane Doe";
+
+    expect(getResumeFileBaseName({ ...resume, title: "Untitled resume" })).toBe("jane-doe");
+    // A duplicate of an untitled resume is still untitled.
+    expect(getResumeFileBaseName({ ...resume, title: "Untitled resume (copy)" })).toBe("jane-doe");
+    expect(getResumeFileBaseName({ ...resume, title: "Backend roles" })).toBe("backend-roles");
+    expect(
+      getResumeFileBaseName({
+        ...resume,
+        title: "Untitled resume",
+        basics: { ...resume.basics, fullName: "" },
+      }),
+    ).toBe("resume");
+  });
+
+  it("S-396 a cover letter's file is named after the sender and company", async () => {
+    const { getDocumentFileBaseName } =
+      await import("@/features/documents/export/export-file-names");
+    const { createDefaultCoverLetter } = await import("@/features/cover-letter/defaults");
+    const letter = createDefaultCoverLetter("letter-1");
+    const named = {
+      ...letter,
+      title: "Untitled Cover Letter",
+      content: { ...letter.content, senderName: "Jane Doe", companyName: "Acme" },
+    } as BaseDocument;
+
+    expect(getDocumentFileBaseName(named)).toBe("jane-doe-acme-cover-letter");
+    expect(getDocumentFileBaseName({ ...named, title: "Acme application" })).toBe(
+      "acme-application",
+    );
+  });
+});

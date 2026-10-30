@@ -102,13 +102,17 @@ const emailSamples = [
 ];
 
 function renderLoginEmailSample() {
-  return renderLoginAlertEmail("alex.morgan@example.com", {
-    device: "Chrome 122 on macOS (Apple Silicon)",
-    ip: "192.0.2.42",
-    provider: "github",
-    location: "San Francisco, CA, United States",
-    timestamp: new Date().toUTCString(),
-  });
+  return renderLoginAlertEmail(
+    "alex.morgan@example.com",
+    {
+      device: "Chrome 122 on macOS (Apple Silicon)",
+      ip: "192.0.2.42",
+      provider: "github",
+      location: "San Francisco, CA, United States",
+      timestamp: new Date().toUTCString(),
+    },
+    "https://app.veriworkly.com/profile?focus=sessions",
+  );
 }
 
 // 1. Write individual HTML files

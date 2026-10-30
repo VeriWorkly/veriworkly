@@ -160,6 +160,11 @@ export function getSkillLines(groups: ResumeData["skills"]): ResumeSkillLine[] {
   }));
 }
 
+/** A skill line as text. A group without a name prints its keywords alone, never ": …". */
+export function getSkillLineText(line: ResumeSkillLine): string {
+  return line.label ? `${line.label}: ${line.value}` : line.value;
+}
+
 /* The eight typed sections, each with its own mapping: each section says what its fields mean. */
 
 export const FLUENCY_LABELS: Record<ResumeLanguage["fluency"], string> = {

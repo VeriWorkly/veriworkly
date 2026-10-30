@@ -8,7 +8,7 @@ import { useUserStore } from "../store/useUserStore";
 
 import type { SessionUser } from "@/features/auth/services/current-user";
 
-import { downloadWorkspaceBackup } from "@/features/auth/services/current-user";
+import { signInHref } from "@/lib/sign-in";
 import { UnclaimedDocumentsDialog } from "@/features/auth/components/UnclaimedDocumentsDialog";
 import {
   setAutoSyncEnabledInLocalStorage,
@@ -30,6 +30,7 @@ import {
   resolveUnclaimedDocuments,
   setWorkspaceUser,
   settleWorkspaceOwnership,
+  subscribeToSessionEnded,
   type UnclaimedDocuments,
   type UnclaimedDocumentsChoice,
 } from "@/features/documents/services/workspace-owner";
@@ -55,10 +56,12 @@ async function pullAccountDocuments() {
 }
 
 const BACKUP_PAUSED_TOAST_ID = "backup-paused";
+const SIGNED_OUT_TOAST_ID = "signed-out";
 
 /**
- * Asks about the next group of documents on this device that are not the user's or, once none
- * is left, starts their sync and pulls their documents. While the account cannot be reached a
+ * Asks about the documents on this device that may be the user's (a guest's, or linked to a
+ * cloud copy their account does not have) or, once none is left, starts the user's sync and
+ * pulls their documents. While the account cannot be reached a
  * standing notice says backup is paused, with a way to try again now.
  */
 function startSettling(user: SessionUser, onUnclaimed: (found: UnclaimedDocuments) => void) {
@@ -166,6 +169,23 @@ export function AuthInitializer({ initialUser }: { initialUser: SessionUser | nu
     [],
   );
 
+  // The session ended under an open tab: autosave goes on here, but nothing backs up until the
+  // user signs in again. They stay where they are, and are told (S-374).
+  useEffect(() => {
+    if (!initialUser) return;
+
+    return subscribeToSessionEnded(() => {
+      toast.warning(
+        "You were signed out. Your changes are saved on this device. Sign in to back them up.",
+        {
+          id: SIGNED_OUT_TOAST_ID,
+          duration: Infinity,
+          action: { label: "Sign in", onClick: () => window.location.assign(signInHref()) },
+        },
+      );
+    });
+  }, [initialUser]);
+
   // A rebuilt index leaves every document of unknown owner, which pauses backup: ask now.
   useEffect(() => {
     if (!initialUser) return;
@@ -198,22 +218,12 @@ export function AuthInitializer({ initialUser }: { initialUser: SessionUser | nu
 
       setUnclaimed(null);
       setResolving(false);
-      // Another account's documents are asked about first; a guest's may follow.
+      // Settling again starts sync once nothing is left to ask about.
       settlerRef.current?.cancel();
       settlerRef.current = startSettling(initialUser, setUnclaimed);
     },
     [initialUser, unclaimed],
   );
-
-  const downloadBackup = useCallback(() => {
-    if (!unclaimed) return;
-
-    try {
-      downloadWorkspaceBackup(unclaimed.documents);
-    } catch (error) {
-      setResolveError(error instanceof Error ? error.message : String(error));
-    }
-  }, [unclaimed]);
 
   if (!unclaimed) return null;
 
@@ -223,7 +233,6 @@ export function AuthInitializer({ initialUser }: { initialUser: SessionUser | nu
       busy={resolving}
       error={resolveError}
       onChoose={choose}
-      onDownloadBackup={downloadBackup}
     />
   );
 }

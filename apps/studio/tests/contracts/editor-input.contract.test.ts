@@ -175,6 +175,17 @@ describe("AI request id reuse after a failure (S-172)", () => {
     );
   });
 
+  it("S-384 keeps the id while the server is still running the first request", () => {
+    // A retry that lands while the first attempt holds its reservation must keep the same id: once
+    // that attempt commits, only this id replays its result instead of charging again.
+    const processing = new ApiRequestError("Still working on your last request.", 409, {
+      code: "AI_REQUEST_PROCESSING",
+      retryAfterSeconds: 5,
+    });
+
+    expect(canRetryWithSameRequestId(processing)).toBe(true);
+  });
+
   it("drops the id for anything else it cannot classify", () => {
     expect(canRetryWithSameRequestId(new SyntaxError("Unexpected token"))).toBe(false);
   });

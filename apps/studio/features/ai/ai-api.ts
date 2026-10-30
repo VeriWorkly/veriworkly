@@ -86,10 +86,12 @@ export function createRequestId(): string {
  * a committed request is answered from the stored result (`replayed: true`) while the server
  * keeps it (`RETENTION_CREDIT_REPLAY_DAYS`, 1 day), and 409 "already completed" after that. Once
  * the server has answered with an error, the reservation was released and the id is spent (409
- * "can no longer be reused"), so reusing it would fail every retry.
+ * "can no longer be reused"), so reusing it would fail every retry. The exception is
+ * `AI_REQUEST_PROCESSING`: the first attempt still holds the reservation, and only its id can
+ * replay the result once it commits (S-384).
  */
 export function canRetryWithSameRequestId(error: unknown): boolean {
-  if (error instanceof ApiRequestError) return false;
+  if (error instanceof ApiRequestError) return error.code === "AI_REQUEST_PROCESSING";
   if (error instanceof TypeError) return true;
 
   return (

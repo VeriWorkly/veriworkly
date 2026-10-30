@@ -11,10 +11,74 @@
  */
 import type { AttributedString, LayoutOptions, Run } from "@react-pdf/textkit";
 
+import textkitLayoutEngine from "@react-pdf/textkit/lib/textkit.js";
+
 import { findLineStarts } from "./line-breaks";
 
 export * from "@react-pdf/textkit/lib/textkit.js";
-export { default } from "@react-pdf/textkit/lib/textkit.js";
+
+type GlyphFont = { hasGlyphForCodePoint?: (codePoint: number) => boolean } | null | undefined;
+
+/** Spaces, line breaks and format characters carry no ink; they stay for breaking and bidi. */
+const INKLESS = /^[\p{White_Space}\p{Cf}]$/u;
+
+/**
+ * Whether some font in the run's stack draws `char`, or every part of its decomposition
+ * (textkit decomposes complex scripts to fit a font that has only the parts). A stack whose
+ * fonts cannot say is trusted.
+ */
+function drawable(char: string, fonts: GlyphFont[]) {
+  const checkable = fonts.filter((font) => typeof font?.hasGlyphForCodePoint === "function");
+  if (checkable.length === 0 || INKLESS.test(char)) return true;
+
+  const has = (point: number) => checkable.some((font) => font!.hasGlyphForCodePoint!(point));
+  if (has(char.codePointAt(0)!)) return true;
+
+  const parts = [...char.normalize("NFD")];
+  return parts.length > 1 && parts.every((part) => has(part.codePointAt(0)!));
+}
+
+/**
+ * The paragraph without the characters no font in its stack has. textkit would lay them out
+ * as `.notdef`: no ink, but written into the text layer, where a parser reads junk ("NN")
+ * inside the user's name (S-366). The export warns first that they will be blank, and now
+ * they are. Attachment runs (inline images) are kept whole.
+ */
+function withoutUndrawable(paragraph: AttributedString): AttributedString {
+  let string = "";
+  let changed = false;
+
+  const runs = paragraph.runs.map((run) => {
+    const start = string.length;
+    const text = paragraph.string.slice(run.start, run.end);
+    const fonts = (run.attributes?.font ?? []) as GlyphFont[];
+
+    if (run.attributes?.attachment) {
+      string += text;
+    } else {
+      for (const char of text) {
+        if (drawable(char, fonts)) string += char;
+        else changed = true;
+      }
+    }
+
+    if (run.start !== start) changed = true;
+    return { ...run, start, end: string.length };
+  });
+
+  return changed ? { ...paragraph, string, runs } : paragraph;
+}
+
+/** textkit's layout engine, given only the text its fonts can draw. */
+export default function layoutEngine(...engineArgs: Parameters<typeof textkitLayoutEngine>) {
+  const layout = textkitLayoutEngine(...engineArgs);
+
+  return (paragraph: AttributedString, ...rest: unknown[]) =>
+    (layout as (paragraph: AttributedString, ...rest: unknown[]) => ReturnType<typeof layout>)(
+      withoutUndrawable(paragraph),
+      ...rest,
+    );
+}
 
 const graphemes =
   typeof Intl !== "undefined" && "Segmenter" in Intl

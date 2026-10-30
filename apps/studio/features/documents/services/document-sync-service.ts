@@ -16,7 +16,7 @@ import { LocalStorageService, type SaveDocumentResult } from "./local-storage-se
 import { safeSetLocalStorageItem } from "./storage/safe-local-storage";
 import { DOCUMENT_REMOTE_DELETION_EVENT, type RemoteDeletionDetail } from "./storage-keys";
 import { getWorkspaceEpoch } from "./workspace-epoch";
-import { getWorkspaceViewer } from "./workspace-viewer";
+import { entriesOfOtherAccounts, getWorkspaceViewer } from "./workspace-viewer";
 
 /**
  * Max concurrent document syncs. Browsers allow ~6 connections per host, so going
@@ -145,6 +145,13 @@ const CONFLICT_MESSAGE = "This document changed on another device. Choose which 
 const AWAITING_OWNER_MESSAGE =
   "Choose what happens to the documents already on this device before they sync with your account.";
 
+/** For a document another account left on this device; nothing about it was sent or changed. */
+const ANOTHER_ACCOUNT_RESULT: SyncResult = {
+  ok: false,
+  reason: "not-found",
+  message: "Document not found.",
+};
+
 function hasDeletedAt(details: unknown) {
   return (
     typeof details === "object" &&
@@ -218,6 +225,26 @@ export class DocumentSyncService<T extends BaseDocumentData> {
     return this.config.canReachCloud?.() ?? true;
   }
 
+  /**
+   * Ids of this type's documents that another account left on this device (S-372). Every path
+   * that uploads, pulls, deletes in the cloud or bulk-toggles sync skips them: they stay as that
+   * account left them, its outbox items included, until it signs in again.
+   */
+  private otherAccountsIds(): Set<string> {
+    return new Set(
+      entriesOfOtherAccounts(this.config.localStorage.listIndex()).map((entry) => entry.id),
+    );
+  }
+
+  /** Whether a sync of `id` is running now: in this tab, or recently started in another. */
+  private isSyncLive(id: string) {
+    if (this.inFlight.has(id)) return true;
+
+    const item = SyncEngine.getOutboxItem(id, this.type);
+
+    return item?.state === "syncing" && Date.now() - item.updatedAt < STALE_SYNCING_MS;
+  }
+
   private scheduleWorkerTick(delayMs: number) {
     if (!this.isBrowser()) return;
 
@@ -236,11 +263,13 @@ export class DocumentSyncService<T extends BaseDocumentData> {
     const now = Date.now();
 
     const outbox = SyncEngine.getOutbox(this.type);
+    const othersIds = this.otherAccountsIds();
     const items = Object.values(outbox)
       .filter(
         (item) =>
-          item.state === "pending" ||
-          (item.state === "syncing" && now - item.updatedAt > STALE_SYNCING_MS),
+          !othersIds.has(item.id) &&
+          (item.state === "pending" ||
+            (item.state === "syncing" && now - item.updatedAt > STALE_SYNCING_MS)),
       )
       .sort((left, right) => left.nextAttemptAt - right.nextAttemptAt);
 
@@ -352,9 +381,14 @@ export class DocumentSyncService<T extends BaseDocumentData> {
    * so loading and re-validating the whole library here was a per-keystroke cost.
    */
   private listPendingIds(): string[] {
+    const othersIds = this.otherAccountsIds();
+
     return this.config.localStorage
       .listIndex()
-      .filter((entry) => entry.sync.enabled && entry.sync.status === "pending")
+      .filter(
+        (entry) =>
+          entry.sync.enabled && entry.sync.status === "pending" && !othersIds.has(entry.id),
+      )
       .map((entry) => entry.id);
   }
 
@@ -391,8 +425,10 @@ export class DocumentSyncService<T extends BaseDocumentData> {
    * worker starts, i.e. on every signed-in app load: one request per such document.
    */
   private reviveUpgradeRequiredFailures() {
+    const othersIds = this.otherAccountsIds();
+
     for (const item of Object.values(SyncEngine.getOutbox(this.type))) {
-      if (item.state !== "failed") continue;
+      if (item.state !== "failed" || othersIds.has(item.id)) continue;
       if (SyncEngine.getTelemetry(item.id, this.type).lastErrorReason !== "upgrade-required") {
         continue;
       }
@@ -465,7 +501,8 @@ export class DocumentSyncService<T extends BaseDocumentData> {
    * limit) gets another try.
    */
   setAllSyncEnabled(enabled: boolean): SaveDocumentResult {
-    const items = this.config.localStorage.list();
+    const othersIds = this.otherAccountsIds();
+    const items = this.config.localStorage.list().filter((item) => !othersIds.has(item.id));
     const updated: T[] = [];
 
     for (const item of items) {
@@ -480,7 +517,9 @@ export class DocumentSyncService<T extends BaseDocumentData> {
 
     if (enabled) {
       for (const outboxItem of Object.values(SyncEngine.getOutbox(this.type))) {
-        if (outboxItem.state === "failed") SyncEngine.removeOutboxItem(outboxItem.id, this.type);
+        if (outboxItem.state === "failed" && !othersIds.has(outboxItem.id)) {
+          SyncEngine.removeOutboxItem(outboxItem.id, this.type);
+        }
       }
     }
 
@@ -493,15 +532,21 @@ export class DocumentSyncService<T extends BaseDocumentData> {
 
   /** Every document's sync block, for restoring after a bulk toggle the server rejected. */
   captureSyncStates(): Record<string, T["sync"]> {
+    const othersIds = this.otherAccountsIds();
+
     return Object.fromEntries(
-      this.config.localStorage.listIndex().map((entry) => [entry.id, entry.sync as T["sync"]]),
+      this.config.localStorage
+        .listIndex()
+        .filter((entry) => !othersIds.has(entry.id))
+        .map((entry) => [entry.id, entry.sync as T["sync"]]),
     );
   }
 
   restoreSyncStates(states: Record<string, T["sync"]>): SaveDocumentResult {
+    const othersIds = this.otherAccountsIds();
     const updated = this.config.localStorage
       .list()
-      .filter((item) => states[item.id])
+      .filter((item) => states[item.id] && !othersIds.has(item.id))
       .map((item) => ({ ...item, sync: states[item.id] }));
 
     const result = this.config.localStorage.persistMany(updated);
@@ -566,6 +611,8 @@ export class DocumentSyncService<T extends BaseDocumentData> {
     if (!this.canReachCloud()) {
       return { ok: false, reason: "in-progress", message: AWAITING_OWNER_MESSAGE };
     }
+
+    if (this.otherAccountsIds().has(id)) return ANOTHER_ACCOUNT_RESULT;
 
     const epoch = getWorkspaceEpoch();
 
@@ -844,6 +891,8 @@ export class DocumentSyncService<T extends BaseDocumentData> {
       return { ok: false, reason: "in-progress", message: AWAITING_OWNER_MESSAGE };
     }
 
+    if (this.otherAccountsIds().has(id)) return ANOTHER_ACCOUNT_RESULT;
+
     const epoch = getWorkspaceEpoch();
 
     try {
@@ -1051,12 +1100,13 @@ export class DocumentSyncService<T extends BaseDocumentData> {
    */
   private applyTombstones(ids: string[]) {
     const localById = new Map(this.config.localStorage.listIndex().map((e) => [e.id, e]));
+    const othersIds = this.otherAccountsIds();
     let removed = 0;
     let kept = 0;
 
     for (const id of ids) {
       const local = localById.get(id);
-      if (!local?.sync.cloudDocumentId) continue;
+      if (!local?.sync.cloudDocumentId || othersIds.has(id)) continue;
 
       if (this.handleDeletedElsewhere(id, local.sync.status).reason === "deleted") {
         removed += 1;
@@ -1074,10 +1124,12 @@ export class DocumentSyncService<T extends BaseDocumentData> {
    * A local copy whose last-known revision is current, that was never linked (it syncs by
    * itself), or that the user keeps local is left alone. A newer cloud revision replaces a
    * synced local copy; against unsynced local edits it is a conflict, never an overwrite.
-   * `force` (the user picked "use cloud") replaces whatever is local.
+   * `force` (the user picked "use cloud") replaces whatever is local. Another account's
+   * document with the same id is never written over: the record is skipped.
    */
   private mergeCloudDocumentsIntoLocalStorage(records: CloudDocument[], force = false) {
     const localById = new Map(this.config.localStorage.listIndex().map((e) => [e.id, e]));
+    const othersIds = this.otherAccountsIds();
 
     const toPersist: T[] = [];
     const conflicts: string[] = [];
@@ -1093,6 +1145,8 @@ export class DocumentSyncService<T extends BaseDocumentData> {
 
       const local = localById.get(cloudItem.id);
 
+      if (othersIds.has(cloudItem.id)) continue;
+
       if (!force && local) {
         if (
           !local.sync.cloudDocumentId ||
@@ -1102,6 +1156,11 @@ export class DocumentSyncService<T extends BaseDocumentData> {
         ) {
           continue;
         }
+
+        // A sync of this copy is in flight: the newer revision may be its own PATCH landing
+        // (S-381). The PATCH settles it, as synced or as a real 409 conflict. A "syncing" left
+        // behind by a tab closed mid-request is not live, and conflicts like any other edit.
+        if (local.sync.status === "syncing" && this.isSyncLive(cloudItem.id)) continue;
 
         if (local.sync.status !== "synced") {
           conflicts.push(cloudItem.id);
@@ -1147,6 +1206,8 @@ export class DocumentSyncService<T extends BaseDocumentData> {
    * (a 404 means it is already gone); if that fails, nothing changes locally.
    */
   async keepLocalOnly(id: string): Promise<SyncResult> {
+    if (this.otherAccountsIds().has(id)) return ANOTHER_ACCOUNT_RESULT;
+
     const item = this.config.localStorage.loadById(id);
 
     if (!item) return { ok: false, message: "Document not found.", reason: "not-found" };
@@ -1202,6 +1263,8 @@ export class DocumentSyncService<T extends BaseDocumentData> {
    * leaves the document as it was so the user can try again.
    */
   async resolveConflictUseLocal(id: string): Promise<SyncResult> {
+    if (this.otherAccountsIds().has(id)) return ANOTHER_ACCOUNT_RESULT;
+
     this.config.flushPendingEdits(id);
 
     const epoch = getWorkspaceEpoch();

@@ -21,6 +21,10 @@ import { useUserStore } from "@/store/useUserStore";
 import { normalizeResumeData } from "@/features/resume/utils/normalize-data";
 import { normalizeFontFamilyId } from "@/features/documents/constants/fonts";
 import { safeSetLocalStorageItem } from "@/features/documents/services/storage/safe-local-storage";
+import {
+  getWorkspaceViewer,
+  readDeviceOwner,
+} from "@/features/documents/services/workspace-viewer";
 
 /** Where an unparseable stored value is parked instead of being deleted. */
 const MASTER_PROFILE_CORRUPT_KEY = `${MASTER_PROFILE_STORAGE_KEY}:corrupt`;
@@ -28,6 +32,8 @@ const MASTER_PROFILE_CORRUPT_KEY = `${MASTER_PROFILE_STORAGE_KEY}:corrupt`;
 interface MasterProfileState {
   updatedAt: string;
   profile: MasterProfileData;
+  /** The account the cache was written for; null for a guest. Absent on older caches. */
+  owner: string | null;
 }
 
 interface MasterProfileSummaryState {
@@ -71,6 +77,7 @@ const masterProfileStateSchema = z
   .object({
     updatedAt: z.string().optional(),
     profile: z.unknown(),
+    owner: z.string().nullable().optional(),
   })
   .passthrough();
 
@@ -144,6 +151,21 @@ function backUpCorruptProfile(rawValue: string) {
   );
 }
 
+/**
+ * Whether the device cache was written for whoever uses the studio now (S-421). A session that
+ * expires leaves the cache behind, and a guest, or the next account, would otherwise start new
+ * documents from that account's name, contact details and history. A cache from before owners
+ * were recorded is the device owner's: claiming the device for another account removes it, so
+ * that is whose it is, and dropping it instead would lose a guest's only copy of their profile
+ * on a device nobody has signed in on. The accepted cost: on a device that never recorded an
+ * owner, a cache an account wrote before owners were recorded is still readable by a guest,
+ * until that account next loads its profile here, which rewrites the cache with its owner.
+ */
+function isCachedForViewer(owner: string | null | undefined) {
+  return (owner === undefined ? readDeviceOwner() : owner) === getWorkspaceViewer();
+}
+
+/** The device cache, when it was written for the current viewer; another's reads as empty. */
 export function loadMasterProfileFromLocalStorage(): LocalMasterProfileResult {
   if (!isBrowser()) {
     return { status: "empty" };
@@ -171,6 +193,10 @@ export function loadMasterProfileFromLocalStorage(): LocalMasterProfileResult {
     return { status: "corrupt" };
   }
 
+  if (!isCachedForViewer(parsed.data.owner)) {
+    return { status: "empty" };
+  }
+
   const parsedProfile = toMasterProfileData(parsed.data.profile);
 
   if (!parsedProfile) {
@@ -190,6 +216,7 @@ export function saveMasterProfileToLocalStorage(profile: MasterProfileData) {
   const payload: MasterProfileState = {
     updatedAt: new Date().toISOString(),
     profile: normalizeProfile(profile),
+    owner: getWorkspaceViewer(),
   };
 
   safeSetLocalStorageItem(window.localStorage, MASTER_PROFILE_STORAGE_KEY, JSON.stringify(payload));

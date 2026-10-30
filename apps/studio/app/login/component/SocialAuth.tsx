@@ -9,6 +9,7 @@ import { Button } from "@veriworkly/ui";
 
 import { authClient } from "@/lib/auth-client";
 import { siteConfig } from "@/config/site";
+import { clearSocialSignInStarted, markSocialSignInStarted } from "@/lib/sign-in";
 
 interface SocialAuthProps {
   isLoading: boolean;
@@ -27,6 +28,7 @@ const SocialAuth = ({ isLoading, setIsLoading }: SocialAuthProps) => {
     setActiveProvider(provider);
 
     const fail = (message: string) => {
+      clearSocialSignInStarted();
       toast.error(message);
       setIsLoading(false);
       setActiveProvider(null);
@@ -43,6 +45,7 @@ const SocialAuth = ({ isLoading, setIsLoading }: SocialAuthProps) => {
         `/login/callback?callbackURL=${encodeURIComponent(callbackURL)}` +
         (ref ? `&ref=${encodeURIComponent(ref)}` : "");
       const fullCallbackURL = `${siteConfig.links.app}${callbackPath}`;
+      markSocialSignInStarted();
 
       // On success the browser is already leaving for the provider, so loading stays on.
       const { error } = await authClient.signIn.social({

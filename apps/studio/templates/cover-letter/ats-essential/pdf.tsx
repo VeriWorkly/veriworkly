@@ -202,7 +202,7 @@ export function AtsEssentialCoverLetterPdf({ content }: { content: CoverLetterCo
   }
 
   return (
-    <Document {...getPdfMetadata(state.senderName, "Cover Letter")}>
+    <Document {...getPdfMetadata(state.senderName, "Cover Letter", content.language)}>
       <Page
         size={[state.page.widthPt, state.page.heightPt]}
         style={[

@@ -8,17 +8,21 @@ import { Button, Input, Select } from "@veriworkly/ui";
 import AdminActionDialog from "@/components/admin/AdminActionDialog";
 import Panel from "@/components/admin/Panel";
 import {
+  ADMIN_CREDIT_KINDS,
   ADMIN_ENTITLEMENT_KEYS,
+  ADMIN_ENTITLEMENT_LABELS,
   adjustAdminCredits,
   deleteAdminUser,
   grantAdminEntitlement,
   revokeAdminUserSessions,
   updateAdminUser,
+  type AdminCreditKind,
   type AdminEntitlementKey,
 } from "@/features/admin/services/admin-actions";
 
 import type { AdminUserDetail, Role } from "@/features/admin/types/admin-types";
 
+import { CreditKindFields } from "@/app/admin/billing/CreditKindFields";
 import { parseCreditAmount } from "@/app/admin/billing/credit-amount";
 import { parseEntitlementEnd } from "@/app/admin/billing/entitlement-end";
 import { useServerDraft } from "@/features/admin/utils/use-server-draft";
@@ -78,12 +82,14 @@ const UserAdminActions = ({
 
   const [role, setRole] = useServerDraft<Role>(user.role);
   const [creditAmount, setCreditAmount] = useState("100");
+  const [creditKind, setCreditKind] = useState<AdminCreditKind>("goodwill");
+  const [creditNote, setCreditNote] = useState("");
   const [entitlementKey, setEntitlementKey] = useState<AdminEntitlementKey>(
     ADMIN_ENTITLEMENT_KEYS[0],
   );
   const [entitlementEndsAt, setEntitlementEndsAt] = useState("");
 
-  const credits = parseCreditAmount(creditAmount);
+  const credits = parseCreditAmount(creditAmount, creditKind);
   const entitlementEnd = parseEntitlementEnd(entitlementEndsAt);
 
   // The server refuses the delete (409) while this holds; deleting cancels nothing at Dodo.
@@ -132,7 +138,7 @@ const UserAdminActions = ({
 
       <div className="space-y-2">
         <label htmlFor="admin-user-credits" className="text-muted text-xs font-medium">
-          Credit adjustment (negative claws back)
+          Credit adjustment (negative claws back goodwill only)
         </label>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -154,13 +160,17 @@ const UserAdminActions = ({
             title="Adjust credit balance"
             description={
               credits.ok
-                ? `${credits.amount > 0 ? "Granting" : "Removing"} ${Math.abs(credits.amount)} credits for ${user.email}.`
+                ? `${credits.amount > 0 ? "Granting" : "Removing"} ${Math.abs(credits.amount)} credits for ${user.email} as: ${ADMIN_CREDIT_KINDS[creditKind]}.`
                 : credits.message
             }
             confirmLabel="Apply adjustment"
             onConfirm={async (reason, attemptKey) => {
               if (!credits.ok) throw new Error(credits.message);
-              await adjustAdminCredits(user.id, credits.amount, reason, attemptKey);
+              await adjustAdminCredits(user.id, credits.amount, reason, attemptKey, {
+                kind: creditKind,
+                customerNote: creditNote.trim() || undefined,
+              });
+              setCreditNote("");
             }}
           />
         </div>
@@ -170,6 +180,14 @@ const UserAdminActions = ({
             {credits.message}
           </p>
         )}
+
+        <CreditKindFields
+          id="admin-user-credits"
+          kind={creditKind}
+          onKindChange={setCreditKind}
+          note={creditNote}
+          onNoteChange={setCreditNote}
+        />
       </div>
 
       <div className="space-y-2">
@@ -186,7 +204,7 @@ const UserAdminActions = ({
           >
             {ADMIN_ENTITLEMENT_KEYS.map((key) => (
               <option key={key} value={key}>
-                {key.replace(/_/g, " ")}
+                {ADMIN_ENTITLEMENT_LABELS[key]}
               </option>
             ))}
           </Select>
@@ -204,7 +222,7 @@ const UserAdminActions = ({
             trigger="Grant"
             disabled={!entitlementEnd.ok}
             title="Grant an entitlement"
-            description={`Granting "${entitlementKey}" to ${user.email}${entitlementEndsAt ? ` until the end of ${entitlementEndsAt}, your time` : " with no expiry"}.`}
+            description={`Granting ${ADMIN_ENTITLEMENT_LABELS[entitlementKey]} to ${user.email}${entitlementEndsAt ? ` until the end of ${entitlementEndsAt}, your time` : " with no expiry"}.`}
             confirmLabel="Grant entitlement"
             onConfirm={async (reason) => {
               if (!entitlementEnd.ok) throw new Error(entitlementEnd.message);

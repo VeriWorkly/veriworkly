@@ -26,7 +26,7 @@ import {
   normalizeLinkHref,
 } from "@/features/documents/rendering/resume-rendering";
 import { PdfSocialIcon } from "../../pdf/SocialIcon";
-import { buildResumeSections } from "./model";
+import { buildResumeSections, getSkillLineText } from "./model";
 import { createResumeTokens } from "./tokens";
 import { HEADING_PRESENCE_LINES, createResumeKeepTogether, getTextWidths } from "./keep-together";
 import { pdfFixedWidth, pdfFlexible } from "@/templates/shared/box";
@@ -583,7 +583,7 @@ export function createResumePdfTemplate(skin: ResumePdfSkin): React.FC<PdfTempla
     };
 
     return (
-      <Document {...getPdfMetadata(model.name, "Resume")}>
+      <Document {...getPdfMetadata(model.name, "Resume", resume.language)}>
         <Page size={[page.widthPt, page.heightPt]} style={styles.page}>
           {(model.showBasics || model.showLinks) && skin.renderHeader(ctx)}
 
@@ -599,7 +599,7 @@ export function createResumePdfTemplate(skin: ResumePdfSkin): React.FC<PdfTempla
               nodes: <Text style={styles.sectionText}>{value}</Text>,
             }),
             skills: (lines) => ({
-              start: lines[0] ? { text: `${lines[0].label}: ${lines[0].value}` } : null,
+              start: lines[0] ? { text: getSkillLineText(lines[0]) } : null,
               nodes: lines.map((line, index) => (
                 <Text
                   key={line.id}
@@ -608,7 +608,7 @@ export function createResumePdfTemplate(skin: ResumePdfSkin): React.FC<PdfTempla
                     index === 0 ? {} : { marginTop: pxToPt(scale.skillGap) },
                   ].flat()}
                 >
-                  <Text style={styles.strong}>{line.label}: </Text>
+                  {line.label ? <Text style={styles.strong}>{line.label}: </Text> : null}
                   {line.value}
                 </Text>
               )),

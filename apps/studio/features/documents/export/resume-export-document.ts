@@ -59,8 +59,3 @@ export function getResumeExportDocument(resume: ResumeData): ResumeExportDocumen
     }),
   };
 }
-
-/** A skill line as text. A group without a name prints its keywords alone, never ": …". */
-export function getSkillLineText(line: ResumeSkillLine): string {
-  return line.label ? `${line.label}: ${line.value}` : line.value;
-}

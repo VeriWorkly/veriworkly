@@ -1,16 +1,11 @@
-import type { DocumentType } from "./document-types";
+import type { DocumentSyncState } from "@veriworkly/profile-core";
 
-import type { SyncStatus } from "@/features/documents/services/sync-engine";
+import type { DocumentType } from "./document-types";
 
 export type ExportFormat = "pdf" | "docx" | "html" | "markdown" | "json" | "txt";
 
-export interface DocumentSyncState {
-  enabled: boolean;
-  status: SyncStatus;
-  cloudDocumentId: string | null;
-  lastSyncedAt: string | null;
-  revision: number;
-}
+// The one declaration lives in profile-core, as in `@/types/document`; do not redeclare it.
+export type { DocumentSyncState };
 
 export interface BaseDocument<TContent = unknown> {
   id: string;

@@ -115,6 +115,8 @@ export interface WorkspaceBackup {
   exportedAt: string;
   /** The account's Master Profile, in a backup made before deleting the account. */
   masterProfile?: unknown;
+  /** Portfolio and link-in-bio pages, kept as stored; restore does not read them. */
+  sites?: Array<{ id: string; type: string; title: string; content: unknown; updatedAt: string }>;
   documents: BaseDocument[];
 }
 
@@ -140,11 +142,14 @@ export type JsonImportOutcome =
  * damaged file restores nothing rather than half. `maxDocumentsPerType` is asked for only
  * when the file is a backup: `null` means no limit, otherwise entries past the limit for
  * their type (counting documents already on the device) are skipped and counted.
+ * `countExisting`, also asked only for a backup, adds documents the user has elsewhere: the
+ * account's cloud documents that a new device has not pulled yet.
  */
 export async function importJsonFile(
   type: DocumentType,
   file: File,
   maxDocumentsPerType: () => Promise<number | null>,
+  countExisting?: () => Promise<Partial<Record<DocumentType, number>>>,
 ): Promise<JsonImportOutcome> {
   const raw: unknown = JSON.parse(await file.text());
 
@@ -167,8 +172,12 @@ export async function importJsonFile(
     return { type: entryType as DocumentType, draft };
   });
 
+  const existing = (await countExisting?.()) ?? {};
   const limit = await maxDocumentsPerType();
-  const counts = new Map(DOCUMENT_TYPES.map((t) => [t, listDocuments(t).length]));
+  // Read after the awaits, so a document made meanwhile counts too.
+  const counts = new Map(
+    DOCUMENT_TYPES.map((t) => [t, Math.max(listDocuments(t).length, existing[t] ?? 0)]),
+  );
   const imported: BaseDocument[] = [];
   let skipped = 0;
 

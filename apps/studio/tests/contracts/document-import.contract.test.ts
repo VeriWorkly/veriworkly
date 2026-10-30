@@ -288,6 +288,11 @@ describe("resume Markdown import, every printed section", () => {
   function everySectionResume(): ResumeData {
     const resume = structuredClone(defaultResume);
 
+    // S-395: a group without a name prints its keywords alone and must read back.
+    resume.skills = [
+      ...resume.skills,
+      { id: "skills-nameless", name: "", keywords: ["Rust", "Go"] },
+    ];
     resume.certificates = [
       {
         id: "c1",
@@ -486,4 +491,29 @@ describe("resume Markdown import, every printed section", () => {
     expect(() => parseResumeMarkdown(markdown)).not.toThrow();
     expect(parseResumeMarkdown(markdown).projects[0].link).toBe("https://x.com/50%off");
   });
+});
+
+describe("S-412 a contact line with one item and no email survives the Markdown round trip", () => {
+  const withContact = (basics: Partial<typeof defaultResume.basics>) => {
+    const resume = structuredClone(defaultResume);
+    resume.basics = { ...resume.basics, email: "", phone: "", location: "", ...basics };
+    return resume;
+  };
+
+  for (const [label, basics] of [
+    ["only a location, with a headline", { headline: "Engineer", location: "Berlin, Germany" }],
+    ["only a location, no headline", { headline: "", role: "", location: "Berlin, Germany" }],
+    ["only a phone", { headline: "Engineer", phone: "+4915112345678" }],
+  ] as const) {
+    it(`S-412 ${label}`, () => {
+      const original = withContact(basics);
+      const markdown = buildMarkdown(original);
+      const imported = parseResumeMarkdown(markdown);
+
+      expect(imported.basics.headline).toBe(original.basics.headline);
+      expect(imported.basics.location).toBe(original.basics.location);
+      expect(imported.basics.phone).toBe(original.basics.phone);
+      expect(buildMarkdown(imported)).toBe(markdown);
+    });
+  }
 });

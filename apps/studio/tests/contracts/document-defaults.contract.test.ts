@@ -33,7 +33,7 @@ beforeEach(() => {
   localStorageMock = createLocalStorageMock();
 
   vi.stubGlobal("localStorage", localStorageMock);
-  vi.stubGlobal("window", { localStorage: localStorageMock });
+  vi.stubGlobal("window", { localStorage: localStorageMock, dispatchEvent: vi.fn() });
 });
 
 afterEach(() => {

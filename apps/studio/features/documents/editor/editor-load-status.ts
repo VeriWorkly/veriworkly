@@ -1,12 +1,20 @@
 import { useEffect } from "react";
 
+import type { DocumentIndexEntry } from "@/types/document";
 import type { SyncResult } from "@/features/documents/services/document-sync";
+import type { ChangedElsewhere } from "@/features/documents/editor/useDocumentEditorSession";
+
+import {
+  SAVE_PERSISTED_MESSAGE,
+  SAVE_QUEUED_MESSAGE,
+} from "@/features/documents/services/save-failure-message";
 
 import { useUserStore } from "@/store/useUserStore";
 
 /** Where an editor is in resolving the document its URL names. */
 export type EditorLoadState =
-  | { status: "loading" }
+  /** `message` says what the wait is for, when it is more than reading this device. */
+  | { status: "loading"; message?: string }
   | { status: "ready" }
   | { status: "not-found" }
   | { status: "error"; message: string };
@@ -24,6 +32,40 @@ export type KeyedLoadState = EditorLoadState & {
    */
   movedFrom?: string;
 };
+
+/** Shown while an open waits for the cloud's copy of a document (S-364). */
+export const LOADING_LATEST_MESSAGE = "Loading the latest version.";
+
+/** How long an open waits for the cloud before it shows this device's copy anyway. */
+export const OPEN_REFRESH_TIMEOUT_MS = 5_000;
+
+/**
+ * Whether opening this device's copy first asks the cloud for a newer revision (S-364). A
+ * signed-in user expects the latest version, and editing a stale clean copy turned every edit
+ * made on another device into a conflict at the first keystroke. A copy with unsynced edits is
+ * never replaced: it opens as it is, and a newer cloud revision is put to the user.
+ */
+export function shouldRefreshBeforeEditing(
+  entry: Pick<DocumentIndexEntry, "sync"> | null,
+  isLoggedIn: boolean,
+): boolean {
+  return isLoggedIn && Boolean(entry?.sync.cloudDocumentId) && entry?.sync.status === "synced";
+}
+
+export const HELD_EDITS_MESSAGE = "Waiting for your choice";
+
+/**
+ * The editor's status line. While the user is asked which version to keep, the edits are held
+ * (another tab) or not backed up (another device), so "Saving..." or "Saved" would misreport
+ * it (S-364). A save failure is still reported as it is.
+ */
+export function editorStatusMessage(message: string, changedElsewhere: ChangedElsewhere | null) {
+  if (!changedElsewhere) return message;
+
+  return message === SAVE_QUEUED_MESSAGE || message === SAVE_PERSISTED_MESSAGE
+    ? HELD_EDITS_MESSAGE
+    : message;
+}
 
 export const INITIAL_LOAD_STATE: KeyedLoadState = { id: "", status: "loading" };
 

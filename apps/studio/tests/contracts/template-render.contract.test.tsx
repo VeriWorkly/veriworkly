@@ -60,7 +60,7 @@ describe("template render contract", () => {
   it("ships a preview asset for every resume template", () => {
     for (const template of templateRegistry) {
       expect(template.previewImage).not.toBe("");
-      expect(existsSync(join(process.cwd(), "public", template.previewImage))).toBe(true);
+      expect(existsSync(join(`${__dirname}/../..`, "public", template.previewImage))).toBe(true);
     }
   });
 

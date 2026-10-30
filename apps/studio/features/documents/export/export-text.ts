@@ -4,7 +4,9 @@ import type { ResumeExportContent, ResumeExportLink } from "./resume-export-docu
 import { getResumeFileBaseName } from "@/features/resume/services/resume-formatters";
 
 import { downloadBlob } from "./download";
-import { getResumeExportDocument, getSkillLineText } from "./resume-export-document";
+import { getSkillLineText } from "@/features/documents/rendering/resume-render-items";
+
+import { getResumeExportDocument } from "./resume-export-document";
 
 /** The text a reader sees, then where it goes — unless the text already is the address. */
 function linkText(link: ResumeExportLink): string {

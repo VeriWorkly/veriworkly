@@ -24,6 +24,10 @@ import {
   saveDocument,
   loadDocumentById,
 } from "@/features/documents/services/document-workspace-service";
+import {
+  DOCUMENT_TITLE_MAX_LENGTH,
+  toDocumentTitle,
+} from "@/features/documents/core/document-title";
 
 export type CoverLetterDocument = BaseDocument<CoverLetterContent>;
 
@@ -41,7 +45,8 @@ interface CoverLetterStoreState {
   hydrateFromStorage: (documentId: string) => boolean;
   saveToStorage: (options?: SaveDocumentOptions) => SaveDocumentResult;
 
-  resetDocument: (master?: MasterProfileData) => void;
+  /** False, and nothing changed, when the store no longer holds the letter `forId` names. */
+  resetDocument: (master?: MasterProfileData, forId?: string) => boolean;
   emptyDocument: () => void;
 
   setSectionVisibility: (section: CoverLetterSectionId, visible: boolean) => void;
@@ -61,8 +66,11 @@ const EMPTY_LINKS: CoverLetterContent["links"] = { displayMode: "icon-username",
 
 const UNTITLED_TITLE = "Untitled Cover Letter";
 
+/** Trimmed and cut to what the server accepts: a pasted job-ad line must not stop backups. */
 function targetTitle(content: CoverLetterContent): string {
-  return [content.jobTitle, content.companyName].filter(Boolean).join(" - ");
+  const title = [content.jobTitle?.trim(), content.companyName?.trim()].filter(Boolean).join(" - ");
+
+  return title && toDocumentTitle(title, "");
 }
 
 /**
@@ -132,16 +140,20 @@ export const useCoverLetterStore = create<CoverLetterStoreState>((set, get) => (
    * and contact details on the user's document. `emptyDocument` below clears everything,
    * including the identity block.
    */
-  resetDocument: (master) =>
-    set((state) => {
-      if (!state.document) return state;
+  resetDocument: (master, forId) => {
+    const current = get().document;
 
-      const reset = master
-        ? createCoverLetterFromProfile(state.document.id, master)
-        : createEmptyCoverLetter(state.document.id);
+    // The profile is fetched after the user confirmed; meanwhile another letter may have
+    // opened, and it must not be the one replaced (S-407).
+    if (!current || (forId !== undefined && current.id !== forId)) return false;
 
-      return { document: replaceContent(state.document, reset) };
-    }),
+    const reset = master
+      ? createCoverLetterFromProfile(current.id, master)
+      : createEmptyCoverLetter(current.id);
+
+    set({ document: replaceContent(current, reset) });
+    return true;
+  },
 
   emptyDocument: () =>
     set((state) => {
@@ -181,7 +193,15 @@ export const useCoverLetterStore = create<CoverLetterStoreState>((set, get) => (
 
   updateTitle: (title) =>
     set((state) =>
-      state.document ? { document: withTimestamp({ ...state.document, title }) } : state,
+      // The server refuses a longer title, which would stop every backup (S-405).
+      state.document
+        ? {
+            document: withTimestamp({
+              ...state.document,
+              title: title.slice(0, DOCUMENT_TITLE_MAX_LENGTH),
+            }),
+          }
+        : state,
     ),
 
   updateContent: (patch) =>

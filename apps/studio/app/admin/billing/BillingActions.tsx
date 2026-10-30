@@ -9,11 +9,14 @@ import AdminActionDialog from "@/components/admin/AdminActionDialog";
 import { ADMIN_INPUT_CLASS } from "@/components/admin/admin-input-class";
 import {
   ADMIN_ENTITLEMENT_KEYS,
+  ADMIN_CREDIT_KINDS,
+  ADMIN_ENTITLEMENT_LABELS,
   adjustAdminCredits,
   grantAdminEntitlement,
   replayAdminWebhook,
   revokeAdminEntitlement,
   updateAdminSubscription,
+  type AdminCreditKind,
   type AdminEntitlementKey,
 } from "@/features/admin/services/admin-actions";
 import { useAdminAccount, type AdminAccountLookup } from "@/features/admin/utils/use-admin-account";
@@ -22,6 +25,7 @@ import type { SubscriptionStatus } from "@/features/admin/types/admin-types";
 
 import { useServerDraft } from "@/features/admin/utils/use-server-draft";
 
+import { CreditKindFields } from "./CreditKindFields";
 import { parseCreditAmount } from "./credit-amount";
 import { parseEntitlementEnd } from "./entitlement-end";
 
@@ -135,9 +139,11 @@ function AccountHint({ lookup }: { lookup: AdminAccountLookup }) {
 export function CreditAdjustmentForm() {
   const [userId, setUserId] = useState("");
   const [amount, setAmount] = useState("100");
+  const [kind, setKind] = useState<AdminCreditKind>("goodwill");
+  const [note, setNote] = useState("");
   const account = useAdminAccount(userId);
 
-  const parsed = parseCreditAmount(amount);
+  const parsed = parseCreditAmount(amount, kind);
   const ready = account.state === "found" && parsed.ok;
 
   return (
@@ -155,8 +161,8 @@ export function CreditAdjustmentForm() {
         className={ADMIN_INPUT_CLASS}
         type="number"
         step={1}
-        aria-label="Credits (negative to claw back)"
-        placeholder="Credits (negative to claw back)"
+        aria-label="Credits (negative claws back goodwill only)"
+        placeholder="Credits (negative claws back goodwill only)"
         aria-invalid={!parsed.ok}
         aria-describedby={parsed.ok ? undefined : "credit-adjustment-error"}
         value={amount}
@@ -169,6 +175,14 @@ export function CreditAdjustmentForm() {
         </p>
       )}
 
+      <CreditKindFields
+        id="credit-adjustment"
+        kind={kind}
+        onKindChange={setKind}
+        note={note}
+        onNoteChange={setNote}
+      />
+
       <AdminActionDialog
         trigger="Apply adjustment"
         triggerVariant="primary"
@@ -176,7 +190,7 @@ export function CreditAdjustmentForm() {
         title="Adjust a credit balance"
         description={
           parsed.ok && account.state === "found"
-            ? `${parsed.amount > 0 ? "Granting" : "Removing"} ${Math.abs(parsed.amount)} credits ${parsed.amount > 0 ? "to" : "from"} ${account.email}.`
+            ? `${parsed.amount > 0 ? "Granting" : "Removing"} ${Math.abs(parsed.amount)} credits ${parsed.amount > 0 ? "to" : "from"} ${account.email} as: ${ADMIN_CREDIT_KINDS[kind]}.`
             : parsed.ok
               ? "Enter the id of an existing account."
               : parsed.message
@@ -184,8 +198,12 @@ export function CreditAdjustmentForm() {
         confirmLabel="Apply"
         onConfirm={async (reason, attemptKey) => {
           if (!parsed.ok) throw new Error(parsed.message);
-          await adjustAdminCredits(userId.trim(), parsed.amount, reason, attemptKey);
+          await adjustAdminCredits(userId.trim(), parsed.amount, reason, attemptKey, {
+            kind,
+            customerNote: note.trim() || undefined,
+          });
           setUserId("");
+          setNote("");
         }}
       />
     </div>
@@ -219,7 +237,7 @@ export function EntitlementGrantForm() {
       >
         {ADMIN_ENTITLEMENT_KEYS.map((entitlement) => (
           <option key={entitlement} value={entitlement}>
-            {entitlement.replace(/_/g, " ")}
+            {ADMIN_ENTITLEMENT_LABELS[entitlement]}
           </option>
         ))}
       </Select>
@@ -242,7 +260,7 @@ export function EntitlementGrantForm() {
         triggerVariant="primary"
         disabled={account.state !== "found" || !end.ok}
         title="Grant an entitlement"
-        description={`Granting "${key}" to ${account.state === "found" ? account.email : "this account"}${endsAt ? ` until the end of ${endsAt}, your time` : " with no expiry"}.`}
+        description={`Granting ${ADMIN_ENTITLEMENT_LABELS[key]} to ${account.state === "found" ? account.email : "this account"}${endsAt ? ` until the end of ${endsAt}, your time` : " with no expiry"}.`}
         confirmLabel="Grant"
         onConfirm={async (reason) => {
           if (!end.ok) throw new Error(end.message);

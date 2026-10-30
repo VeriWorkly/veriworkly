@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { unstable_rethrow } from "next/navigation";
 
-import { backendApiUrl, WORKSPACE_SETTINGS_STORAGE_KEY } from "@/lib/constants";
+import { accountName, backendApiUrl, WORKSPACE_SETTINGS_STORAGE_KEY } from "@/lib/constants";
 
 import type {
   BaseDocument,
@@ -14,13 +14,14 @@ import { withDocumentIdentity } from "@/features/documents/core/content-identity
 import { downloadBlob } from "@/features/documents/export/download";
 import {
   clearWorkspaceStorage,
-  getWorkspaceStorage,
+  loadDocumentById,
 } from "@/features/documents/services/document-workspace-service";
 import {
   WORKSPACE_BACKUP_FORMAT,
   type WorkspaceBackup,
 } from "@/features/documents/services/import-service";
 import { setWorkspaceUser } from "@/features/documents/services/workspace-owner";
+import { getWorkspaceViewer } from "@/features/documents/services/workspace-viewer";
 import { useUserStore } from "@/store/useUserStore";
 import { ApiRequestError, fetchApiData } from "@/utils/fetchApiData";
 import { pluralize } from "@/lib/pluralize";
@@ -57,7 +58,7 @@ function toSessionUser(user: AccountProfileSummary | null | undefined): SessionU
   return {
     id: user.id,
     email: user.email,
-    name: user.name ?? undefined,
+    name: accountName(user.name),
     username: user.username ?? undefined,
     createdAt: user.createdAt,
     emailVerified: user.emailVerified,
@@ -131,12 +132,11 @@ const DETACHED_SYNC: DocumentSyncState = {
  * One file, not one per document: browsers block the second automatic download, and the
  * caller deletes the local copies right after. Cloud linkage is dropped so a restored copy
  * is a new local document, never a second writer to the original. A body that cannot be
- * read throws, so the caller never clears a device whose backup is incomplete.
+ * read throws, so the caller never clears a device whose backup is incomplete. Only the
+ * viewer's own documents can be read: another account's on this device count as unreadable.
  */
 export function buildWorkspaceBackup(documents: DocumentMeta[], now = new Date()) {
-  // Storage directly: the documents listed may be another account's, being backed up before
-  // the signed-in user decides what happens to them.
-  const stored = documents.map((meta) => getWorkspaceStorage(meta.type).loadById(meta.id));
+  const stored = documents.map((meta) => loadDocumentById(meta.type, meta.id));
   const unreadable = stored.filter((document) => document === null).length;
 
   if (unreadable > 0) {
@@ -152,7 +152,7 @@ export function buildWorkspaceBackup(documents: DocumentMeta[], now = new Date()
 export function serializeWorkspaceBackup(
   documents: BaseDocument[],
   now = new Date(),
-  extras: Pick<WorkspaceBackup, "masterProfile"> = {},
+  extras: Pick<WorkspaceBackup, "masterProfile" | "sites"> = {},
 ) {
   const backup: WorkspaceBackup = {
     format: WORKSPACE_BACKUP_FORMAT,
@@ -195,16 +195,19 @@ function expireGuestModeCookie() {
 }
 
 /**
- * Forgets the account on this device: documents, sync outbox, master-profile cache, the
+ * Forgets the account on this device: its documents, sync outbox, master-profile cache, the
  * guest flag and the signed-in user. Without it the next person to sign in on a shared
  * device inherits the previous user's documents, and auto-sync pushes them into their
  * account. The account's auto-sync setting goes too, so a guest's new documents start
- * local-only instead of waiting for a sync that never comes.
+ * local-only instead of waiting for a sync that never comes. Documents another account left
+ * here stay for it, hidden (S-372).
  */
 export function clearLocalAccountData() {
+  const leaving = getWorkspaceViewer();
+
   memoryCache = null;
   setWorkspaceUser(null);
-  clearWorkspaceStorage();
+  clearWorkspaceStorage(leaving);
   window.localStorage.removeItem(WORKSPACE_SETTINGS_STORAGE_KEY);
   expireGuestModeCookie();
   useUserStore.getState().logout();

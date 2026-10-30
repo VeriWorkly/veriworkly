@@ -9,8 +9,32 @@ export const SESSION_COOKIE_NAMES = [
 /** Where a session the server no longer accepts is cleared before signing in again. */
 export const SESSION_EXPIRED_PATH = "/auth/session-expired";
 
+/** The request header the proxy sets to the page's path and query, for server renders. */
+export const REQUEST_PATH_HEADER = "x-pathname";
+
+/**
+ * {@link SESSION_EXPIRED_PATH}, carrying where the user was headed so signing in again returns
+ * them there (S-378): a checkout link or editor deep link is otherwise lost.
+ */
+export function sessionExpiredPath(callbackURL: string | null) {
+  const callback = getSafeAuthCallback(callbackURL, "");
+
+  return callback
+    ? `${SESSION_EXPIRED_PATH}?callbackURL=${encodeURIComponent(callback)}`
+    : SESSION_EXPIRED_PATH;
+}
+
 /** Pages only an account can open: the proxy sends anyone else to sign in. */
-const PROTECTED_PATH_PREFIXES = ["/admin", "/profile/master", "/profile/advanced"];
+const PROTECTED_PATH_PREFIXES = [
+  "/admin",
+  "/profile/master",
+  "/profile/advanced",
+  // A guest here saw a fake empty plan, a zero balance or a live create form (S-367).
+  "/billing",
+  "/credits",
+  "/api-keys",
+  "/affiliate",
+];
 
 export function isProtectedStudioPath(pathname: string) {
   return PROTECTED_PATH_PREFIXES.some(
@@ -46,6 +70,9 @@ export function getSafeAuthCallback(rawCallback: string | null, fallback = "/") 
     try {
       const resolved = new URL(rawCallback, APP_ORIGIN);
       if (resolved.origin !== APP_ORIGIN) return fallback;
+      // Dot segments can leave a path like "//evil.com" (from "/..//evil.com"), which the
+      // browser reads as another host.
+      if (resolved.pathname.startsWith("//")) return fallback;
       if (resolved.pathname === "/login" || resolved.pathname.startsWith("/login/")) {
         return fallback;
       }

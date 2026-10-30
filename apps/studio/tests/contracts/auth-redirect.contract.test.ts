@@ -23,12 +23,23 @@ describe("auth redirect contract", () => {
     expect(isProtectedStudioPath("/profile/advanced")).toBe(true);
   });
 
+  it("S-367: pages that only make sense for an account send a guest to sign in", () => {
+    for (const path of [
+      "/billing",
+      "/credits",
+      "/api-keys",
+      "/api-keys/create",
+      "/affiliate/payouts",
+    ]) {
+      expect(isProtectedStudioPath(path)).toBe(true);
+    }
+  });
+
   it("keeps local-first and future Studio routes guest-accessible by default", () => {
     expect(isProtectedStudioPath("/")).toBe(false);
     expect(isProtectedStudioPath("/documents")).toBe(false);
     expect(isProtectedStudioPath("/editor/resume/local-id")).toBe(false);
     expect(isProtectedStudioPath("/profile")).toBe(false);
-    expect(isProtectedStudioPath("/api-keys")).toBe(false);
     expect(isProtectedStudioPath("/future-local-first-page")).toBe(false);
   });
 
@@ -183,6 +194,16 @@ describe("auth redirect contract", () => {
     expect(getSafeAuthCallback("javascript:alert(1)")).toBe("/");
   });
 
+  it("S-371: a dot segment cannot resolve a callback to a protocol-relative path", () => {
+    expect(getSafeAuthCallback("/..//evil.example")).toBe("/");
+    expect(getSafeAuthCallback("/%2e%2e//evil.example/x")).toBe("/");
+    expect(getSafeAuthCallback("/a/../..//evil.example")).toBe("/");
+    expect(getSafeAuthCallback("/./\\evil.example")).toBe("/");
+    expect(getSafeAuthCallback("/.//evil.example")).toBe("/");
+    expect(getSafeAuthCallback("/x/..\\\\evil.example")).toBe("/");
+    expect(getSafeAuthCallback("/documents/../settings?tab=sync")).toBe("/settings?tab=sync");
+  });
+
   it("S-200: a 401 from a public share never signs the viewer out", () => {
     expect(isInvalidSessionResponse("/shares/public/jane/resume", 401)).toBe(false);
     expect(isInvalidSessionResponse("/shares/public/jane/resume/verify?x=1", 401)).toBe(false);
@@ -269,6 +290,30 @@ describe("sign-in from anywhere (Phase 9 Part D)", () => {
 
 describe("account pages after a redirect (Phase 9 Part D)", () => {
   const read = (file: string) => readFileSync(join(__dirname, "..", "..", file), "utf8");
+
+  it("S-376 the profile page signs out every other device, and says when it could not", async () => {
+    const revokeOtherSessions = vi
+      .fn()
+      .mockResolvedValueOnce({ data: { status: true }, error: null })
+      .mockResolvedValueOnce({ data: null, error: { message: "Session expired" } });
+    vi.doMock("@/lib/auth-client", () => ({ authClient: { revokeOtherSessions } }));
+    vi.resetModules();
+    const { signOutOtherDevices } = await import("@/features/profile/services/sessions");
+
+    await expect(signOutOtherDevices()).resolves.toBeUndefined();
+    await expect(signOutOtherDevices()).rejects.toThrow("Session expired");
+    expect(revokeOtherSessions).toHaveBeenCalledTimes(2);
+    vi.doUnmock("@/lib/auth-client");
+
+    const page = read("app/(main)/(dashboard)/profile/page.tsx");
+    expect(page).toContain("<SignOutOtherDevicesCard />");
+    // The login alert email links to /profile?focus=sessions: a query, unlike a #fragment,
+    // survives the sign-in redirect, and the card scrolls itself into view for it.
+    expect(getSafeAuthCallback("/profile?focus=sessions")).toBe("/profile?focus=sessions");
+    const card = read("features/profile/components/SignOutOtherDevicesCard.tsx");
+    expect(card).toContain('.get("focus") === "sessions"');
+    expect(card).toContain("scrollIntoView");
+  });
 
   it("S-352 a refused GitHub link is explained on the profile page it lands on", () => {
     expect(read("app/(main)/(dashboard)/profile/page.tsx")).toContain("<LinkErrorNotice />");

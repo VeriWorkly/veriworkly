@@ -5,7 +5,7 @@ import type { DocumentMeta } from "@/features/documents/core/types";
 import type { DocumentType } from "@/features/documents/core/document-types";
 
 import { MASTER_PROFILE_STORAGE_KEY } from "@/lib/constants";
-import { fetchApiData } from "@/utils/fetchApiData";
+import { ApiRequestError, fetchApiData } from "@/utils/fetchApiData";
 
 import { DocumentApi, DOCUMENT_PAGE_SIZE } from "./document-api";
 import { SyncEngine } from "./sync-engine";
@@ -13,11 +13,10 @@ import { listLocalStorageKeys } from "./document-index";
 import { safeSetLocalStorageItem } from "./storage/safe-local-storage";
 import { WORKSPACE_OWNER_STORAGE_KEY } from "./storage-keys";
 import {
-  entriesOwnedBy,
+  entriesAwaitingAnswer,
   getWorkspaceViewer,
   readDeviceOwner,
   setWorkspaceViewer,
-  UNKNOWN_DOCUMENT_OWNER,
 } from "./workspace-viewer";
 import {
   deleteDocument,
@@ -36,7 +35,8 @@ import {
  * document records its owner (`DocumentIndexEntry.owner`; null for a guest's), only the
  * current viewer's documents are shown (workspace-viewer.ts), and nothing on the device is
  * uploaded to, or mixed into, the signed-in account until it is known to be theirs: because
- * they made it, or because they said so.
+ * they made it, or because they said so. Another account's documents are never put to the
+ * user at all: they stay on the device, hidden, until that account signs in again (S-372).
  */
 
 /** Set by the sign-in state on every render; null for a guest. */
@@ -45,17 +45,38 @@ export function setWorkspaceUser(userId: string | null) {
 }
 
 /**
- * The sync layer's gate: a signed-in user's uploads and pulls run only once every document
- * on the device is theirs. A guest has no account to mix documents into (and no session the
- * API would accept), so nothing is held back for them.
+ * The sync layer's gate: a signed-in user's uploads and pulls wait while the device holds a
+ * guest's documents, or ones of unknown owner, until the user says whether they are theirs.
+ * Another account's documents hold nothing back: every sync path skips them. A guest has no
+ * account to mix documents into (and no session the API would accept), so nothing is held
+ * back for them.
  */
 export function canWorkspaceReachCloud(): boolean {
-  const viewer = getWorkspaceViewer();
-  if (viewer === null) return true;
+  if (getWorkspaceViewer() === null) return true;
 
-  const all = listAllDocumentEntries();
+  return entriesAwaitingAnswer(listAllDocumentEntries()).length === 0;
+}
 
-  return entriesOwnedBy(all, viewer).length === all.length;
+/**
+ * Whether the signed-in user has documents on this device still waiting for their answer (a
+ * guest's, or of unknown owner): until then they are not listed as the user's, so an overview
+ * reading "0 documents" would be wrong (S-368).
+ */
+export function hasDocumentsAwaitingAnswer(): boolean {
+  return getWorkspaceViewer() !== null && !canWorkspaceReachCloud();
+}
+
+const sessionEndedListeners = new Set<() => void>();
+
+/**
+ * Called when a session check finds the browser signed out while this tab still shows the
+ * account. Returns the unsubscribe function.
+ */
+export function subscribeToSessionEnded(listener: () => void): () => void {
+  sessionEndedListeners.add(listener);
+  return () => {
+    sessionEndedListeners.delete(listener);
+  };
 }
 
 /** The check in flight, and the viewer it asks about. */
@@ -83,7 +104,8 @@ export const SESSION_CHECK_TIMEOUT_MS = 15_000;
  * on focus, from a background worker, and a session that expired while the tab sat unused
  * would otherwise send the user away from what they were looking at just for switching back
  * to it (and leave this promise, and every upload waiting on it, pending forever). The
- * worker retries after its backoff; a page that needs the session redirects on its own.
+ * worker retries after its backoff; a page that needs the session redirects on its own. The
+ * 401 is announced ({@link subscribeToSessionEnded}), so the user is told backup stopped.
  */
 export function confirmSessionIsViewer(options: { maxAgeMs?: number } = {}): Promise<boolean> {
   const viewer = getWorkspaceViewer();
@@ -121,6 +143,13 @@ export function confirmSessionIsViewer(options: { maxAgeMs?: number } = {}): Pro
     .catch((error: unknown) => {
       if (confirmedSession?.viewer === viewer) confirmedSession = null;
       console.error("Could not confirm the signed-in account before syncing", error);
+
+      // The session ended (revoked, expired, signed out elsewhere): nothing backs up until the
+      // user signs in again, and they have to be told (S-374). A network failure is not that.
+      if (error instanceof ApiRequestError && error.status === 401) {
+        sessionEndedListeners.forEach((listener) => listener());
+      }
+
       return false;
     })
     .finally(() => {
@@ -130,10 +159,6 @@ export function confirmSessionIsViewer(options: { maxAgeMs?: number } = {}): Pro
 
   sessionCheck = { viewer, answer };
   return answer;
-}
-
-function entryKey(entry: Pick<DocumentIndexEntry, "type" | "id">) {
-  return `${entry.type}:${entry.id}`;
 }
 
 function toMeta(entry: DocumentIndexEntry): DocumentMeta {
@@ -149,9 +174,10 @@ function toMeta(entry: DocumentIndexEntry): DocumentMeta {
 
 /**
  * Records `userId` as the device's owner. Entries from before owners were recorded keep the
- * previous owner first. Taking over from another account drops its cloud cursors (the next
- * pull must list this account from the start) and its cached Master Profile; a device that had
- * no owner (a guest's, or any device before owners were recorded) keeps both.
+ * previous owner first, so another account's documents stay its own. Taking over from another
+ * account drops its cloud cursors (the next pull must list this account from the start) and its
+ * cached Master Profile, which holds that account's personal details; a device that had no
+ * owner (a guest's, or any device before owners were recorded) keeps both.
  */
 function claimWorkspace(userId: string) {
   const previous = readDeviceOwner();
@@ -178,9 +204,10 @@ function claimWorkspace(userId: string) {
 }
 
 /**
- * Claims the device for `userId` when every document on it is already theirs (or there are
- * none). Synchronous, so a sign-in opens the gate before any pull or upload asks. False means
- * the documents here need {@link findUnclaimedDocuments}.
+ * Claims the device for `userId` unless documents on it need {@link findUnclaimedDocuments}: a
+ * guest's or of unknown owner, to ask about. Another account's documents need nothing and stay
+ * as they are; they are never looked for in this account. Synchronous, so a sign-in opens the
+ * gate before any pull or upload asks.
  */
 export function claimWorkspaceIfUncontested(userId: string): boolean {
   try {
@@ -201,7 +228,7 @@ export function claimWorkspaceIfUncontested(userId: string): boolean {
 
     const all = listAllDocumentEntries();
 
-    if (entriesOwnedBy(all, userId).length !== all.length) return false;
+    if (entriesAwaitingAnswer(all).length > 0) return false;
 
     claimWorkspace(userId);
   } catch (error) {
@@ -232,7 +259,7 @@ export function createAccountDocumentLookup(): AccountDocumentLookup {
  * Records which of `wanted` are documents in the signed-in account. Walks the account's
  * metadata list (no bodies) oldest change first, so a document edited on another device
  * mid-walk moves behind the reader and still turns up; newest first it could jump ahead and be
- * missed, and the user's own copy would be put to them as another account's. A tombstone is
+ * missed, and the user's own copy would be put to them as missing from the cloud. A tombstone is
  * the account's document too: deleted, but theirs. Stops once every wanted id is known.
  */
 async function findAccountDocumentIds(wanted: Set<string>, lookup: AccountDocumentLookup) {
@@ -253,69 +280,69 @@ async function findAccountDocumentIds(wanted: Set<string>, lookup: AccountDocume
   lookup.complete = true;
 }
 
+/** Documents a guest made on this device, or whose owner was lost when the index was rebuilt. */
 export interface UnclaimedDocuments {
-  /** `account`: left by another signed-in account. `guest`: made here without signing in. */
-  origin: "account" | "guest";
   documents: DocumentMeta[];
+  /**
+   * Linked to a cloud document the account does not hold: deleted since, or from an account
+   * that used this device before owners were recorded. They can be kept on this device under a
+   * new id, or removed, but not added: the id is not this account's to write to.
+   */
+  cloudCopyMissing: boolean;
 }
 
 /**
- * The next group of documents on this device that are not `userId`'s: another account's
- * first, then a guest's. A copy linked to a document the account holds in the cloud is
- * theirs (a device used before owners were recorded) and is claimed on the spot. Returns
- * null, with the device claimed, when nothing is left to ask about. Throws when the account's
- * documents cannot be listed: without that list the user's own copies would be put to them as
- * another account's, so the caller keeps sync blocked and asks again later. Pass one `lookup`
- * for every call of a settle, so the account is listed once.
+ * The next documents on this device to ask `userId` about: a guest's, and those of unknown owner.
+ * A copy linked to a document the account holds in the cloud is theirs (a device used before
+ * owners were recorded) and is claimed on the spot; linked copies it does not hold are asked
+ * about first, so the next question needs no second lookup. A document recorded as another
+ * account's is never asked about or looked for: it stays, hidden for that account (S-372).
+ * Returns null, with the device claimed, when nothing is left to ask about. Throws when the
+ * account's documents cannot be listed: without that list the user's own copies would be put to
+ * them as missing from the cloud, so the caller keeps sync blocked and asks again later. Pass one
+ * `lookup` for every call of a settle, so the account is listed once.
  */
 export async function findUnclaimedDocuments(
   userId: string,
   lookup: AccountDocumentLookup = createAccountDocumentLookup(),
 ): Promise<UnclaimedDocuments | null> {
-  const all = listAllDocumentEntries();
-  const mine = new Set(entriesOwnedBy(all, userId).map(entryKey));
-  let others = all.filter((entry) => !mine.has(entryKey(entry)));
+  const awaiting = entriesAwaitingAnswer(listAllDocumentEntries());
+  const linked = awaiting.filter((entry) => entry.sync.cloudDocumentId);
 
-  if (others.some((entry) => entry.sync.cloudDocumentId)) {
+  if (linked.length > 0) {
     await findAccountDocumentIds(
-      new Set(others.flatMap((entry) => entry.sync.cloudDocumentId ?? [])),
+      new Set(linked.flatMap((entry) => entry.sync.cloudDocumentId ?? [])),
       lookup,
     );
-    const provable = others.filter(
-      (entry) => entry.sync.cloudDocumentId && lookup.ids.has(entry.sync.cloudDocumentId),
-    );
+
+    const provable = linked.filter((entry) => lookup.ids.has(entry.sync.cloudDocumentId ?? ""));
 
     if (provable.length > 0 && !setDocumentOwners(provable, userId).ok) {
       throw new Error("This device's storage is full.");
     }
 
-    others = others.filter((entry) => !provable.includes(entry));
+    const missing = linked.filter((entry) => !provable.includes(entry));
+
+    if (missing.length > 0) return { cloudCopyMissing: true, documents: missing.map(toMeta) };
   }
 
-  if (others.length === 0) {
+  const unlinked = awaiting.filter((entry) => !entry.sync.cloudDocumentId);
+
+  if (unlinked.length === 0) {
     claimWorkspace(userId);
     return null;
   }
 
-  // Made on this device without an account: a guest's, or of unknown owner after an index
-  // rebuild. Either may be added to the account.
-  const fromGuest = [
-    ...entriesOwnedBy(others, null),
-    ...entriesOwnedBy(others, UNKNOWN_DOCUMENT_OWNER),
-  ].filter((entry) => !entry.sync.cloudDocumentId);
-  const fromAccount = others.filter((entry) => !fromGuest.includes(entry));
-
-  return fromAccount.length > 0
-    ? { origin: "account", documents: fromAccount.map(toMeta) }
-    : { origin: "guest", documents: fromGuest.map(toMeta) };
+  return { cloudCopyMissing: false, documents: unlinked.map(toMeta) };
 }
 
 /**
  * - `add`: the documents become the account's and take the account's auto-sync setting, like a
- *   new document (guest documents only). The account's other documents are not touched.
+ *   new document. The account's other documents are not touched. Not for copies whose cloud
+ *   document is missing.
  * - `keep`: they become the account's, but stay on this device only, opted out of every bulk
- *   sync toggle. Another account's documents also get fresh ids, so backing one up by hand
- *   later creates a new cloud document instead of colliding with theirs.
+ *   sync toggle. A copy whose cloud document is missing also gets a fresh id, so backing it up
+ *   by hand later creates a new cloud document instead of colliding with that one.
  * - `remove`: they are deleted from this device.
  */
 export type UnclaimedDocumentsChoice = "add" | "keep" | "remove";
@@ -327,6 +354,12 @@ export function resolveUnclaimedDocuments(
   choice: UnclaimedDocumentsChoice,
   autoSyncEnabled: boolean,
 ): void {
+  if (unclaimed.cloudCopyMissing && choice === "add") {
+    throw new Error(
+      "These documents are linked to a cloud document your account does not have, so they can only be kept on this device or deleted.",
+    );
+  }
+
   const claimed: Array<Pick<DocumentIndexEntry, "type" | "id">> = [];
 
   for (const meta of unclaimed.documents) {
@@ -351,8 +384,9 @@ export function resolveUnclaimedDocuments(
       continue;
     }
 
-    const id =
-      unclaimed.origin === "account" ? (rekeyDocument(meta.type, meta.id)?.id ?? null) : meta.id;
+    const id = unclaimed.cloudCopyMissing
+      ? (rekeyDocument(meta.type, meta.id)?.id ?? null)
+      : meta.id;
     const saved =
       id === null
         ? null
@@ -376,8 +410,7 @@ export function resolveUnclaimedDocuments(
     throw new Error("This device's storage is full.");
   }
 
-  const all = listAllDocumentEntries();
-  if (entriesOwnedBy(all, userId).length === all.length) claimWorkspace(userId);
+  if (entriesAwaitingAnswer(listAllDocumentEntries()).length === 0) claimWorkspace(userId);
 }
 
 /** Pauses before asking the server again after a failed lookup (the last one repeats). */
@@ -389,7 +422,7 @@ const PAUSED_AFTER_FAILURES = 2;
 export interface WorkspaceSettleHandlers {
   /** A group of documents to ask the user about. */
   onUnclaimed: (found: UnclaimedDocuments) => void;
-  /** Every document is the user's: sync can start. */
+  /** Nothing is left to ask about: sync can start. */
   onSettled: () => void;
   /** Backup is paused (true) or running again (false) because the account could not be reached. */
   onPaused: (paused: boolean) => void;
@@ -404,9 +437,9 @@ const scheduleOnWindow: Schedule = (retry, delayMs) => {
 
 /**
  * Runs {@link findUnclaimedDocuments} until it gets an answer. A failed lookup keeps sync
- * blocked and asks nothing (asking then would put the user's own copies to them as another
- * account's); it is retried after a pause, and from the second failure in a row the user is
- * told backup is paused, with `retryNow` behind a "Try now" action.
+ * blocked and asks nothing (going on would put the user's own copies to them as missing);
+ * it is retried after a pause, and from the second failure in a row the user is told backup is
+ * paused, with `retryNow` behind a "Try now" action.
  */
 export function settleWorkspaceOwnership(
   userId: string,

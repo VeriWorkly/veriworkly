@@ -131,8 +131,7 @@ export const CoverLetterToolbar = memo(function CoverLetterToolbar({
               return;
             }
 
-            resetDocument(master);
-            onSetMessage("Cover letter reset to defaults");
+            if (resetDocument(master, documentId)) onSetMessage("Cover letter reset to defaults");
           }}
           onEmptyFields={() => {
             emptyDocument();

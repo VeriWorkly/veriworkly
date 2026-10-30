@@ -5,11 +5,13 @@ import type { BaseDocument, DocumentSyncState } from "@/features/documents/core/
 import type { SaveDocumentResult } from "./local-storage-service";
 
 import { getDocumentDefinition } from "@/features/documents/core/registry";
+import { toDocumentTitle } from "@/features/documents/core/document-title";
 import { DOCUMENT_TYPES, type DocumentType } from "@/features/documents/core/document-types";
 import {
   deleteDocument,
   flushPendingSave,
   getWorkspaceStorage,
+  listAllDocumentEntries,
   rekeyDocument,
 } from "@/features/documents/services/document-workspace-service";
 
@@ -23,7 +25,7 @@ import {
 import { SyncEngine, type SyncTelemetry } from "./sync-engine";
 import { canWorkspaceReachCloud, confirmSessionIsViewer } from "./workspace-owner";
 import { getWorkspaceEpoch } from "./workspace-epoch";
-import { getWorkspaceViewer } from "./workspace-viewer";
+import { getWorkspaceViewer, visibleEntries } from "./workspace-viewer";
 import {
   DOCUMENT_REMOTE_DELETION_EVENT,
   DOCUMENT_STORAGE_UPDATED_EVENT,
@@ -71,7 +73,8 @@ function createGenericDocumentSyncService(type: DocumentType) {
     localStorage: storage,
     updatedEventName: DOCUMENT_STORAGE_UPDATED_EVENT,
     parseItem: (input) => getDocumentDefinition(type).parse(input),
-    getDocumentTitle: (item) => item.title,
+    getDocumentTitle: (item) =>
+      toDocumentTitle(item.title, `Untitled ${getDocumentDefinition(type).label}`),
     removeLocal: (id) => {
       deleteDocument(type, id);
     },
@@ -305,10 +308,19 @@ export function getDocumentSyncTelemetryByDocs(
   }, {});
 }
 
-/** Latest attempt and latest success across every document (of one type, if given). */
+/**
+ * Latest attempt and latest success across every document (of one type, if given), leaving out
+ * the ones on this device the viewer cannot see, such as another account's (S-372): their times
+ * are not the viewer's backups. A deleted document's last backup still counts.
+ */
 export function getWorkspaceSyncTelemetry(type?: DocumentType) {
+  const all = listAllDocumentEntries(type);
+  const visible = new Set(visibleEntries(all));
+  const hidden = new Set(
+    all.filter((entry) => !visible.has(entry)).map((entry) => `${entry.type}:${entry.id}`),
+  );
   const entries = Object.entries(SyncEngine.getAllTelemetry())
-    .filter(([key]) => !type || key.startsWith(`${type}:`))
+    .filter(([key]) => (!type || key.startsWith(`${type}:`)) && !hidden.has(key))
     .map(([, telemetry]) => telemetry);
 
   const latest = (values: Array<string | null>) =>

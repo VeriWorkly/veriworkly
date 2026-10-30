@@ -35,9 +35,9 @@ export function hasSessionCookieIn(cookies: IncomingRequest["cookies"]) {
 
 /**
  * Every backend call a server render makes goes through here. It acts for the browser: its
- * cookies, studio's `Origin`, and — with `INTERNAL_API_KEY` — the browser's IP, which the API
- * trusts only alongside that key. Without it every visitor shares studio's own IP, and with it
- * one rate-limit bucket.
+ * cookies, studio's `Origin`, and — with `INTERNAL_API_KEY` — the browser's IP and agent, which
+ * the API trusts only alongside that key. Without it every visitor shares studio's own IP, and
+ * with it one rate-limit bucket.
  */
 export function serverFetchFrom(request: IncomingRequest, path: string, init: RequestInit = {}) {
   const outgoing = new Headers(init.headers);
@@ -58,6 +58,11 @@ export function serverFetchFrom(request: IncomingRequest, path: string, init: Re
   if (internalKey && clientIp) {
     outgoing.set("x-internal-key", internalKey);
     outgoing.set("x-forwarded-client-ip", clientIp);
+
+    // The browser's agent, under the same key (S-397): without it every share view is Node's,
+    // and a chat app's link preview counts as a reader.
+    const userAgent = request.headers.get("user-agent");
+    if (userAgent) outgoing.set("x-forwarded-client-user-agent", userAgent);
   }
 
   return fetch(backendApiUrl(path), {

@@ -90,8 +90,21 @@ const mockRedis = {
   eval: vi.fn(
     (script: string, { keys, arguments: args }: { keys: string[]; arguments: string[] }) => {
       if (script.includes("LPUSH")) {
-        const [buffer, counts, lastViewed] = keys as [string, string, string];
-        const [record, linkId, timestamp] = args as [string, string, string];
+        const [buffer, counts, lastViewed, dropped, dedup] = keys as string[] as [
+          string,
+          string,
+          string,
+          string,
+          string | undefined,
+        ];
+        const [record, linkId, timestamp, cap] = args as [string, string, string, string];
+        // The script's order: the cap first, so a dropped view never spends the dedup key.
+        if ((mockRedisStore.get(buffer)?.length ?? 0) >= Number(cap)) {
+          mockRedisStore.set(dropped, (Number(mockRedisStore.get(dropped)) || 0) + 1);
+          return Promise.resolve(0);
+        }
+        if (dedup && mockRedisStore.has(dedup)) return Promise.resolve(0);
+        if (dedup) mockRedisStore.set(dedup, "1");
         mockRedis.lPush(buffer, record);
         mockRedis.hIncrBy(counts, linkId, 1);
         mockRedis.hSet(lastViewed, linkId, timestamp);
@@ -345,6 +358,80 @@ describe("Views tracking buffering and flushing", () => {
       expect(parsedRecord.shareLinkId).toBe("link_456");
       expect(parsedRecord.ipAddress).not.toBe("1.2.3.4");
       expect(parsedRecord.userAgent).toBe("Mozilla/5.0");
+    });
+
+    it("S-397 a link-preview bot fetching the page is not a view", async () => {
+      const { ShareService } = await import("../../src/services/shareService.js");
+
+      for (const agent of [
+        "Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)",
+        "LinkedInBot/1.0 (compatible; Mozilla/5.0; Apache-HttpClient +http://www.linkedin.com)",
+        "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+        "WhatsApp/2.23.20.0",
+        "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)",
+        "TelegramBot (like TwitterBot)",
+      ]) {
+        await ShareService.recordShareView("link_456", "1.2.3.4", agent);
+      }
+
+      expect(mockRedisStore.has("share:views:buffer")).toBe(false);
+      expect(mockRedisStore.has("share:links:view_count")).toBe(false);
+    });
+
+    it("S-397 a phone whose model name ends in 'bot' is a reader", async () => {
+      const { ShareService } = await import("../../src/services/shareService.js");
+
+      await ShareService.recordShareView(
+        "link_456",
+        "1.2.3.4",
+        "Mozilla/5.0 (Linux; Android 12; CUBOT X30 Build/SP1A) AppleWebKit/537.36 Chrome/120 Mobile",
+      );
+
+      expect(mockRedisStore.get("share:links:view_count")).toEqual({ link_456: 1 });
+    });
+
+    it("S-397 a view dropped at the buffer cap does not spend that network's dedup window", async () => {
+      const { ShareService } = await import("../../src/services/shareService.js");
+      const browser = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130";
+
+      mockRedisStore.set(
+        "share:views:buffer",
+        Array.from({ length: 10_000 }, () => "{}"),
+      );
+      await ShareService.recordShareView("link_456", "1.2.3.4", browser);
+
+      expect(mockRedisStore.get("share:views:dropped")).toBe(1);
+      expect([...mockRedisStore.keys()].some((key) => key.startsWith("share:views:dedup:"))).toBe(
+        false,
+      );
+
+      // Once the flush has drained the buffer, the same reader is counted.
+      mockRedisStore.set("share:views:buffer", []);
+      await ShareService.recordShareView("link_456", "1.2.3.4", browser);
+      expect(mockRedisStore.get("share:links:view_count")).toEqual({ link_456: 1 });
+    });
+
+    it("S-397 the record script checks the cap before it sets the dedup key", async () => {
+      // The mock above cannot run Lua; this holds the real script to the order it mirrors.
+      const source = await import("node:fs").then((fs) =>
+        fs.readFileSync(new URL("../../src/services/shareService.ts", import.meta.url), "utf8"),
+      );
+      const script = source.slice(source.indexOf("const RECORD_SHARE_VIEW_SCRIPT"));
+
+      expect(script.indexOf('"LLEN"')).toBeGreaterThan(-1);
+      expect(script.indexOf('"LLEN"')).toBeLessThan(script.indexOf('"NX"'));
+    });
+
+    it("S-397 a refresh from the same network the same day counts once", async () => {
+      const { ShareService } = await import("../../src/services/shareService.js");
+      const browser = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130";
+
+      await ShareService.recordShareView("link_456", "1.2.3.4", browser);
+      await ShareService.recordShareView("link_456", "1.2.3.4", browser);
+      await ShareService.recordShareView("link_456", "5.6.7.8", browser);
+      await ShareService.recordShareView("link_789", "1.2.3.4", browser);
+
+      expect(mockRedisStore.get("share:links:view_count")).toEqual({ link_456: 2, link_789: 1 });
     });
 
     it("flushes buffered share views and increments database counts with 30-day retention cleanup", async () => {

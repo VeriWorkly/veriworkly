@@ -170,4 +170,51 @@ describe("AI credit reservations", () => {
       data: { balance: { increment: 7 }, reserved: { decrement: 7 } },
     });
   });
+
+  it("S-384 a retry while the first request is still running is told to wait, with a code", async () => {
+    const { CreditService } = await import("../../src/services/creditService.js");
+    tx.creditReservation.findUnique.mockResolvedValue({
+      id: "reservation_1",
+      userId: "user_1",
+      requestId: "request_1",
+      action: "rewrite_section",
+      cost: 7,
+      status: "PENDING",
+    });
+
+    await expect(
+      CreditService.reserveAction("user_1", "rewrite_section", "standard", "request_1"),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      details: { code: "AI_REQUEST_PROCESSING", retryAfterSeconds: expect.any(Number) },
+    });
+    expect(tx.creditReservation.create).not.toHaveBeenCalled();
+  });
+
+  it("S-384 a retry just after the charge, before its result is stored, is told to wait", async () => {
+    const { CreditService } = await import("../../src/services/creditService.js");
+    const committed = {
+      id: "reservation_1",
+      userId: "user_1",
+      requestId: "request_1",
+      action: "rewrite_section",
+      cost: 7,
+      status: "COMMITTED",
+      replay: null,
+    };
+
+    tx.creditReservation.findUnique.mockResolvedValue({ ...committed, updatedAt: new Date() });
+    await expect(
+      CreditService.reserveAction("user_1", "rewrite_section", "standard", "request_1"),
+    ).rejects.toMatchObject({ statusCode: 409, details: { code: "AI_REQUEST_PROCESSING" } });
+
+    // Long after the commit, a missing result is never coming (or was cleared): the id is spent.
+    tx.creditReservation.findUnique.mockResolvedValue({
+      ...committed,
+      updatedAt: new Date(Date.now() - 60 * 60 * 1000),
+    });
+    await expect(
+      CreditService.reserveAction("user_1", "rewrite_section", "standard", "request_1"),
+    ).rejects.toMatchObject({ statusCode: 409, message: "This AI request already completed." });
+  });
 });

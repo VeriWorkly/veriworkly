@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { siteConfig } from "@/config/site";
-import { SESSION_EXPIRED_PATH } from "@/lib/auth-redirect";
+import { sessionExpiredPath } from "@/lib/auth-redirect";
 import { hasSessionCookie } from "@/lib/server-fetch";
 import { getBillingServerData } from "@/features/billing/billing-server";
 import { resolveCheckoutRequest } from "@/features/billing/checkout-rules";
@@ -22,13 +22,15 @@ export default async function CheckoutPage({
   const billing = await getBillingServerData<BillingSummary>("/billing/me");
 
   if (!billing) {
-    // A cookie the API rejected: /login would bounce it straight back here, so clear it first.
-    if (await hasSessionCookie()) redirect(SESSION_EXPIRED_PATH);
-
     const query = new URLSearchParams(
       Object.entries(params).filter((entry): entry is [string, string] => !!entry[1]),
     );
-    redirect(`/login?callbackURL=${encodeURIComponent(`/checkout?${query}`)}`);
+    const checkout = `/checkout?${query}`;
+
+    // A cookie the API rejected: /login would bounce it straight back here, so clear it first.
+    if (await hasSessionCookie()) redirect(sessionExpiredPath(checkout));
+
+    redirect(`/login?callbackURL=${encodeURIComponent(checkout)}`);
   }
 
   const request = resolveCheckoutRequest(params, billing.catalog);

@@ -37,13 +37,20 @@ const RecentCard = ({
     <div className="border-border bg-background/70 group hover:border-accent/40 hover:bg-card relative overflow-hidden rounded-xl border transition">
       <div className="border-border/70 relative h-32 border-b bg-[color-mix(in_oklab,var(--card)_78%,var(--background))]">
         {doc.previewImage ? (
-          <Image
-            fill
-            alt=""
-            sizes="80vw"
-            src={doc.previewImage}
-            className="object-cover object-top p-2"
-          />
+          <>
+            {/* The template's sample, not this document: labelled so its sample name is not
+                read as the user's (S-369). */}
+            <Image
+              fill
+              alt={`${doc.templateName} template sample`}
+              sizes="80vw"
+              src={doc.previewImage}
+              className="object-cover object-top p-2"
+            />
+            <span className="bg-background/90 text-muted border-border absolute bottom-2 left-2 rounded-md border px-2 py-0.5 text-xs font-semibold">
+              {doc.templateName} template
+            </span>
+          </>
         ) : (
           <div className="flex h-full items-center justify-center">
             <FileText className="text-accent h-8 w-8" />

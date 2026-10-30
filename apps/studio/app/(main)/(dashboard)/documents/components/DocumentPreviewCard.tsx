@@ -110,9 +110,13 @@ function DocumentThumbnailPreview({ doc }: { doc: DocumentLibraryItem }) {
           fill
           src={doc.previewImage}
           className="object-contain p-3"
-          alt={`${doc.templateName} preview`}
+          alt={`${doc.templateName} template sample`}
           sizes="(max-width: 768px) 100vw, 25vw"
         />
+        {/* The template's sample, not this document (S-369). */}
+        <span className="bg-background/90 text-muted border-border absolute bottom-2 left-2 rounded-md border px-2 py-0.5 text-xs font-semibold">
+          {doc.templateName} template
+        </span>
       </div>
     );
   }

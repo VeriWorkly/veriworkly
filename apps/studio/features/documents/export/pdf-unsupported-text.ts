@@ -204,3 +204,12 @@ export function describeUndrawablePdfText(found: UndrawablePdfText[]): string {
 
   return `These characters will be blank in the PDF: ${list}. Use DOCX or HTML, or remove them.`;
 }
+
+/**
+ * The warning to show before a PDF export, or null when every printed character draws (S-288).
+ * The editor and the share page's Download menu both ask this (S-399).
+ */
+export function pdfCharacterWarning(document: PrintedDocument): string | null {
+  const blanks = findTextPdfCannotDraw(document);
+  return blanks.length > 0 ? describeUndrawablePdfText(blanks) : null;
+}

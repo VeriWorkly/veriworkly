@@ -90,9 +90,12 @@ export function getOrderedResumeSections(resume: ResumeData): ResumeSection[] {
 /**
  * Collapses runs of spaces and tabs but keeps line breaks: a summary typed as paragraphs
  * must reach the preview and the PDF as paragraphs, the way DOCX already receives it.
+ * Control characters XML 1.0 forbids (pasted from a PDF) are dropped: one makes Word refuse
+ * the DOCX (S-401).
  */
 export function cleanResumeText(value: string | null | undefined): string {
   return stripEmoji(safeText(value ?? ""))
+    .replace(/[\u0000-\u0008\u000E-\u001F￾￿]/g, "")
     .replace(/[^\S\n]+/g, " ")
     .replace(/ ?\n ?/g, "\n");
 }
@@ -276,10 +279,9 @@ function hasProjectContent(item: ResumeData["projects"][number]): boolean {
   );
 }
 
+/** The keywords are the content; a group's name is optional and prints only as their label. */
 function hasSkillGroupContent(item: ResumeData["skills"][number]): boolean {
-  return Boolean(
-    cleanResumeText(item.name) && item.keywords.some((keyword) => cleanResumeText(keyword)),
-  );
+  return item.keywords.some((keyword) => cleanResumeText(keyword));
 }
 
 export function hasCustomItemContent(item: ResumeData["customSections"][number]["items"][number]) {

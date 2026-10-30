@@ -217,7 +217,7 @@ describe("the textkit line breaker", () => {
 });
 
 describe("the PDF renderer runs the replacement line breaker, not textkit's own", () => {
-  const REPLACEMENT = join(process.cwd(), "templates", "pdf", "textkit.ts");
+  const REPLACEMENT = join(`${__dirname}/../..`, "templates", "pdf", "textkit.ts");
   const URL_TEXT = "https://enterprise-example.com/people/bart-x";
 
   /** Each text node's lines, as the PDF draws them. */
@@ -260,7 +260,10 @@ describe("the PDF renderer runs the replacement line breaker, not textkit's own"
 
   it("every bundler that builds the PDF resolves textkit to the replacement", () => {
     expect(
-      join(process.cwd(), nextConfig.turbopack?.resolveAlias?.["@react-pdf/textkit"] as string),
+      join(
+        `${__dirname}/../..`,
+        nextConfig.turbopack?.resolveAlias?.["@react-pdf/textkit"] as string,
+      ),
     ).toBe(REPLACEMENT);
 
     const webpack = nextConfig.webpack?.({ resolve: { alias: { kept: "yes" } } }, {} as never) as {

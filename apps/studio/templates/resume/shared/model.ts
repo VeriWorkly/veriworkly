@@ -24,6 +24,7 @@ import {
  * Templates keep importing them from here.
  */
 export {
+  getSkillLineText,
   getProjectRenderItems,
   getEducationRenderItems,
   getExperienceRenderItems,

@@ -18,6 +18,7 @@ import {
   formatSuspensionReason,
 } from "@/features/admin/utils/admin-format";
 import { pluralize } from "@/lib/pluralize";
+import { accountName } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Admin · Portfolio",
@@ -136,7 +137,7 @@ export default async function AdminPortfolioDetailPage({
               href={`/admin/users/${encodeURIComponent(publication.user.id)}`}
               className="text-accent text-sm font-medium hover:underline"
             >
-              {publication.user.name || publication.user.email}
+              {accountName(publication.user.name) ?? publication.user.email}
             </Link>
 
             <p className="text-muted text-xs">{publication.user.email}</p>

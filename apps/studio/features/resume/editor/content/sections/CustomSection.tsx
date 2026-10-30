@@ -10,7 +10,12 @@ import { useResumeStore } from "@/features/resume/store/resume-store";
 
 import ConfirmDialog from "@/components/modals/ConfirmDialog";
 import { useIndexedListEditor } from "@/features/documents/editor/useIndexedListEditor";
-import { TextAreaField, TextInputField } from "@/features/documents/editor/form";
+import {
+  DelimitedTextArea,
+  Field,
+  TextAreaField,
+  TextInputField,
+} from "@/features/documents/editor/form";
 
 import ListSection from "./ListSection";
 
@@ -118,6 +123,33 @@ const CustomSection = ({ customSectionId, isOpen, onToggle }: CustomSectionProps
                 updateCustomSectionItem(customSectionId, list.index, { link })
               }
             />
+
+            {/* Every field a custom item prints is editable here: items from the Master Profile
+                or an import carry an issuer, date, credential id and details (S-406). */}
+            <TextInputField
+              label="Issuer"
+              value={activeCustomItem.issuer}
+              onValueChange={(issuer) =>
+                updateCustomSectionItem(customSectionId, list.index, { issuer })
+              }
+            />
+
+            <TextInputField
+              type="month"
+              label="Date (YYYY-MM)"
+              value={activeCustomItem.date}
+              onValueChange={(date) =>
+                updateCustomSectionItem(customSectionId, list.index, { date })
+              }
+            />
+
+            <TextInputField
+              label="Credential ID"
+              value={activeCustomItem.referenceId}
+              onValueChange={(referenceId) =>
+                updateCustomSectionItem(customSectionId, list.index, { referenceId })
+              }
+            />
           </div>
 
           <TextAreaField
@@ -127,6 +159,17 @@ const CustomSection = ({ customSectionId, isOpen, onToggle }: CustomSectionProps
               updateCustomSectionItem(customSectionId, list.index, { description })
             }
           />
+
+          <Field label="Details (one per line)">
+            <DelimitedTextArea
+              delimiter="newline"
+              key={activeCustomItem.id}
+              onChange={(details) =>
+                updateCustomSectionItem(customSectionId, list.index, { details })
+              }
+              value={activeCustomItem.details}
+            />
+          </Field>
         </>
       )}
     </ListSection>

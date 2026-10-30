@@ -56,7 +56,12 @@ function buildMarkdown(resume: ResumeData): string {
   if (document.name) blocks.push(`# ${escapeMarkdown(document.name)}`);
   if (document.headline) blocks.push(escapeMarkdown(document.headline));
   if (document.contact.length > 0) {
-    blocks.push(document.contact.map((item) => escapeMarkdown(item.label)).join(" | "));
+    const contact = document.contact.map((item) => escapeMarkdown(item.label)).join(" | ");
+    // One item without an "@" reads as a headline; a trailing separator marks it as contact
+    // for the import (S-412). A "|" in a label is escaped, so the marker cannot be text.
+    const lone = document.contact.length === 1 && !document.contact[0].label.includes("@");
+
+    blocks.push(lone ? `${contact} |` : contact);
   }
   if (document.links.length > 0) {
     blocks.push(document.links.map((link) => markdownLink(link.text, link.href)).join(" | "));

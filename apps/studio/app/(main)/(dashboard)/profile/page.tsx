@@ -9,6 +9,7 @@ import ProfileHero from "@/features/profile/components/ProfileHero";
 import ProfileDataPanel from "@/features/profile/components/ProfileDataPanel";
 import AccountStatsPanel from "@/features/profile/components/ProfileAccountStats";
 import DangerZoneCard from "@/features/profile/components/DangerZoneCard";
+import SignOutOtherDevicesCard from "@/features/profile/components/SignOutOtherDevicesCard";
 import { fetchAccountProfile } from "@/features/profile/services/account-profile";
 import { LinkErrorNotice } from "@/features/profile/components/LinkErrorNotice";
 
@@ -33,6 +34,7 @@ export default async function ProfilePage() {
         <div className="space-y-4">
           <ProfileDataPanel profile={accountProfile} />
           <ProfileLinksGrid />
+          {accountProfile?.email && <SignOutOtherDevicesCard />}
           {accountProfile?.email && <DangerZoneCard userEmail={accountProfile.email} />}
         </div>
 

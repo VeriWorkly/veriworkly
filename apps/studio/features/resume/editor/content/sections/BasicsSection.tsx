@@ -30,7 +30,9 @@ const BasicsSection = ({ isOpen, onToggle }: BaseSectionProps) => {
           value={basics.fullName}
         />
 
+        {/* Every template and export prints the headline in the role's place (S-370). */}
         <TextInputField
+          hint="Printed only when Headline is empty."
           label="Role"
           onValueChange={(role) => updateBasics({ role })}
           value={basics.role}

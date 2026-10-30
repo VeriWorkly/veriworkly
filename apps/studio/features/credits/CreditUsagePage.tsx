@@ -28,6 +28,8 @@ const ACTION_LABELS: Record<string, string> = {
   ats_resume_conversion: "Resume conversion",
   linkedin_import: "LinkedIn import",
   admin_adjustment: "Adjustment",
+  // A refunded payment takes back the credits it bought (S-390).
+  payment_refund: "Credits removed (payment refunded)",
 };
 
 const PRODUCT_NAMES = new Set(Object.values(PLAN_NAMES));
@@ -58,7 +60,8 @@ function entryLabel(item: CreditTransaction) {
   if (item.action === "admin_adjustment" && item.amount > 0) return "Credits added by support";
   if (item.action && ACTION_LABELS[item.action]) return ACTION_LABELS[item.action];
   if (item.type === "EXPIRATION") return "Credits expired";
-  if (item.type === "REFUND") return "Credits returned";
+  if (item.type === "REFUND")
+    return item.amount < 0 ? "Credits removed (payment refunded)" : "Credits returned";
   return item.type === "GRANT" ? grantLabel(item.reason ?? "") : "Adjustment";
 }
 

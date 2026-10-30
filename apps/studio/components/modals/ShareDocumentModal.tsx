@@ -29,6 +29,8 @@ import {
   revokeShareLink,
   listAllShareLinks,
   shareAllowsDownload,
+  shareOffersDownloads,
+  shareSnapshotTime,
 } from "@/features/documents/services/share-service";
 import { getDocumentDefinition } from "@/features/documents/core/registry";
 
@@ -43,6 +45,8 @@ import { useUserStore } from "@/store/useUserStore";
 import ConfirmDialog from "./ConfirmDialog";
 import {
   SHARE_EXPIRY_OPTIONS,
+  canKeepShareExpiry,
+  effectiveShareExpiryChoice,
   shareExpiryPayload,
   type ShareExpiryChoice,
 } from "@/features/documents/services/share-expiry";
@@ -82,29 +86,19 @@ export function shareDownloadPayload(choice: boolean | null) {
   return choice === null ? {} : { allowDownload: choice };
 }
 
-const slugify = (text: string) =>
-  text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/[\s_-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+/**
+ * Whether the link still carries the document's old slug. The server builds a link slug from
+ * the document's slug, plus `-N` when taken, so that is what it is compared with: re-slugging
+ * the title here folded accents, apostrophes, `_` and non-Latin text differently and warned
+ * about titles that were never renamed (S-400). A list without `documentSlug` never warns.
+ */
+export function isShareSlugOutOfSync(link: { token: string; documentSlug?: string }) {
+  const { token, documentSlug } = link;
+  if (!documentSlug || token === documentSlug) return false;
 
-const isSlugMatching = (token: string, documentTitle: string) => {
-  const baseSlug = slugify(documentTitle);
-  if (!token) return false;
-
-  const tokenSlug = slugify(token);
-  if (tokenSlug === baseSlug) return true;
-
-  const prefix = baseSlug + "-";
-  if (tokenSlug.startsWith(prefix)) {
-    const suffix = tokenSlug.slice(prefix.length);
-    return /^\d+$/.test(suffix);
-  }
-
-  return false;
-};
+  const prefix = `${documentSlug}-`;
+  return !(token.startsWith(prefix) && /^\d+$/.test(token.slice(prefix.length)));
+}
 
 /** True when the document was edited after the link's snapshot was taken. */
 export function isShareSnapshotStale(documentUpdatedAt: string | null, sharedAt: string) {
@@ -206,7 +200,8 @@ const ActiveLinkRow = ({
             {link.expiresAt ? (
               <>
                 <Calendar className="h-3 w-3" />
-                Expires {new Date(link.expiresAt).toLocaleDateString()}
+                {new Date(link.expiresAt) <= new Date() ? "Expired" : "Expires"}{" "}
+                {new Date(link.expiresAt).toLocaleDateString()}
               </>
             ) : (
               "Permanent Access"
@@ -296,12 +291,11 @@ const ShareDocumentModal = ({
 
   const hasActiveLink = shareLinks.length > 0;
   const activeLink = shareLinks[0];
+  const shownExpiryChoice = effectiveShareExpiryChoice(expiryChoice, activeLink);
   const allowDownload = downloadChoice ?? shareAllowsDownload(activeLink);
+  const offersDownloads = shareOffersDownloads(documentType);
 
-  const isSlugOutofSync = useMemo(() => {
-    if (!activeLink) return false;
-    return !isSlugMatching(activeLink.token, documentTitle);
-  }, [activeLink, documentTitle]);
+  const isSlugOutofSync = activeLink ? isShareSlugOutOfSync(activeLink) : false;
 
   // A link serves the snapshot taken when it was last saved, not the live document.
   const isSnapshotStale = useMemo(() => {
@@ -310,7 +304,7 @@ const ShareDocumentModal = ({
     const updatedAt =
       document?.updatedAt ?? loadDocumentById(documentType, documentId)?.updatedAt ?? null;
 
-    return isShareSnapshotStale(updatedAt, activeLink.updatedAt);
+    return isShareSnapshotStale(updatedAt, shareSnapshotTime(activeLink));
   }, [activeLink, document?.updatedAt, documentId, documentType]);
 
   // Tracks the most recently *requested* document id so a slow response for a
@@ -329,7 +323,7 @@ const ShareDocumentModal = ({
 
       setShareLinks(links);
 
-      setExpiryChoice(links.length > 0 ? "keep" : "7");
+      setExpiryChoice(canKeepShareExpiry(links[0]) ? "keep" : "7");
 
       setRemovePassword(false);
       setUpdateSlug(false);
@@ -370,7 +364,7 @@ const ShareDocumentModal = ({
 
       const shareLink = await createShareLink(prepared.document, {
         password: password.trim() || undefined,
-        ...shareExpiryPayload(expiryChoice, activeLink?.expiresAt ?? null),
+        ...shareExpiryPayload(shownExpiryChoice, activeLink),
         updateSlug,
         removePassword,
         ...shareDownloadPayload(downloadChoice),
@@ -435,9 +429,10 @@ const ShareDocumentModal = ({
         expiresAt: link.expiresAt,
         viewCount: link.viewCount,
         passwordRequired: link.hasPassword,
-        allowDownload: shareAllowsDownload(link),
+        // "Downloads hidden" only where the page would have had them (S-398).
+        allowDownload: !offersDownloads || shareAllowsDownload(link),
       })),
-    [shareLinks],
+    [shareLinks, offersDownloads],
   );
 
   if (!documentId) return null;
@@ -510,7 +505,7 @@ const ShareDocumentModal = ({
             <>
               {hasActiveLink && activeLink && (
                 <SharedVersionNotice
-                  sharedAt={activeLink.updatedAt}
+                  sharedAt={shareSnapshotTime(activeLink)}
                   stale={isSnapshotStale}
                   busy={busy}
                   onUpdate={() => void handleCreate()}
@@ -647,11 +642,11 @@ const ShareDocumentModal = ({
 
                   <Select
                     id="share-expiry-input"
-                    value={expiryChoice}
+                    value={shownExpiryChoice}
                     onChange={(event) => setExpiryChoice(event.target.value as ShareExpiryChoice)}
                     className="h-9"
                   >
-                    {hasActiveLink && activeLink ? (
+                    {canKeepShareExpiry(activeLink) ? (
                       <option value="keep">
                         {activeLink.expiresAt
                           ? `Keep: until ${new Date(activeLink.expiresAt).toLocaleDateString()}`
@@ -667,28 +662,30 @@ const ShareDocumentModal = ({
                 </div>
               </div>
 
-              <div className="flex items-start justify-between gap-3 rounded-xl border p-3">
-                <div className="space-y-1">
-                  <label
-                    htmlFor="share-allow-download-checkbox"
-                    className="text-muted-foreground flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase"
-                  >
-                    <Download className="h-3.5 w-3.5 opacity-70" /> Allow downloads
-                  </label>
+              {offersDownloads && (
+                <div className="flex items-start justify-between gap-3 rounded-xl border p-3">
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="share-allow-download-checkbox"
+                      className="text-muted-foreground flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase"
+                    >
+                      <Download className="h-3.5 w-3.5 opacity-70" /> Allow downloads
+                    </label>
 
-                  <p id="share-allow-download-hint" className="text-muted-foreground text-xs">
-                    {shareDownloadHint(allowDownload)}
-                  </p>
+                    <p id="share-allow-download-hint" className="text-muted-foreground text-xs">
+                      {shareDownloadHint(allowDownload)}
+                    </p>
+                  </div>
+
+                  <Checkbox
+                    id="share-allow-download-checkbox"
+                    aria-describedby="share-allow-download-hint"
+                    checked={allowDownload}
+                    onCheckedChange={(value) => setDownloadChoice(value)}
+                    className="mt-0.5 scale-90"
+                  />
                 </div>
-
-                <Checkbox
-                  id="share-allow-download-checkbox"
-                  aria-describedby="share-allow-download-hint"
-                  checked={allowDownload}
-                  onCheckedChange={(value) => setDownloadChoice(value)}
-                  className="mt-0.5 scale-90"
-                />
-              </div>
+              )}
 
               <Button
                 size="sm"

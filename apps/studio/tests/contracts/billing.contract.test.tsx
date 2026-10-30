@@ -115,11 +115,14 @@ function summary(overrides: Partial<BillingSummary> = {}): BillingSummary {
     access: {
       tier: "free",
       isPaying: false,
+      paymentIssue: false,
       passEndsAt: null,
       portfolioAccessEndsAt: null,
       aiCreditsEndsAt: null,
       creditBalance: 0,
     },
+    hasBillingAccount: false,
+    subscriptionPaused: false,
     credits: {
       balance: 0,
       reserved: 0,
@@ -212,6 +215,7 @@ describe("billing page describes what the customer actually bought", () => {
         access: {
           tier: "pass",
           isPaying: true,
+          paymentIssue: false,
           passEndsAt,
           portfolioAccessEndsAt: passEndsAt,
           aiCreditsEndsAt: passEndsAt,
@@ -233,6 +237,7 @@ describe("billing page describes what the customer actually bought", () => {
         access: {
           tier: "credits",
           isPaying: true,
+          paymentIssue: false,
           passEndsAt: null,
           portfolioAccessEndsAt: null,
           aiCreditsEndsAt: null,
@@ -282,7 +287,7 @@ describe("billing page describes what the customer actually bought", () => {
     );
 
     expect(page).toContain(
-      `Payment failed — access ends ${serverDate(graceEndsAt)} — update your card`,
+      `Payment failed. Pro features are paused; your portfolio keeps its plan until ${serverDate(graceEndsAt)} . Update your card`,
     );
     expect(page).toContain("Update card");
     expect(page).not.toMatch(/\bFree\b/);
@@ -546,13 +551,107 @@ describe("billing page describes what the customer actually bought", () => {
       ],
     );
 
-    expect(page).toContain("Portfolio publishing");
+    expect(page).toContain("Premium portfolio templates");
     expect(page).toContain("SEO controls");
     expect(page).not.toMatch(/PORTFOLIO PUBLISH|portfolio_publish|SEO CONTROLS/);
     expect(page).toContain("Subscription started");
     expect(page).toContain("Payment received");
     expect(page).toContain(serverDate(inDays(-2)));
     expect(page).not.toMatch(/\block\b/i);
+  });
+
+  it("S-330 a one-time buyer whose pack is spent or pass ended still reaches their receipts", () => {
+    const spent = renderBilling(summary({ hasBillingAccount: true }));
+
+    expect(spent).toContain("Receipts and invoices");
+    expect(spent).not.toContain("Manage subscription");
+  });
+
+  it("S-387 a paused subscription is not called a failed payment, and keeps the grace clause", () => {
+    const graceEndsAt = inDays(6);
+    // The server says it is paused; the row `status` describes can be another subscription.
+    for (const status of ["PAST_DUE", "INACTIVE"]) {
+      const page = renderBilling(
+        summary({
+          productKey: "portfolio_pro",
+          status,
+          interval: "MONTHLY",
+          currentPeriodEnd: inDays(-1),
+          graceEndsAt,
+          subscriptionPaused: true,
+          access: {
+            ...summary().access,
+            tier: "portfolio_pro",
+            isPaying: true,
+            paymentIssue: false,
+          },
+        }),
+      );
+
+      expect(page, status).toContain("Your subscription is paused. Pro features are off");
+      expect(page, status).toContain(
+        `your portfolio keeps its plan until ${serverDate(graceEndsAt)} .`,
+      );
+      expect(page, status).toContain("Resume it from Manage billing");
+      expect(page, status).not.toMatch(/Payment failed|Update card|update your card/);
+    }
+  });
+
+  it("S-388 a failed renewal says Pro features are paused and the portfolio keeps its plan until grace ends", () => {
+    const graceEndsAt = inDays(6);
+    const page = renderBilling(
+      summary({
+        productKey: "portfolio_pro",
+        status: "PAST_DUE",
+        interval: "MONTHLY",
+        currentPeriodEnd: inDays(-1),
+        graceEndsAt,
+        access: { ...summary().access, tier: "portfolio_pro", isPaying: true, paymentIssue: true },
+      }),
+    );
+
+    expect(page).toContain(
+      `Payment failed. Pro features are paused; your portfolio keeps its plan until ${serverDate(graceEndsAt)} .`,
+    );
+    expect(page).not.toContain("access ends");
+  });
+
+  it("S-388 once grace has passed the banner says the portfolio is on the free template, not a past date", () => {
+    const failedOn = inDays(-9);
+    const page = renderBilling(
+      summary({
+        productKey: "portfolio_pro",
+        status: "PAST_DUE",
+        interval: "MONTHLY",
+        currentPeriodEnd: failedOn,
+        graceEndsAt: inDays(-2),
+        access: { ...summary().access, tier: "portfolio_pro", isPaying: true, paymentIssue: true },
+      }),
+    );
+
+    expect(page).toContain("your portfolio is now on the free template");
+    expect(page).not.toContain(serverDate(failedOn));
+  });
+
+  it("S-391 the plan's portfolio entitlement is named as templates, since every portfolio publishes", () => {
+    const page = renderBilling(
+      summary({
+        plan: "PORTFOLIO_PRO",
+        entitlements: ["portfolio_publish"],
+        access: { ...summary().access, tier: "portfolio_pro", isPaying: true },
+      }),
+    );
+
+    expect(page).toContain("Premium portfolio templates");
+    expect(page).not.toMatch(/Portfolio publishing/i);
+  });
+
+  it("S-392 a pass holder can still reach the plans page", () => {
+    const page = renderBilling(
+      summary({ access: { ...summary().access, tier: "pass", isPaying: true } }),
+    );
+
+    expect(page).toContain("View upgrade options");
   });
 });
 
@@ -603,6 +702,20 @@ describe("credits page", () => {
       ),
     );
   }
+
+  it("S-390 a refund claw-back reads as credits removed, not returned", () => {
+    const page = renderCredits([
+      row({
+        type: "REFUND",
+        amount: -250,
+        action: "payment_refund",
+        reason: "Payment refunded",
+      }),
+    ]);
+
+    expect(page).toContain("Credits removed (payment refunded)");
+    expect(page).not.toContain("Credits returned");
+  });
 
   it("S-180 S-201: shows available credits, held and expiring apart, and labels the debit total honestly", () => {
     const page = renderCredits([]);
@@ -850,6 +963,25 @@ describe("before a paid AI action runs", () => {
     expect(pending.current).toBeNull();
   });
 
+  it("S-389 a payer at the paid GitHub cap is told it resets, not offered a subscription", async () => {
+    const { importLimitNote } = await import("@/components/dashboard/modals/ImportProfileModal");
+    const quota = {
+      unlimited: false,
+      remaining: 0,
+      limit: 50,
+      resetsInSeconds: 3600,
+      connectedUsername: null,
+    };
+
+    const paid = importLimitNote("github", { ...quota, isPaid: true });
+    expect(paid.offerPlans).toBe(false);
+    expect(paid.message).toBe("You've reached today's GitHub import limit.");
+
+    const free = importLimitNote("github", { ...quota, isPaid: false });
+    expect(free.offerPlans).toBe(true);
+    expect(free.message).toMatch(/A subscription or pass lifts this limit/);
+  });
+
   it("S-206 V-197: the import allowance shows unlimited plans and the real GitHub cap", async () => {
     const { importAllowanceLabel } =
       await import("@/components/dashboard/modals/ImportProfileModal");
@@ -965,6 +1097,35 @@ describe("affiliate payouts", () => {
     }
   });
 
+  it("S-392 a payout already awaiting review hides the form, since a second request is refused", async () => {
+    for (const [status, line] of [
+      ["REQUESTED", "Payout of $30.00 requested, awaiting review."],
+      ["APPROVED", "Payout of $30.00 approved, awaiting payment."],
+    ]) {
+      programData.affiliate = {
+        affiliateStatus: "ACTIVE",
+        wallet: { pendingCents: 0, availableCents: 5000, paidCents: 0 },
+        minimumWithdrawalCents: 2500,
+        withdrawals: [
+          {
+            id: "w1",
+            amountCents: 3000,
+            currency: "USD",
+            status,
+            createdAt: "2026-10-01T00:00:00.000Z",
+            payoutNote: null,
+          },
+        ],
+      };
+      const { default: AffiliatePayoutsPage } =
+        await import("@/app/(main)/(dashboard)/affiliate/payouts/page");
+      const page = text(renderToStaticMarkup(await AffiliatePayoutsPage()));
+
+      expect(page, status).not.toContain("Request payout");
+      expect(page, status).toContain(line);
+    }
+  });
+
   it("S-259: a payout's note from the admin is shown on its row", async () => {
     programData.affiliate = {
       affiliateStatus: "ACTIVE",
@@ -1044,6 +1205,18 @@ describe("paid AI actions", () => {
     expect(metric).toContain("Resets in 2d 3h");
     expect(outOfScansDetail(quota, now)).toBe("No scans left in this period. Resets in 2d 3h");
     expect(renderToStaticMarkup(<ScansLeftMetric quota={null} />)).not.toContain("Resets");
+  });
+
+  it("S-367: a guest's ATS tiles show a dash, not a load that never finishes", async () => {
+    const { ScansLeftMetric, walletLabel } = await import("@/features/ats/AtsWorkspace");
+
+    expect(renderToStaticMarkup(<ScansLeftMetric quota={null} signedIn={false} />)).toContain(
+      ">—<",
+    );
+    expect(renderToStaticMarkup(<ScansLeftMetric quota={null} signedIn />)).toContain(">...<");
+    expect(walletLabel(null, false)).toBe("—");
+    expect(walletLabel(null, true)).toBe("...");
+    expect(walletLabel("error", true)).toBe("Unavailable");
   });
 
   it("S-197: AI parse repair is offered only when the server says this account can use it", async () => {
@@ -1185,7 +1358,7 @@ describe("accounts, ATS and programs (Phase 9 Part D)", () => {
       await import("@/components/dashboard/modals/ImportProfileModal");
     // The modal renders through a portal, so its wiring is read from the source.
     const source = readFileSync(
-      join(process.cwd(), "components/dashboard/modals/ImportProfileModal.tsx"),
+      join(`${__dirname}/../..`, "components/dashboard/modals/ImportProfileModal.tsx"),
       "utf8",
     );
 
@@ -1201,6 +1374,56 @@ describe("accounts, ATS and programs (Phase 9 Part D)", () => {
     expect(accessTierLabel("credits")).toBe("Credits customer");
     expect(accessTierLabel("bundle")).toBe("Job Hunter Bundle");
     expect(accessTierLabel("free")).toBe("Free");
+  });
+
+  it("S-377 an abandoned checkout blocking deletion can be cancelled from the delete modal", async () => {
+    const { releaseCheckoutBeforeDeletion } = await import("@/features/billing/billing-api");
+    const answer = (data: unknown, status = 200) =>
+      vi.fn(async () => new Response(JSON.stringify({ data }), { status }));
+
+    vi.stubGlobal("fetch", answer({ success: true, cleared: ["portfolio_pro"] }));
+    await expect(releaseCheckoutBeforeDeletion()).resolves.toBeNull();
+
+    // A pack payment still moving is kept, and the customer is told why deletion still waits.
+    vi.stubGlobal("fetch", answer({ success: true, stillProcessing: ["250 extra credits"] }));
+    await expect(releaseCheckoutBeforeDeletion()).resolves.toMatch(/still being processed/);
+    vi.unstubAllGlobals();
+
+    const modal = readFileSync(
+      join(studioRoot, "features/profile/components/DeleteAccountModal.tsx"),
+      "utf8",
+    );
+    expect(modal).toContain('err.code === "CHECKOUT_IN_PROGRESS"');
+    expect(modal).toContain("await releaseCheckoutBeforeDeletion()");
+    expect(modal).toContain("Cancel the open checkout");
+    // Deleting still needs the typed email: clearing the field after the 409 must not delete.
+    const cancelPath = modal.slice(modal.indexOf("const cancelCheckoutThenDelete"));
+    expect(cancelPath.slice(0, cancelPath.indexOf("releaseCheckoutBeforeDeletion"))).toContain(
+      "if (!isConfirmed)",
+    );
+    expect(modal).toMatch(
+      /disabled={!isConfirmed || isDeleting}s*onClick={() => void cancelCheckoutThenDelete()}/,
+    );
+  });
+
+  it("S-409 the delete modal points to Restore a backup, not an editor's Import JSON", () => {
+    const modal = readFileSync(
+      join(studioRoot, "features/profile/components/DeleteAccountModal.tsx"),
+      "utf8",
+    ).replace(/\s+/g, " ");
+
+    expect(modal).toContain("Restore a backup");
+    expect(modal).not.toMatch(/Import JSON restores/);
+  });
+
+  it("S-386 the account menu flags a failed payment, and only a failed payment", async () => {
+    const { accountPaymentNotice } = await import("@/features/billing/checkout-rules");
+
+    expect(accountPaymentNotice({ paymentIssue: true })).toBe("Payment failed · update card");
+    expect(accountPaymentNotice({ paymentIssue: false })).toBeNull();
+    expect(
+      readFileSync(join(studioRoot, "components/dashboard/account-menu/AccountMenu.tsx"), "utf8"),
+    ).toContain("accountPaymentNotice(billing.access)");
   });
 
   it("O7 LOW an approved ambassador who is also an admin is not 'under review'", async () => {
@@ -1239,7 +1462,7 @@ describe("GitHub import copy (owner decision A)", () => {
     );
     expect(
       readFileSync(
-        join(process.cwd(), "components/dashboard/modals/ImportProfileModal.tsx"),
+        join(`${__dirname}/../..`, "components/dashboard/modals/ImportProfileModal.tsx"),
         "utf8",
       ),
     ).not.toMatch(/must match/);

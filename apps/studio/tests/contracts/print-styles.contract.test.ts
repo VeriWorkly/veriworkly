@@ -33,7 +33,7 @@ vi.mock("@/lib/auth-client", () => ({ authClient: { useSession: () => ({ data: n
  * mechanics now live in `templates/shared/print-styles.ts`; these tests keep them there.
  */
 
-const ROOT = process.cwd();
+const ROOT = `${__dirname}/../..`;
 
 /** Where an exported document's markup is written, and the public share page that prints one. */
 const EXPORT_SOURCES = ["templates", join("features", "documents", "export"), join("app", "share")];

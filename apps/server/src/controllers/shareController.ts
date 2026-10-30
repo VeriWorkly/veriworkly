@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { PublicShareLink } from "#types/api";
 
-import { requireAuthUser } from "#middleware/auth";
+import { getSessionUserFromRequest, requireAuthUser } from "#middleware/auth";
 import { incrementFixedWindow } from "#middleware/rateLimit";
 
 import { ShareService } from "#services/shareService";
@@ -93,17 +93,40 @@ function formatShareLinkResponse<T extends { passwordHash?: string | null; snaps
  * Counts one view, as the viewer (V-245): the resolved client IP (the forwarded one when a trusted
  * server render asks on the browser's behalf) and the browser's user agent. `req.ip` and the raw
  * header made every studio page load the studio server's view, with one IP hash for all of them.
+ * The owner's own visit (the share modal's "Open link") is not a view (S-397): the studio render
+ * forwards their session cookie, so it is looked up here, after the response.
  */
-function recordView(req: Request, shareLinkId: string) {
-  ShareService.recordShareView(
-    shareLinkId,
-    getRequestIpDetails(req).resolvedIp || undefined,
-    getRequestUserAgent(req),
-  ).catch((error) =>
+function recordView(req: Request, shareLink: { id: string; userId?: string }) {
+  const record = async () => {
+    if (shareLink.userId && (await isOwnerVisit(req, shareLink.userId))) return;
+
+    await ShareService.recordShareView(
+      shareLink.id,
+      getRequestIpDetails(req).resolvedIp || undefined,
+      getRequestUserAgent(req),
+    );
+  };
+
+  record().catch((error) =>
     logger.warn("Share view tracking failed", {
       error: error instanceof Error ? error.message : String(error),
     }),
   );
+}
+
+/**
+ * Whether the request carries the link owner's session. The lookup only filters the count: when
+ * the session store is down the visit is counted as a reader's rather than dropped (S-397).
+ */
+async function isOwnerVisit(req: Request, ownerId: string) {
+  try {
+    return (await getSessionUserFromRequest(req))?.id === ownerId;
+  } catch (error) {
+    logger.debug("Share view owner check unavailable; counting the view", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return false;
+  }
 }
 
 /** The largest share snapshot, serialized: the same 1 MB bound a master profile has. */
@@ -323,7 +346,7 @@ export class ShareController {
           createSuccessResponse(buildPublicSharePayload(shareLink, false), "Password required"),
         );
 
-      recordView(req, shareLink.id);
+      recordView(req, shareLink);
 
       res.json(
         createSuccessResponse(
@@ -375,7 +398,7 @@ export class ShareController {
         await cacheDel(attemptsKey);
       }
 
-      recordView(req, shareLink.id);
+      recordView(req, shareLink);
 
       res.json(
         createSuccessResponse(

@@ -7,7 +7,11 @@ import type {
   PlanChangeResult,
   ProductKey,
 } from "@/features/billing/types";
-import type { CheckoutCancelResult } from "@/features/billing/checkout-rules";
+import {
+  checkoutCancelNotice,
+  describeCheckoutCancelError,
+  type CheckoutCancelResult,
+} from "@/features/billing/checkout-rules";
 
 export function beginCheckout(
   productKey: ProductKey,
@@ -56,4 +60,17 @@ export function cancelCheckout() {
     method: "POST",
     body: "{}",
   });
+}
+
+/**
+ * Releases a checkout the customer walked away from, which blocks account deletion for up to a
+ * day (S-377). Null when nothing is left open, so the deletion can go on; otherwise what to tell
+ * the customer: a pack payment still moving is kept, and a refusal says what to do instead.
+ */
+export async function releaseCheckoutBeforeDeletion(): Promise<string | null> {
+  try {
+    return checkoutCancelNotice(await cancelCheckout());
+  } catch (cause) {
+    return describeCheckoutCancelError(cause, "Could not cancel the open checkout.");
+  }
 }

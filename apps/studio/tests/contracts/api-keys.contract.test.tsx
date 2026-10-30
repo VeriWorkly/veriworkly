@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -262,7 +263,10 @@ describe("S-086 S-262 a key's status follows expiry, revocation and admin disabl
 
   it("S-277 V-195 a revoked or rotated-out key in the list reads Revoked, never admin-disabled", async () => {
     const { readFileSync } = await import("node:fs");
-    const source = readFileSync(`${process.cwd()}/../server/src/services/apiKeyService.ts`, "utf8");
+    const source = readFileSync(
+      join(__dirname, "..", "..", "..", "server", "src", "services", "apiKeyService.ts"),
+      "utf8",
+    );
     const listSelect = source.slice(source.indexOf("static async list"));
     expect(listSelect.slice(0, 2000)).toMatch(/expiresAt: true[\s\S]*revokedAt: true/);
 
@@ -503,14 +507,20 @@ describe("account and key pages say what is true (O7 LOW)", () => {
 
   it("the ambassador kit claims no offline mode and no opt-in sync", async () => {
     const { readFileSync } = await import("node:fs");
-    const source = readFileSync("features/ambassador/ShareToolkit.tsx", "utf8");
+    const source = readFileSync(
+      join(__dirname, "..", "..", "features/ambassador/ShareToolkit.tsx"),
+      "utf8",
+    );
 
     expect(source).not.toMatch(/works offline|unless I choose to sync/);
   });
 
   it("the locked-username dialog links to a way to reach us", async () => {
     const { readFileSync } = await import("node:fs");
-    const source = readFileSync("features/profile/components/UsernameLockedModal.tsx", "utf8");
+    const source = readFileSync(
+      join(__dirname, "..", "..", "features/profile/components/UsernameLockedModal.tsx"),
+      "utf8",
+    );
 
     expect(source).toContain("/contact");
   });

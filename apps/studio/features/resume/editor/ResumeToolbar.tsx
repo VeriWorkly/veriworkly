@@ -177,7 +177,9 @@ const ResumeToolbar = memo(function ResumeToolbar({
               return;
             }
 
-            const result = resetResume(master);
+            const result = resetResume(master, resumeId);
+            if (!result) return;
+
             onSetMessage(
               result.ok ? "Resume reset to defaults" : getSaveFailureMessage(result.reason),
             );

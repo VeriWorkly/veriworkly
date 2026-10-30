@@ -285,15 +285,48 @@ function readReplay(value: Prisma.JsonValue | null) {
   return { fingerprint, response };
 }
 
+/**
+ * A retry of a request whose first attempt is still running (S-384). The client keeps the same
+ * request id on this code, so once the first attempt commits the retry is answered from its stored
+ * result instead of being charged again under a new id.
+ */
+function stillProcessing() {
+  return new ApiError(409, "Still working on your last request. Try again in a few seconds.", {
+    code: "AI_REQUEST_PROCESSING",
+    retryAfterSeconds: 5,
+  });
+}
+
+/**
+ * How long after its charge a committed request may still be waiting for its result to be stored
+ * (`attachReplay`, which the ATS analysis calls after committing). A retry in that gap is told to
+ * wait, not that the id is spent, so the client keeps the id that will replay it (S-384).
+ */
+const REPLAY_ATTACH_WINDOW_MS = 2 * 60 * 1000;
+
 function reservationConflict(
-  existing: { userId: string; action: string; cost: number; status: string },
+  existing: {
+    userId: string;
+    action: string;
+    cost: number;
+    status: string;
+    replay?: Prisma.JsonValue | null;
+    updatedAt?: Date;
+  },
   userId: string,
   action: string,
   cost: number,
 ) {
   if (existing.userId !== userId || existing.action !== action || existing.cost !== cost)
     return new ApiError(409, "AI request id was already used for another operation.");
-  if (existing.status === "PENDING") return new ApiError(409, "This AI request is processing.");
+  if (existing.status === "PENDING") return stillProcessing();
+  if (
+    existing.status === "COMMITTED" &&
+    !existing.replay &&
+    existing.updatedAt &&
+    Date.now() - existing.updatedAt.getTime() < REPLAY_ATTACH_WINDOW_MS
+  )
+    return stillProcessing();
   if (existing.status === "COMMITTED")
     return new ApiError(409, "This AI request already completed.");
   return new ApiError(409, "This AI request id can no longer be reused.");
@@ -539,9 +572,7 @@ export class CreditService {
         const existing = await prisma.creditReservation.findUnique({
           where: { userId_requestId: { userId, requestId } },
         });
-        throw existing
-          ? reservationConflict(existing, userId, action, cost)
-          : new ApiError(409, "This AI request is processing.");
+        throw existing ? reservationConflict(existing, userId, action, cost) : stillProcessing();
       }
       throw error;
     }

@@ -224,6 +224,55 @@ describe("api request contract", () => {
     expect(readReferralCode()).toBeNull();
   });
 
+  it("S-373 only a social sign-in started from this tab counts as one, once", async () => {
+    const { markSocialSignInStarted, takeSocialSignInStarted } = await import("@/lib/sign-in");
+    vi.stubGlobal("sessionStorage", createLocalStorageMock());
+    const clicked = new Date("2026-10-29T10:00:00.000Z");
+
+    expect(takeSocialSignInStarted(clicked)).toBe(false);
+
+    markSocialSignInStarted(clicked);
+    expect(takeSocialSignInStarted(new Date("2026-10-29T10:02:00.000Z"))).toBe(true);
+    // Spent: reopening the callback URL later is not a second sign-in.
+    expect(takeSocialSignInStarted(new Date("2026-10-29T10:03:00.000Z"))).toBe(false);
+
+    markSocialSignInStarted(clicked);
+    expect(takeSocialSignInStarted(new Date("2026-10-30T10:00:00.000Z"))).toBe(false);
+  });
+
+  it("S-373 a social sign-in that failed to start, or any finished sign-in, spends the note", async () => {
+    const { markSocialSignInStarted, takeSocialSignInStarted } = await import("@/lib/sign-in");
+    vi.stubGlobal("sessionStorage", createLocalStorageMock());
+
+    // An email-code sign-in finishes through `finishSignIn`; a later callback link is not it.
+    markSocialSignInStarted();
+    await finishSignIn();
+    expect(takeSocialSignInStarted()).toBe(false);
+
+    const social = readFileSync(
+      join(__dirname, "..", "..", "app/login/component/SocialAuth.tsx"),
+      "utf8",
+    );
+    const fail = social.slice(social.indexOf("const fail = "));
+    expect(fail.slice(0, fail.indexOf("};"))).toContain("clearSocialSignInStarted()");
+  });
+
+  it("S-373 the callback applies a referral and says signed in only for a sign-in this tab started", () => {
+    const page = readFileSync(join(__dirname, "..", "..", "app/login/callback/page.tsx"), "utf8");
+    const social = readFileSync(
+      join(__dirname, "..", "..", "app/login/component/SocialAuth.tsx"),
+      "utf8",
+    );
+
+    expect(social).toContain("markSocialSignInStarted()");
+    expect(page).toContain("const startedHere = takeSocialSignInStarted()");
+    expect(page).toMatch(/if \(startedHere && referralCode\) rememberReferralCode\(referralCode\)/);
+    // Not started here: no referral, no "signed in" toast, just the way back.
+    expect(page).toMatch(
+      /if \(!startedHere\) \{[\s\S]*?router\.replace\(targetPath\);[\s\S]*?return;/,
+    );
+  });
+
   it("S-257: a referral the server refuses is reported, not swallowed, and not retried", async () => {
     rememberReferralCode("OLD");
     respondWith([400, { message: "Referral codes can only be applied to new accounts." }]);

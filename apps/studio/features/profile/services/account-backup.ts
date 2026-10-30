@@ -1,6 +1,9 @@
 import type { BaseDocument } from "@/features/documents/core/types";
 import type { DocumentType } from "@/features/documents/core/document-types";
-import type { CloudDocument } from "@/features/documents/services/document-api";
+import type {
+  AccountDocumentType,
+  CloudDocument,
+} from "@/features/documents/services/document-api";
 
 import { serializeWorkspaceBackup } from "@/features/auth/services/current-user";
 import { getDocumentDefinition } from "@/features/documents/core/registry";
@@ -35,7 +38,7 @@ function cloudVersion(document: BaseDocument): BaseDocument {
  * every reply carries `nextCursor` and `total`, so the walk ends only on the last page. A failed
  * page throws: no partial list.
  */
-async function listEveryDocument(type: DocumentType): Promise<CloudDocument[]> {
+async function listEveryDocument(type: AccountDocumentType): Promise<CloudDocument[]> {
   const documents: CloudDocument[] = [];
 
   for await (const page of DocumentApi.pages(type, {
@@ -52,7 +55,8 @@ async function listEveryDocument(type: DocumentType): Promise<CloudDocument[]> {
  * Everything the account holds that the user wrote: every resume and cover letter in the
  * account, read straight from the server (not through the sync pull, which skips a device
  * holding someone else's documents), every document of this account on this device the cloud
- * does not have, and the Master Profile.
+ * does not have, the Master Profile, and the portfolio and link-in-bio pages as stored (the
+ * studio cannot open them, but account deletion destroys them, S-375).
  *
  * A device copy with nothing unsent gives way to a newer cloud revision. One with changes the
  * cloud does not have (pending, in conflict, kept local) is exported beside the cloud copy, so
@@ -61,9 +65,15 @@ async function listEveryDocument(type: DocumentType): Promise<CloudDocument[]> {
  */
 export async function buildAccountBackup(now = new Date()): Promise<AccountBackup> {
   let records: Array<{ type: DocumentType; record: CloudDocument }>;
+  let sites: CloudDocument[];
 
   try {
-    const lists = await Promise.all(DOCUMENT_TYPES.map((type) => listEveryDocument(type)));
+    const [lists, portfolios, linkInBio] = await Promise.all([
+      Promise.all(DOCUMENT_TYPES.map((type) => listEveryDocument(type))),
+      listEveryDocument("PORTFOLIO"),
+      listEveryDocument("LINK_IN_BIO"),
+    ]);
+    sites = [...portfolios, ...linkInBio];
 
     // Each row is read as the type it was listed under.
     records = lists.flatMap((documents, index) =>
@@ -138,7 +148,19 @@ export async function buildAccountBackup(now = new Date()): Promise<AccountBacku
         ? master.raw
         : null;
 
-  return { ok: true, ...serializeWorkspaceBackup(documents, now, { masterProfile }) };
+  return {
+    ok: true,
+    ...serializeWorkspaceBackup(documents, now, {
+      masterProfile,
+      sites: sites.map(({ id, type, title, content, updatedAt }) => ({
+        id,
+        type,
+        title,
+        content,
+        updatedAt,
+      })),
+    }),
+  };
 }
 
 /** Downloads the account backup, or says why none was made. */

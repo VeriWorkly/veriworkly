@@ -18,6 +18,14 @@ export function accessTierLabel(tier: BillingSummary["access"]["tier"]) {
   return PLAN_NAMES[tier];
 }
 
+/**
+ * A renewal whose card failed: the plan is still named (the customer has it), and they are told
+ * to fix the card wherever the plan is shown, not only on /billing (S-386). A pause owes nothing.
+ */
+export function accountPaymentNotice(access: Pick<BillingSummary["access"], "paymentIssue">) {
+  return access.paymentIssue ? "Payment failed · update card" : null;
+}
+
 export const PAYMENTS_OPEN_SOON =
   "Payments open soon. Purchases are not available yet; nothing has been charged.";
 

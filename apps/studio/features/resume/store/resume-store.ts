@@ -40,13 +40,15 @@ import { deriveResumeFromMasterProfile } from "@/features/resume/services/master
 import { getResumeSectionKey } from "@/features/documents/rendering/resume-rendering";
 import { normalizeResumeData } from "@/features/resume/utils/normalize-data";
 import { reorderItems, withTimestamp } from "@/features/resume/store/resume-store-utils";
+import { DOCUMENT_TITLE_MAX_LENGTH } from "@/features/documents/core/document-title";
 
 interface ResumeStoreState {
   resume: ResumeData;
   setResume: (resume: ResumeData) => void;
   saveToStorage: (options?: SaveResumeOptions) => SaveResumeResult;
   /** Back to a new resume's content: from `master` when given, blank otherwise. */
-  resetResume: (master?: MasterProfileData) => SaveResumeResult;
+  /** Null, and nothing changed, when the store no longer holds the resume `forId` names. */
+  resetResume: (master?: MasterProfileData, forId?: string) => SaveResumeResult | null;
   emptyResume: () => SaveResumeResult;
   /** Keyed by `getResumeSectionKey`, not by section id — several sections share id "custom". */
   setSectionVisibility: (sectionKey: string, visible: boolean) => void;
@@ -144,8 +146,13 @@ export const useResumeStore = create<ResumeStoreState>((set, get) => ({
 
   saveToStorage: (options) => saveResumeToLocalStorage(get().resume, options),
 
-  resetResume: (master) => {
+  resetResume: (master, forId) => {
     const activeResume = get().resume;
+
+    // The profile is fetched after the user confirmed; meanwhile another resume may have
+    // opened, and it must not be the one replaced (S-407).
+    if (forId !== undefined && activeResume.id !== forId) return null;
+
     const next = master
       ? deriveResumeFromMasterProfile(activeResume.id, master)
       : { ...blankResume, id: activeResume.id };
@@ -266,7 +273,8 @@ export const useResumeStore = create<ResumeStoreState>((set, get) => ({
     set((state) => ({
       resume: withTimestamp({
         ...state.resume,
-        title,
+        // The server refuses a longer title, which would stop every backup (S-405).
+        title: title.slice(0, DOCUMENT_TITLE_MAX_LENGTH),
       }),
     })),
 

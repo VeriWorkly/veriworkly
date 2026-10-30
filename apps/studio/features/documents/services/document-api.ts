@@ -4,6 +4,9 @@ import { backendApiUrl } from "@/lib/constants";
 
 export type { DocumentType };
 
+/** Every type the account can hold; the studio edits only {@link DocumentType}. */
+export type AccountDocumentType = DocumentType | "PORTFOLIO" | "LINK_IN_BIO";
+
 export interface CloudDocument {
   id: string;
   type: DocumentType;
@@ -172,7 +175,7 @@ export class DocumentApi {
    * path) must pass `includeContent: true`.
    */
   static async list(
-    type?: DocumentType,
+    type?: AccountDocumentType,
     options?: DocumentListOptions,
   ): Promise<DocumentListResult> {
     let url = "/documents";
@@ -207,7 +210,7 @@ export class DocumentApi {
    * the walk.
    */
   static async *pages(
-    type: DocumentType | undefined,
+    type: AccountDocumentType | undefined,
     options: Omit<DocumentListOptions, "cursor"> & { limit: number },
   ): AsyncGenerator<DocumentListResult> {
     const checkPage = createPageGuard(options.limit, !options.updatedSince);

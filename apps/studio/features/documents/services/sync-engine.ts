@@ -16,8 +16,9 @@ export type SyncStatus = DocumentSyncStatus;
 /**
  * Why a sync attempt did not succeed.
  *
- * `upgrade-required` (402), `forbidden` (403) and `rejected` (other 4xx) are terminal: the
- * worker stops retrying until the user syncs by hand. `deleted` means the cloud copy was
+ * `forbidden` (403) and `rejected` (other 4xx) are terminal: the worker stops retrying until
+ * the user syncs by hand. `upgrade-required` (402) is retried once per app load, when the worker
+ * starts, in case the plan changed. `deleted` means the cloud copy was
  * deleted on another device and the local copy has been removed with it; `deleted-elsewhere`
  * means it was deleted there but the local copy held unsynced edits, so it was kept, unlinked
  * and local-only.

@@ -32,6 +32,8 @@ import {
   deleteAccount,
 } from "@/features/profile/services/update-profile";
 import { formatCents } from "@/features/admin/utils/admin-format";
+import { releaseCheckoutBeforeDeletion } from "@/features/billing/billing-api";
+import { ApiRequestError } from "@/utils/fetchApiData";
 
 interface DeleteAccountModalProps {
   open: boolean;
@@ -50,6 +52,9 @@ const DeleteAccountModal = ({ open, onClose, userEmail }: DeleteAccountModalProp
   // The unpaid affiliate balance the server said this deletion forfeits (409
   // AFFILIATE_BALANCE_FORFEIT); deleting again confirms exactly this amount.
   const [forfeit, setForfeit] = React.useState<AffiliateForfeit | null>(null);
+  // The server refused because a checkout is still open (409 CHECKOUT_IN_PROGRESS). Nothing else
+  // in the app cancels it, so the modal offers to (S-377).
+  const [openCheckout, setOpenCheckout] = React.useState(false);
 
   if (open !== prevOpen) {
     setPrevOpen(open);
@@ -59,6 +64,7 @@ const DeleteAccountModal = ({ open, onClose, userEmail }: DeleteAccountModalProp
       setError(null);
       setBackupError(null);
       setForfeit(null);
+      setOpenCheckout(false);
       setIsDeleting(false);
     }
   }
@@ -92,14 +98,7 @@ const DeleteAccountModal = ({ open, onClose, userEmail }: DeleteAccountModalProp
 
   const isConfirmed = confirmationInput.trim().toLowerCase() === userEmail.trim().toLowerCase();
 
-  const handleDelete = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    if (!isConfirmed) {
-      setError("Please type your exact email to confirm deletion.");
-      return;
-    }
-
+  const runDelete = async () => {
     try {
       setIsDeleting(true);
       setError(null);
@@ -124,11 +123,48 @@ const DeleteAccountModal = ({ open, onClose, userEmail }: DeleteAccountModalProp
         return;
       }
 
+      if (err instanceof ApiRequestError && err.code === "CHECKOUT_IN_PROGRESS") {
+        setOpenCheckout(true);
+        setIsDeleting(false);
+        return;
+      }
+
       const message = err instanceof Error ? err.message : "Failed to delete account";
       setError(message);
       toast.error(message);
       setIsDeleting(false);
     }
+  };
+
+  const handleDelete = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (!isConfirmed) {
+      setError("Please type your exact email to confirm deletion.");
+      return;
+    }
+
+    await runDelete();
+  };
+
+  const cancelCheckoutThenDelete = async () => {
+    if (!isConfirmed) {
+      setError("Please type your exact email to confirm deletion.");
+      return;
+    }
+
+    setIsDeleting(true);
+    setError(null);
+
+    const problem = await releaseCheckoutBeforeDeletion();
+    if (problem) {
+      setError(problem);
+      setIsDeleting(false);
+      return;
+    }
+
+    setOpenCheckout(false);
+    await runDelete();
   };
 
   return (
@@ -245,8 +281,9 @@ const DeleteAccountModal = ({ open, onClose, userEmail }: DeleteAccountModalProp
                     Deleting your account removes them from this device too.{" "}
                   </>
                 ) : null}
-                Download a copy first: one JSON file with every document in your account and your
-                Master Profile. An editor&apos;s Import JSON restores the documents, and Profile,
+                Download a copy first: one JSON file with every document in your account, your
+                portfolio and link-in-bio pages, and your Master Profile. Restore a backup, on the
+                empty Documents page or the first-run guide, restores the documents, and Profile,
                 Advanced JSON, Import restores the Master Profile. For a PDF, open a document and
                 download it.
               </span>
@@ -307,6 +344,30 @@ const DeleteAccountModal = ({ open, onClose, userEmail }: DeleteAccountModalProp
                   {formatCents(forfeit.pendingCents, forfeit.currency)} pending. To keep it, cancel
                   and request a payout first. To delete anyway, confirm below.
                 </p>
+              </div>
+            ) : null}
+
+            {openCheckout ? (
+              <div
+                role="alert"
+                className="flex flex-col gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-xs sm:flex-row sm:items-center sm:justify-between"
+              >
+                <span>
+                  <strong className="text-foreground">A checkout you started is still open.</strong>{" "}
+                  It could still be paid, so the account can&apos;t be deleted yet. If you
+                  aren&apos;t paying for it, cancel it and the deletion goes ahead.
+                </span>
+
+                <Button
+                  size="sm"
+                  type="button"
+                  variant="secondary"
+                  disabled={!isConfirmed || isDeleting}
+                  onClick={() => void cancelCheckoutThenDelete()}
+                  className="shrink-0 text-xs font-semibold"
+                >
+                  Cancel the open checkout
+                </Button>
               </div>
             ) : null}
 

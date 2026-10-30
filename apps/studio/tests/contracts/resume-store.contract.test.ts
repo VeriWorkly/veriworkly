@@ -149,7 +149,7 @@ describe("resume store reset and empty (S-008, S-129)", () => {
       const result = useResumeStore.getState()[action]();
       const resume = useResumeStore.getState().resume;
 
-      expect(result.ok).toBe(true);
+      expect(result?.ok).toBe(true);
       expect(resume.id).toBe("resume-linked");
       expect(resume.sync.cloudDocumentId).toBe("cloud-1");
       expect(resume.sync.revision).toBe(3);
@@ -166,7 +166,7 @@ describe("resume store reset and empty (S-008, S-129)", () => {
         throw new DOMException("full", "QuotaExceededError");
       });
 
-      expect(useResumeStore.getState()[action]().ok).toBe(false);
+      expect(useResumeStore.getState()[action]()?.ok).toBe(false);
     });
   }
 
