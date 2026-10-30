@@ -39,7 +39,8 @@ export function StructureRail({
   onOpenTemplates,
 }: StructureRailProps) {
   const templateId = usePortfolioStore((state) => state.content.templateId);
-  const pages = usePortfolioStore((state) => state.content.pages || []);
+  // The fallback stays outside the selector: a new [] per call makes the store loop forever.
+  const pages = usePortfolioStore((state) => state.content.pages) ?? [];
   const selectedPageId = usePortfolioStore((state) => state.selectedPageId);
   const setSelectedPageId = usePortfolioStore((state) => state.setSelectedPageId);
   const addPage = usePortfolioStore((state) => state.addPage);
