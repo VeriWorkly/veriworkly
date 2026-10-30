@@ -49,3 +49,7 @@ export const DM_Mono = loader("DM_Mono");
 
 // Cipher
 export const JetBrains_Mono = loader("JetBrains_Mono");
+
+// @veriworkly/ui (its index loads the shared fonts, so any component imported from it does)
+export const Geist = loader("Geist");
+export const Geist_Mono = loader("Geist_Mono");

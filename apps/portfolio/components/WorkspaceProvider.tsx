@@ -11,6 +11,7 @@ import {
   usePortfolioStore,
 } from "@/store/portfolio-store";
 import { loadPortfolioCache } from "@/lib/portfolio-storage";
+import { WorkspaceNotice } from "@/components/WorkspaceNotice";
 
 interface WorkspaceContextType {
   user: PortfolioWorkspaceBootstrap["user"];
@@ -73,10 +74,11 @@ function WorkspaceBridge({
 
   useEffect(() => {
     if (initialData.user || initialData.workspace) {
-      // Re-running hydrate for the seeded case is intentional: it is idempotent, and it
-      // performs the localStorage write that `buildHydratedState` omits so the seed can
-      // stay pure enough to run on the server.
-      if (initialData.workspace)
+      // A guest draft left in this browser was made before signing in. `loadWorkspace` carries
+      // it into the account when it is newer than the cloud copy; the server seed knows nothing
+      // of it, and its blank default would otherwise be autosaved over the guest's work.
+      if (initialData.user && loadPortfolioCache()) void load();
+      else if (initialData.workspace)
         hydrate({ ...initialData, analytics: initialData.analytics ?? null });
       else void load();
     } else {
@@ -124,7 +126,13 @@ function WorkspaceBridge({
     [ready, user, draft, publication, billing, initialData],
   );
 
-  return <WorkspaceContext.Provider value={contextValue}>{children}</WorkspaceContext.Provider>;
+  // Mounted once here so save, publish and load notices reach every workspace page.
+  return (
+    <WorkspaceContext.Provider value={contextValue}>
+      {children}
+      <WorkspaceNotice />
+    </WorkspaceContext.Provider>
+  );
 }
 
 export function useWorkspace() {

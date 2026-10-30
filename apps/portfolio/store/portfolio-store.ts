@@ -18,7 +18,11 @@ import {
   type PortfolioPage,
 } from "@/lib/portfolio";
 import { sectionLabels, sectionSubtitleDefaults } from "@/lib/section-fields";
-import { loadPortfolioCache, savePortfolioCache } from "@/lib/portfolio-storage";
+import {
+  clearPortfolioCache,
+  loadPortfolioCache,
+  savePortfolioCache,
+} from "@/lib/portfolio-storage";
 
 export type SaveStatus =
   "Saving" | "Saved" | "Offline" | "Conflict" | "Publish pending" | "Unsaved changes";
@@ -40,6 +44,18 @@ export type PortfolioWorkspaceBootstrap = {
   workspace: { draft?: unknown; publication?: Publication; billing?: Billing } | null;
   analytics: PortfolioAnalyticsData | null;
 };
+
+/** What a save, publish or unpublish actually did. Every toast about one comes from this. */
+export type ActionResult = { ok: boolean; message: string; status?: number };
+export type SaveResult = ActionResult & { draft?: CloudPortfolioDraft };
+
+/** The server's own message, plus any field messages a 400 carries in `details`. */
+function serverMessage(payload: { message?: string; details?: unknown }, fallback: string) {
+  const details = Array.isArray(payload.details)
+    ? payload.details.map((detail: { message?: string }) => detail?.message).filter(Boolean)
+    : [];
+  return [payload.message || fallback, ...details].join(" ");
+}
 
 async function fetchPayload(path: string, fallbackMessage: string, init?: RequestInit) {
   const response = await authenticatedFetch(path, init);
@@ -161,9 +177,9 @@ interface PortfolioStoreState {
   // Async Actions
   loadWorkspace: () => Promise<void>;
   hydrateWorkspace: (initialData: PortfolioWorkspaceBootstrap) => void;
-  saveDraft: () => Promise<CloudPortfolioDraft | null>;
-  publish: () => Promise<void>;
-  unpublish: () => Promise<void>;
+  saveDraft: () => Promise<SaveResult>;
+  publish: () => Promise<ActionResult>;
+  unpublish: () => Promise<ActionResult>;
 }
 
 export type PortfolioStoreApi = ReturnType<typeof createPortfolioStore>;
@@ -181,20 +197,19 @@ export type PortfolioStoreApi = ReturnType<typeof createPortfolioStore>;
  * instance, seeded with exactly its own bootstrap.
  */
 /** One draft save, of the store's content as it is when sent. Only `saveDraft` calls it. */
-async function sendDraft(
-  store: StoreApi<PortfolioStoreState>,
-): Promise<CloudPortfolioDraft | null> {
+async function sendDraft(store: StoreApi<PortfolioStoreState>): Promise<SaveResult> {
   const { getState: get, setState: set } = store;
   const current = get();
+  // A workspace that failed to load has no user only because the load failed, not because
+  // this is a guest: saving it locally as a guest would put a blank draft in the cache.
+  if (current.workspaceState === "error") {
+    return { ok: false, message: "Your workspace did not load. Reload the page, then save." };
+  }
   set({ status: "Saving" });
-  savePortfolioCache({ slug: current.slug, content: current.content });
   if (!current.user) {
-    set({
-      status: "Saved",
-      isDirty: false,
-      message: "Saved locally. Log in to sync to cloud.",
-    });
-    return null;
+    savePortfolioCache({ slug: current.slug, content: current.content });
+    set({ status: "Saved", isDirty: false });
+    return { ok: true, message: "Saved locally. Log in to sync to cloud." };
   }
   try {
     const response = await authenticatedFetch("/portfolios/draft", {
@@ -209,14 +224,25 @@ async function sendDraft(
       }),
     });
     const payload = await response.json().catch(() => ({}));
-    if (response.status === 409) {
-      set({
-        status: "Conflict",
+    // A stale revision says which one is current; any other 409 (a subdomain clash) carries
+    // its own message and is fixed in the form, not by a refresh.
+    if (response.status === 409 && payload.details?.revision !== undefined) {
+      set({ status: "Conflict" });
+      return {
+        ok: false,
+        status: 409,
         message: "This draft changed in another session. Refresh before continuing.",
-      });
-      return null;
+      };
     }
-    if (!response.ok) throw new Error(payload.message || "Draft sync failed.");
+    if (!response.ok) {
+      const message = serverMessage(payload, "Draft sync failed.");
+      // A 4xx is the server refusing this draft, so retrying the same content will not help.
+      if (response.status < 500 && response.status !== 429) {
+        set({ status: response.status === 409 ? "Conflict" : "Unsaved changes" });
+        return { ok: false, status: response.status, message };
+      }
+      throw Object.assign(new Error(message), { status: response.status });
+    }
     const saved = {
       ...payload.data,
       content: parsePortfolioContent(payload.data.content),
@@ -230,24 +256,26 @@ async function sendDraft(
       message: "",
       previewIssue: "",
     });
-    return saved;
+    return { ok: true, message: "Draft saved.", draft: saved };
   } catch (error) {
     set({
       status: "Offline",
       previewIssue: "Live preview is unavailable while your draft cannot sync.",
-      message:
-        error instanceof Error
-          ? `${error.message} Your changes remain in this browser.`
-          : "Draft sync failed. Your changes remain in this browser.",
     });
-    return null;
+    const reason =
+      error instanceof Error && error.name !== "AbortError" ? error.message : "Draft sync failed.";
+    return {
+      ok: false,
+      status: (error as { status?: number }).status,
+      message: `${reason} Your changes remain in this browser.`,
+    };
   }
 }
 
 export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
-  let saveInFlight: Promise<CloudPortfolioDraft | null> | null = null;
-  let saveQueued: Promise<CloudPortfolioDraft | null> | null = null;
-  const startSave = (): Promise<CloudPortfolioDraft | null> => {
+  let saveInFlight: Promise<SaveResult> | null = null;
+  let saveQueued: Promise<SaveResult> | null = null;
+  const startSave = (): Promise<SaveResult> => {
     saveInFlight = sendDraft(store).finally(() => {
       saveInFlight = null;
     });
@@ -473,13 +501,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
           status: state.ready ? "Unsaved changes" : state.status,
         })),
 
-      hydrateWorkspace: (bootstrap) => {
-        const next = buildHydratedState(bootstrap);
-
-        if (next.draft) savePortfolioCache(next.draft);
-
-        set(next);
-      },
+      hydrateWorkspace: (bootstrap) => set(buildHydratedState(bootstrap)),
 
       loadWorkspace: async () => {
         // Re-entrancy guard: a double-mount effect (React StrictMode, a fast
@@ -514,13 +536,24 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
               });
               return;
             }
+            // Anything else that is not a user (5xx, 429, a broken body) is an outage, not a
+            // guest: dropping to guest mode here would hide a signed-in user's draft (P-017).
+            if (!response.ok) {
+              throw Object.assign(new Error("Could not load your portfolio workspace."), {
+                status: response.status,
+              });
+            }
 
             // User is logged in, continue with fetching data
             const [userPayload, portfolioPayload, analyticsPayload] = await Promise.all([
               response
                 .json()
                 .then((r) => r.data)
-                .catch(() => null),
+                .catch(() => null)
+                .then((data) => {
+                  if (!data) throw new Error("Could not load your portfolio workspace.");
+                  return data;
+                }),
               fetchPayload("/portfolios/me", "Could not load your portfolio workspace."),
               fetchPayload("/portfolios/analytics", "Could not load portfolio analytics.").catch(
                 () => null,
@@ -611,8 +644,17 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
               ready: true,
             });
 
+            // No caller is waiting on this save, so its failure goes to the notice. Once the
+            // guest draft is in the account (or lost to a newer cloud copy) it is not carried
+            // in again.
+            if (cached && !shouldSyncLocalToCloud) clearPortfolioCache();
             if (shouldSyncLocalToCloud) {
-              void get().saveDraft();
+              void get()
+                .saveDraft()
+                .then((result) => {
+                  if (result.ok) clearPortfolioCache();
+                  else set({ message: result.message });
+                });
             }
           } catch (error) {
             const status = (error as { status?: number })?.status;
@@ -665,65 +707,69 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
         return startSave();
       },
 
+      // Publish and unpublish report through their result only; the caller shows it.
       publish: async () => {
-        const current = get();
-        if (!current.user) {
-          set({
-            status: "Saved",
-            message: "Please log in to publish your portfolio.",
-          });
-          return;
-        }
+        if (!get().user) return { ok: false, message: "Please log in to publish your portfolio." };
         set({ status: "Publish pending" });
-        const saved = await current.saveDraft();
-        if (!saved) return;
+        const saved = await get().saveDraft();
+        if (!saved.ok || !saved.draft) return saved;
         try {
           const response = await authenticatedFetch("/portfolios/publish", {
             method: "POST",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              documentId: saved.id,
-              subdomain: saved.slug,
-              revision: saved.revision,
+              documentId: saved.draft.id,
+              subdomain: saved.draft.slug,
+              revision: saved.draft.revision,
             }),
           });
           const payload = await response.json().catch(() => ({}));
-          if (!response.ok) throw new Error(payload.message || "Unable to publish.");
-          set({
-            publication: { subdomain: payload.data.subdomain, status: "LIVE" },
-            status: "Saved",
-            message: `Published at ${payload.data.publicUrl}`,
-          });
-        } catch (error) {
-          set({
-            status: "Saved",
-            message: error instanceof Error ? error.message : "Unable to publish.",
-          });
+          if (!response.ok) {
+            return {
+              ok: false,
+              status: response.status,
+              message: serverMessage(payload, "Your portfolio could not be published."),
+            };
+          }
+          set({ publication: { subdomain: payload.data.subdomain, status: "LIVE" } });
+          return { ok: true, message: `Published at ${payload.data.publicUrl}` };
+        } catch {
+          return {
+            ok: false,
+            message: "Could not reach VeriWorkly, so your portfolio was not published. Try again.",
+          };
         }
       },
 
       unpublish: async () => {
-        const current = get();
-        if (!current.user) {
-          set({
-            message: "Please log in to manage publications.",
-          });
-          return;
-        }
-        try {
-          await fetchPayload("/portfolios/unpublish", "Unable to unpublish your portfolio.", {
-            method: "POST",
-          });
+        if (!get().user) return { ok: false, message: "Please log in to manage your site." };
+        const offline = () => {
           const pub = get().publication;
-          set({
-            publication: pub ? { ...pub, status: "SUSPENDED" } : null,
-            message: "Public site unpublished. Your draft is retained.",
-          });
-        } catch (error) {
-          set({
-            message: error instanceof Error ? error.message : "Unable to unpublish your portfolio.",
-          });
+          set({ publication: pub ? { ...pub, status: "SUSPENDED" } : null });
+        };
+        try {
+          const response = await authenticatedFetch("/portfolios/unpublish", { method: "POST" });
+          // 404 means nothing is published: the site is already offline, which is what was asked.
+          if (response.status === 404) {
+            offline();
+            return { ok: true, status: 404, message: "Your site is already offline." };
+          }
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            return {
+              ok: false,
+              status: response.status,
+              message: serverMessage(payload, "Your site could not be unpublished."),
+            };
+          }
+          offline();
+          return { ok: true, message: "Your site is offline. Your draft is kept." };
+        } catch {
+          return {
+            ok: false,
+            message: "Could not reach VeriWorkly, so your site is still online. Try again.",
+          };
         }
       },
 

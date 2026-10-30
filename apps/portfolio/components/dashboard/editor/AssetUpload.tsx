@@ -1,6 +1,8 @@
 import { useState } from "react";
 import Image from "next/image";
 import { Upload } from "lucide-react";
+import { toast } from "sonner";
+import { uploadPortfolioAsset } from "@/lib/portfolio-assets";
 
 export interface AssetUploadProps {
   kind: "AVATAR" | "PROJECT_COVER";
@@ -14,28 +16,11 @@ export function AssetUpload({ kind, label, value, onUploaded }: AssetUploadProps
   const upload = async (file?: File) => {
     if (!file) return;
     setLoading(true);
-    try {
-      const { authenticatedFetch } = await import("@/lib/authenticated-fetch");
-      const prepared = await authenticatedFetch("/portfolio-assets/upload-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind, mimeType: file.type, sizeBytes: file.size }),
-      }).then((r) => r.json());
-      const put = await fetch(prepared.data.uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
-      if (!put.ok) throw new Error("Image upload failed.");
-      const complete = await authenticatedFetch("/portfolio-assets/complete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assetId: prepared.data.assetId }),
-      }).then((r) => r.json());
-      onUploaded(complete.data);
-    } finally {
-      setLoading(false);
-    }
+    const result = await uploadPortfolioAsset(kind, file);
+    setLoading(false);
+    // Only a confirmed asset reaches the draft; a failure leaves the current image as it was.
+    if (result.ok) onUploaded(result.asset);
+    else toast.error(result.message);
   };
 
   return (
@@ -64,7 +49,11 @@ export function AssetUpload({ kind, label, value, onUploaded }: AssetUploadProps
         type="file"
         accept="image/jpeg,image/png,image/webp"
         disabled={loading}
-        onChange={(e) => void upload(e.target.files?.[0])}
+        onChange={(e) => {
+          void upload(e.target.files?.[0]);
+          // Cleared so picking the same file again after a failure retries it.
+          e.target.value = "";
+        }}
       />
     </label>
   );
