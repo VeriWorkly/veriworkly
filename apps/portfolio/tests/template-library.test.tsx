@@ -185,6 +185,31 @@ describe.skipIf(IS_MOCK_LIBRARY)(
         expect(markup).not.toContain("Subcontact");
       });
 
+      // S1: a hidden contact section means no way to email the owner anywhere on the page.
+      it("offers no mailto link when contact is hidden", () => {
+        const project = fullProject();
+        project.sections = project.sections.map((s) => ({ ...s, visible: s.type !== "contact" }));
+        const markup = renderToString(<Template project={project} />);
+        expect(markup).not.toContain("mailto:");
+      });
+
+      // Volunteer roles imported from a profile carry startDate/endDate, not `date`.
+      it("shows a volunteer role's period when it has no date", () => {
+        const project = fullProject();
+        project.sections = [
+          {
+            id: "v",
+            type: "volunteer",
+            title: "Volunteering",
+            visible: true,
+            items: [{ id: "v1", title: "Mentor", startDate: "2019", endDate: "2021" }],
+          },
+        ];
+        const markup = renderToString(<Template project={project} />);
+        expect(markup).toContain("2019");
+        expect(markup).toContain("2021");
+      });
+
       it("shows the contact section's own title and subtitle when it is on", () => {
         const markup = renderToString(<Template project={fullProject()} />);
         expect(markup).toContain("Titlecontact");
