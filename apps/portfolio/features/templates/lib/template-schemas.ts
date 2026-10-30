@@ -21,22 +21,26 @@ export function createTemplatesSchema(templates: TemplateSummary[], siteUrl: str
   };
 }
 
+// A premium template has no price of its own: it comes with Creator Pro (or a pass), so it gets
+// no Offer rather than a made-up one; a free template is offered at 0.
 export function createTemplateSchema(template: TemplateSummary, siteUrl: string) {
   return {
     "@context": "https://schema.org",
     "@type": "Product",
     name: `${template.name} Portfolio Template`,
-    description: template.note,
+    description: template.isPremium ? `${template.note} Included with Creator Pro.` : template.note,
     image: `${siteUrl}/og/landing-page-og.png`,
     brand: {
       "@type": "Brand",
       name: "VeriWorkly",
     },
-    offers: {
-      "@type": "Offer",
-      price: "0",
-      priceCurrency: "USD",
-      url: `${siteUrl}/templates/${template.id}`,
-    },
+    offers: template.isPremium
+      ? undefined
+      : {
+          "@type": "Offer",
+          price: "0",
+          priceCurrency: "USD",
+          url: `${siteUrl}/templates/${template.id}`,
+        },
   };
 }

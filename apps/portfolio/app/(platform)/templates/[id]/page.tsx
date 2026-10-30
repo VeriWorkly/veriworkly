@@ -13,6 +13,7 @@ import TemplatesNavigation from "@/features/templates/components/TemplatesNaviga
 import TemplateDetailContainer from "@/features/templates/components/TemplateDetailContainer";
 
 import { createTemplateSchema } from "@/features/templates/lib/template-schemas";
+import { templateOgImage } from "@/features/templates/constants";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -28,7 +29,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const title = `${template.name} Portfolio Template`;
   const description = `${template.note} Preview the live ${template.name} portfolio template, design direction, SEO behavior, and best-fit use cases.`;
 
-  const imageUrl = `/og/templates/${template.id}-template-page-og.png`;
+  const imageUrl = templateOgImage(template, "page");
 
   return {
     title,

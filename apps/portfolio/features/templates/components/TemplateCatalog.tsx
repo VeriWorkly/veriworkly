@@ -5,7 +5,7 @@ import type { TemplateSummary } from "@/templates/catalog/templates";
 
 import { PortfolioTemplatePreviewFrame } from "@/components/PortfolioTemplatePreviewFrame";
 
-import { templateAction, templatesShell } from "../constants";
+import { premiumBadge, templateAction, templateEditorHref, templatesShell } from "../constants";
 
 const TemplateCatalog = ({ templates }: { templates: TemplateSummary[] }) => {
   return (
@@ -24,7 +24,10 @@ const TemplateCatalog = ({ templates }: { templates: TemplateSummary[] }) => {
           />
 
           <div className="flex flex-col p-3 lg:p-5">
-            <span className="text-accent text-xs font-bold">0{index + 1}</span>
+            <div className="flex items-center gap-3">
+              <span className="text-accent text-xs font-bold">0{index + 1}</span>
+              {template.isPremium ? <span className={premiumBadge}>Creator Pro</span> : null}
+            </div>
 
             <h2 className="mt-4 text-[clamp(2.4rem,5vw,4.8rem)] leading-[0.86] font-bold tracking-[-0.08em]">
               {template.name}
@@ -58,7 +61,10 @@ const TemplateCatalog = ({ templates }: { templates: TemplateSummary[] }) => {
                 Open full page preview <ExternalLink size={15} />
               </Link>
 
-              <Link className={`${templateAction} bg-accent text-white`} href="/dashboard">
+              <Link
+                className={`${templateAction} bg-accent text-white`}
+                href={templateEditorHref(template.id)}
+              >
                 Use this template <ArrowRight size={15} />
               </Link>
             </div>

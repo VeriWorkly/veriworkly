@@ -8,6 +8,11 @@ import SignalTemplate from "@/template-library/signal/SignalTemplate";
 import { templatesRegistry } from "@/template-library/registry";
 import { createDefaultPortfolio, demoPortfolio } from "@/lib/portfolio";
 import type { PortfolioProject } from "@/template-library/types";
+import { templates } from "@/templates/catalog/templates";
+import TemplateCatalog from "@/features/templates/components/TemplateCatalog";
+import { createTemplateSchema } from "@/features/templates/lib/template-schemas";
+import * as preview from "@/app/(platform)/templates/[id]/preview/page";
+import * as detail from "@/app/(platform)/templates/[id]/page";
 
 /**
  * Contract coverage for every template in the registry.
@@ -254,5 +259,48 @@ describe("templates do not reference remote font CDNs (audit §4)", () => {
     const markup = renderToStaticMarkup(<Template project={demoPortfolio} />);
     expect(markup).not.toContain("fonts.googleapis.com");
     expect(markup).not.toContain("fonts.gstatic.com");
+  });
+});
+
+describe("template gallery (P-061, P-079)", () => {
+  it("marks Nimbus and Cipher as Creator Pro and sends every template to the editor", async () => {
+    const html = renderToStaticMarkup(<TemplateCatalog templates={templates} />);
+
+    expect(html.match(/>Creator Pro</g)).toHaveLength(
+      templates.filter((template) => template.isPremium).length,
+    );
+    for (const template of templates) expect(html).toContain(`/editor?template=${template.id}`);
+    expect(html).not.toContain('href="/dashboard"');
+  });
+
+  it("offers free templates at 0 and gives premium ones no made-up price", async () => {
+    for (const template of templates) {
+      const schema = createTemplateSchema(template, "https://portfolio.test");
+
+      if (template.isPremium) {
+        expect(schema.offers).toBeUndefined();
+        expect(schema.description).toContain("Included with Creator Pro");
+      } else {
+        expect(schema.offers).toMatchObject({ price: "0" });
+      }
+    }
+  });
+
+  it("keeps the demo preview out of search and gives every template a real share image", async () => {
+    for (const template of templates) {
+      const params = { params: Promise.resolve({ id: template.id }) };
+      const previewMeta = await preview.generateMetadata(params);
+      const detailMeta = await detail.generateMetadata(params);
+
+      expect(previewMeta.robots).toEqual({ index: false, follow: true });
+      const image = JSON.stringify(detailMeta.openGraph?.images);
+      if (template.isPremium) expect(image).toContain(`/api/template/${template.id}/og?`);
+      else expect(image).toContain(`/og/templates/${template.id}-template-page-og.png`);
+    }
+
+    const html = renderToStaticMarkup(
+      await preview.default({ params: Promise.resolve({ id: "signal" }) }),
+    );
+    expect(html).toContain("Demo content.");
   });
 });

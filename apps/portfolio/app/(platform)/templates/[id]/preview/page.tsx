@@ -4,6 +4,10 @@ import { notFound } from "next/navigation";
 import { DraftPreview } from "@/components/DraftPreview";
 
 import { isTemplateId, templates } from "@/templates/catalog/templates";
+import { templateEditorHref, templateOgImage } from "@/features/templates/constants";
+
+// The preview is sample content, so it is never indexed and says so on screen (P-061).
+const robots = { index: false, follow: true };
 
 export async function generateMetadata({
   params,
@@ -14,16 +18,12 @@ export async function generateMetadata({
 
   const template = templates.find((t) => t.id === id);
 
-  if (!template)
-    return {
-      title: "Template Preview",
-      robots: { index: true, follow: true },
-    };
+  if (!template) return { title: "Template Preview", robots };
 
   const title = `${template.name} Template Live Preview`;
   const description = `See a live interactive preview of the ${template.name} template. Switch styles, layouts, and visualize your portfolio.`;
 
-  const imageUrl = `/og/templates/preview/${template.id}-preview-page-og.png`;
+  const imageUrl = templateOgImage(template, "preview");
 
   return {
     title,
@@ -51,7 +51,7 @@ export async function generateMetadata({
       card: "summary_large_image",
     },
 
-    robots: { index: true, follow: true },
+    robots,
 
     alternates: {
       canonical: `/templates/${template.id}/preview`,
@@ -64,5 +64,19 @@ export default async function Preview({ params }: { params: Promise<{ id: string
 
   if (!isTemplateId(id)) notFound();
 
-  return <DraftPreview templateId={id} />;
+  return (
+    <>
+      <DraftPreview templateId={id} />
+      <aside
+        role="note"
+        className="bg-ink text-paper fixed bottom-4 left-1/2 z-[10050] flex w-max max-w-[calc(100%-32px)] -translate-x-1/2 flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-full px-5 py-2.5 text-sm shadow-lg"
+      >
+        <strong>Demo content.</strong>
+        <span>Your portfolio shows your own details.</span>
+        <a className="font-bold underline underline-offset-4" href={templateEditorHref(id)}>
+          Use this template
+        </a>
+      </aside>
+    </>
+  );
 }
