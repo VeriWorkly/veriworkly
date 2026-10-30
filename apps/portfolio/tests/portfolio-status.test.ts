@@ -6,6 +6,12 @@ import { describe, expect, it } from "vitest";
 import { portfolioWorkspaceUrl } from "@/config/site";
 import { createDefaultPortfolio, type PortfolioContent } from "@/lib/portfolio";
 import { getPortfolioReadiness, isPortfolioPubliclyVisible } from "@/lib/portfolio-status";
+import {
+  checkSubdomain,
+  defaultSubdomain,
+  subdomainCheckMessage,
+  suggestSubdomain,
+} from "@/lib/subdomain";
 
 function contentWith(patch: Partial<PortfolioContent> = {}): PortfolioContent {
   return { ...createDefaultPortfolio(), ...patch };
@@ -132,5 +138,40 @@ describe("portfolioWorkspaceUrl", () => {
       href: "https://gautam.veriworkly.com",
       display: "gautam.veriworkly.com",
     });
+  });
+});
+
+describe("subdomains (P-023, P-019)", () => {
+  it("never starts a portfolio on a reserved or empty subdomain", () => {
+    expect(defaultSubdomain({ name: "Gautam Raj" })).toBe("gautam-raj");
+    expect(defaultSubdomain({ name: "José" })).toBe("jose");
+    expect(defaultSubdomain({ name: "Designer" })).toBe("designer-portfolio");
+    expect(defaultSubdomain({ name: "李明", email: "li.ming@example.com" })).toBe("li-ming");
+    expect(defaultSubdomain({ name: "", email: "" })).toBe("my-portfolio");
+    expect(defaultSubdomain(null)).toBe("my-portfolio");
+  });
+
+  it("suggests the name with four digits", () => {
+    expect(suggestSubdomain("gautam", () => 0)).toBe("gautam-1000");
+  });
+
+  it("reads the availability answer into taken, not allowed or available", async () => {
+    const answer = (status: number, body: unknown) => async () =>
+      new Response(JSON.stringify(body), { status });
+
+    const free = await checkSubdomain("gautam", answer(200, { data: { available: true } }));
+    const taken = await checkSubdomain("gautam", answer(200, { data: { available: false } }));
+    const refused = await checkSubdomain("xn-abc", answer(200, {}));
+    const invalid = await checkSubdomain("gautam", answer(400, { message: "Choose a valid" }));
+
+    expect(subdomainCheckMessage(free)).toBe("gautam.veriworkly.com is available.");
+    expect(subdomainCheckMessage(taken)).toBe(
+      "gautam.veriworkly.com is taken. Choose another name.",
+    );
+    expect(taken.state === "taken" && taken.suggestion).toMatch(/^gautam-\d{4}$/);
+    expect(refused.state).toBe("not-allowed");
+    expect(subdomainCheckMessage(invalid)).toBe(
+      '"gautam" is reserved or not allowed. Choose another name.',
+    );
   });
 });

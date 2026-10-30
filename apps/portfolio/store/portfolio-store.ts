@@ -17,6 +17,7 @@ import {
   type PortfolioSectionType,
   type PortfolioPage,
 } from "@/lib/portfolio";
+import { defaultSubdomain, isAllowedSubdomain } from "@/lib/subdomain";
 import { sectionLabels, sectionSubtitleDefaults } from "@/lib/section-fields";
 import {
   clearPortfolioCache,
@@ -68,6 +69,11 @@ async function fetchPayload(path: string, fallbackMessage: string, init?: Reques
   return payload;
 }
 
+/** A guest's subdomain carried into an account; a guest default like "portfolio" is reserved. */
+function accountSlug(slug: string, user: { name?: string | null; email?: string | null } | null) {
+  return isAllowedSubdomain(slug) ? slug : defaultSubdomain(user);
+}
+
 // Module-level (not store state) so concurrent `loadWorkspace()` calls can
 // share the in-flight promise without triggering extra re-renders.
 let loadWorkspaceInFlight: Promise<void> | null = null;
@@ -107,7 +113,7 @@ export function buildHydratedState({
     ? ({ ...cloud, content: parsePortfolioContent(cloud.content) } as CloudPortfolioDraft)
     : null;
   const content = restored?.content ?? createDefaultPortfolio(user ?? undefined);
-  const slug = restored?.slug ?? (normalizeSlug(user?.name || "portfolio") || "portfolio");
+  const slug = restored?.slug ?? defaultSubdomain(user);
   const isGuest = !user;
 
   return {
@@ -285,7 +291,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
   const store: StoreApi<PortfolioStoreState> = createStore<PortfolioStoreState>()(
     subscribeWithSelector((set, get) => ({
       content: createDefaultPortfolio(),
-      slug: "portfolio",
+      slug: defaultSubdomain(),
       draft: null,
       publication: null,
       billing: { canPublish: false, status: "INACTIVE" },
@@ -525,7 +531,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
                 user: null,
                 draft: null,
                 content: cached?.content ?? createDefaultPortfolio(),
-                slug: cached?.slug ?? "portfolio",
+                slug: cached?.slug ?? defaultSubdomain(),
                 publication: null,
                 billing: { canPublish: false, status: "INACTIVE" },
                 analyticsData: null,
@@ -565,8 +571,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
 
             let draftToSet: CloudPortfolioDraft | null = null;
             let contentToSet = cached?.content ?? createDefaultPortfolio(user ?? undefined);
-            let slugToSet =
-              cached?.slug ?? (normalizeSlug(user?.name || "portfolio") || "portfolio");
+            let slugToSet = cached ? accountSlug(cached.slug, user) : defaultSubdomain(user);
             let shouldSyncLocalToCloud = false;
             let mergeMessage = "";
 
@@ -604,7 +609,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
 
                   if (localIsNewer) {
                     contentToSet = cached.content;
-                    slugToSet = cached.slug;
+                    slugToSet = isAllowedSubdomain(cached.slug) ? cached.slug : restoredCloud.slug;
                     shouldSyncLocalToCloud = true;
                   } else {
                     contentToSet = restoredCloud.content;
@@ -626,7 +631,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
               } else {
                 const seeded = createDefaultPortfolio(user ?? undefined);
                 contentToSet = seeded;
-                slugToSet = normalizeSlug(user?.name || "portfolio") || "portfolio";
+                slugToSet = defaultSubdomain(user);
                 shouldSyncLocalToCloud = true;
               }
             }
@@ -664,7 +669,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
                 user: null,
                 draft: null,
                 content: cached?.content ?? createDefaultPortfolio(),
-                slug: cached?.slug ?? "portfolio",
+                slug: cached?.slug ?? defaultSubdomain(),
                 publication: null,
                 billing: { canPublish: false, status: "INACTIVE" },
                 analyticsData: null,

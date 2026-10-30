@@ -627,3 +627,22 @@ describe("portfolio store", () => {
     });
   });
 });
+
+describe("a new portfolio's subdomain", () => {
+  it("never defaults to a reserved one", async () => {
+    const { buildHydratedState } = await import("@/store/portfolio-store");
+
+    const state = buildHydratedState({
+      user: { name: "Designer", email: "d@example.com" },
+      workspace: {
+        draft: undefined,
+        publication: null,
+        billing: { canPublish: false, status: "INACTIVE" },
+      },
+      analytics: null,
+    });
+
+    // "designer" is reserved: every save of it used to fail with a 400 (P-023).
+    expect(state.slug).toBe("designer-portfolio");
+  });
+});

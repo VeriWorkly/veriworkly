@@ -3,6 +3,7 @@ import { ExternalLink, Search, ImagePlus, Lock } from "lucide-react";
 import Link from "next/link";
 import { Panel } from "./Panel";
 import { SettingsField } from "./Field";
+import { SubdomainField } from "./SubdomainField";
 
 const input =
   "w-full rounded-lg border border-line bg-panel px-3 py-2.5 text-sm outline-none focus:border-accent focus:ring-4 focus:ring-accent-soft text-ink disabled:opacity-50 disabled:cursor-not-allowed";
@@ -17,6 +18,8 @@ export interface SettingsFormProps {
   uploading: boolean;
   onUpload: (file?: File) => void;
   isPremium: boolean;
+  signedIn: boolean;
+  subdomainIssue?: string;
 }
 
 export function SettingsForm({
@@ -27,6 +30,8 @@ export function SettingsForm({
   uploading,
   onUpload,
   isPremium,
+  signedIn,
+  subdomainIssue,
 }: SettingsFormProps) {
   return (
     <div className="space-y-5">
@@ -49,22 +54,12 @@ export function SettingsForm({
       ) : null}
 
       <Panel title="Portfolio address" icon={<ExternalLink size={15} />}>
-        <label className="grid gap-2 text-xs font-bold">
-          VeriWorkly subdomain
-          <div className="flex">
-            <input
-              className={`${input} rounded-r-none`}
-              value={slug}
-              onChange={(e) => updateSlug(e.target.value)}
-            />
-            <span className="border-line bg-paper text-muted flex items-center rounded-r-lg border border-l-0 px-3 text-[11px]">
-              .veriworkly.com
-            </span>
-          </div>
-          <span className="text-muted font-medium normal-case">
-            Lowercase letters, numbers, and hyphens only.
-          </span>
-        </label>
+        <SubdomainField
+          slug={slug}
+          updateSlug={updateSlug}
+          signedIn={signedIn}
+          serverIssue={subdomainIssue}
+        />
       </Panel>
 
       <Panel title="Search metadata" icon={<Search size={15} />}>

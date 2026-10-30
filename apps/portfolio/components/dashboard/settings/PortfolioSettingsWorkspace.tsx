@@ -6,7 +6,7 @@ import { isPremiumTemplate } from "@/lib/portfolio";
 import { uploadPortfolioAsset } from "@/lib/portfolio-assets";
 import { isPortfolioPubliclyVisible } from "@/lib/portfolio-status";
 import { portfolioWorkspaceUrl } from "@/config/site";
-import { usePortfolioStore } from "@/store/portfolio-store";
+import { usePortfolioStore, type ActionResult } from "@/store/portfolio-store";
 import { useWorkspace } from "@/components/WorkspaceProvider";
 import { SettingsHeader } from "./SettingsHeader";
 import { SettingsForm } from "./SettingsForm";
@@ -29,6 +29,13 @@ export function PortfolioSettingsWorkspace() {
   const publish = usePortfolioStore((state) => state.publish);
   const { isAdmin } = useWorkspace();
   const [uploading, setUploading] = useState(false);
+  // A save or publish refused over the subdomain (taken, reserved) is shown by the field.
+  const [subdomainIssue, setSubdomainIssue] = useState<string>();
+  const report = (result: ActionResult, success: string) => {
+    setSubdomainIssue(!result.ok && /subdomain/i.test(result.message) ? result.message : undefined);
+    if (result.ok) toast.success(success);
+    else toast.error(result.message);
+  };
 
   const isPremium = billing.canPublish;
   // Mirrors EditorCommandBar's publish gate — saving settings for an already-live portfolio
@@ -50,15 +57,12 @@ export function PortfolioSettingsWorkspace() {
         );
         return;
       }
-      const result = await publish();
-      if (result.ok) toast.success("Settings saved and your live site updated.");
-      else toast.error(result.message);
+      report(await publish(), "Settings saved and your live site updated.");
       return;
     }
 
     const result = await saveDraft();
-    if (result.ok) toast.success(user ? "Settings saved." : result.message);
-    else toast.error(result.message);
+    report(result, user ? "Settings saved." : result.message);
   };
 
   const updateSeo = (patch: Partial<typeof content.seo>) =>
@@ -98,12 +102,17 @@ export function PortfolioSettingsWorkspace() {
       <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,.85fr)_minmax(24rem,1.15fr)]">
         <SettingsForm
           slug={slug}
-          updateSlug={updateSlug}
+          updateSlug={(value) => {
+            setSubdomainIssue(undefined);
+            updateSlug(value);
+          }}
           seo={content.seo}
           updateSeo={updateSeo}
           uploading={uploading}
           onUpload={(file) => void upload(file)}
           isPremium={isPremium}
+          signedIn={Boolean(user)}
+          subdomainIssue={subdomainIssue}
         />
 
         <SettingsPreviews
