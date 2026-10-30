@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 
 import { siteConfig } from "@/config/site";
-import { isAdminUser } from "@/lib/admin";
-import { fetchServerApiData } from "@/lib/server-api";
 import { JsonLd } from "@/components/JsonLd";
 
 import { pricingFaqs } from "@/features/faq/constants";
+import { PAYMENTS_BLOCKED, aggregateOffer } from "@/features/pricing/data/offers";
+import { PricingAccountProvider } from "@/features/pricing/components/PricingAccount";
 
 import Navigation from "@/components/Navigation";
 import PricingFaq from "@/features/pricing/components/PricingFaq";
@@ -14,17 +14,18 @@ import PortfolioPublicFooter from "@/components/PortfolioPublicFooter";
 import CustomPlansSection from "@/components/pricing/CustomPlansSection";
 import BundlePricingSection from "@/components/pricing/BundlePricingSection";
 
+const description =
+  "Publish a VeriWorkly portfolio on your own subdomain for free with Signal or Atelier. Creator Pro adds Nimbus and Cipher, SEO controls, visitor analytics and no badge.";
+
 export const metadata: Metadata = {
   title: "Portfolio Builder Pricing",
-  description:
-    "Publish a VeriWorkly portfolio on your own subdomain for free, and upgrade for premium templates, custom metadata, visitor analytics, and no watermark.",
+  description,
 
   openGraph: {
     type: "website",
     url: "/pricing",
     title: "Portfolio Builder Pricing | VeriWorkly Portfolio",
-    description:
-      "Publish a VeriWorkly portfolio on your own subdomain for free, and upgrade for premium templates, custom metadata, visitor analytics, and no watermark.",
+    description,
     images: [
       {
         url: "/og/pricing-page-og.png",
@@ -38,8 +39,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Portfolio Builder Pricing | VeriWorkly Portfolio",
-    description:
-      "Publish a VeriWorkly portfolio on your own subdomain for free, and upgrade for premium templates, custom metadata, visitor analytics, and no watermark.",
+    description,
     images: ["/og/pricing-page-og.png"],
   },
 
@@ -51,97 +51,17 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function PricingPage() {
-  // An outage only hides the admin checkout, so it must not fail the public pricing page.
-  const user = await fetchServerApiData<{ email: string | null }>("/users/me").catch(() => null);
-  const isProd = process.env.NODE_ENV === "production";
-  const paymentsBlocked = isProd && !isAdminUser(user);
+const pageUrl = `${siteConfig.links.portfolio}/pricing`;
 
+/** Static: the visitor's own plan is read in the browser by PricingAccountProvider (P-071). */
+export default function PricingPage() {
   const pricingSchema = {
     "@context": "https://schema.org",
     "@type": "Product",
-
-    name: "VeriWorkly Creator Pro",
-    description:
-      "Premium templates, SEO metadata, image hosting, visitor analytics and no badge for a portfolio website on your VeriWorkly subdomain.",
-
-    brand: {
-      "@type": "Brand",
-      name: "VeriWorkly",
-    },
-
-    offers: {
-      "@type": "AggregateOffer",
-      priceCurrency: "USD",
-      lowPrice: "0",
-      highPrice: "14.99",
-      offerCount: "8",
-      offers: [
-        {
-          "@type": "Offer",
-          name: "Free Plan",
-          price: "0",
-          priceCurrency: "USD",
-          url: `${siteConfig.links.portfolio}/pricing`,
-        },
-
-        {
-          "@type": "Offer",
-          name: "3-Day Sprint",
-          price: "2.99",
-          priceCurrency: "USD",
-          url: `${siteConfig.links.portfolio}/pricing`,
-        },
-
-        {
-          "@type": "Offer",
-          name: "7-Day Hunt",
-          price: "5.99",
-          priceCurrency: "USD",
-          url: `${siteConfig.links.portfolio}/pricing`,
-        },
-
-        {
-          "@type": "Offer",
-          name: "Creator Pro (Annual)",
-          price: "7.99",
-          priceCurrency: "USD",
-          url: `${siteConfig.links.portfolio}/pricing`,
-        },
-
-        {
-          "@type": "Offer",
-          name: "Creator Pro (Monthly)",
-          price: "9.99",
-          priceCurrency: "USD",
-          url: `${siteConfig.links.portfolio}/pricing`,
-        },
-
-        {
-          "@type": "Offer",
-          name: "Job Hunter Bundle (Annual)",
-          price: "11.99",
-          priceCurrency: "USD",
-          url: `${siteConfig.links.portfolio}/pricing`,
-        },
-
-        {
-          "@type": "Offer",
-          name: "Job Hunter Bundle (Monthly)",
-          price: "14.99",
-          priceCurrency: "USD",
-          url: `${siteConfig.links.portfolio}/pricing`,
-        },
-
-        {
-          "@type": "Offer",
-          name: "AI Credits Standalone",
-          price: "5.99",
-          priceCurrency: "USD",
-          url: `${siteConfig.links.portfolio}/pricing`,
-        },
-      ],
-    },
+    name: "VeriWorkly Portfolio",
+    description,
+    brand: { "@type": "Brand", name: "VeriWorkly" },
+    offers: aggregateOffer(pageUrl),
   };
 
   const faqSchema = {
@@ -168,15 +88,21 @@ export default async function PricingPage() {
         <Navigation />
 
         <main className="relative z-10 w-full max-w-full overflow-x-clip pt-28">
-          {paymentsBlocked && (
-            <div className="border-warning bg-warning-soft/30 text-warning mx-auto mt-8 w-[min(1160px,calc(100%-32px))] rounded-2xl border p-4 text-sm font-semibold">
-              Payments are disabled in production during this phase. Only system administrators can
-              perform checkouts.
+          {PAYMENTS_BLOCKED && (
+            <div
+              role="note"
+              className="border-accent/30 bg-accent/5 text-ink mx-auto mt-8 w-[min(1160px,calc(100%-32px))] rounded-2xl border p-4 text-sm leading-6"
+            >
+              <strong className="font-bold">Paid plans open soon.</strong> Checkout is not open yet,
+              so nothing can be bought today. You can build and preview a portfolio for free right
+              now.
             </div>
           )}
-          <BundlePricingSection paymentsBlocked={paymentsBlocked} />
-          <CustomPlansSection paymentsBlocked={paymentsBlocked} />
-          <ComparisonTable paymentsBlocked={paymentsBlocked} />
+          <PricingAccountProvider>
+            <BundlePricingSection />
+            <CustomPlansSection />
+            <ComparisonTable />
+          </PricingAccountProvider>
           <PricingFaq />
         </main>
 

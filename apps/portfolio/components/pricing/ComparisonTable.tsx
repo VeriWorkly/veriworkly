@@ -2,86 +2,16 @@ import { CheckCircle2, Minus } from "lucide-react";
 
 import { siteConfig } from "@/config/site";
 
+import { PLAN_NAMES, annualPerMonth, comparisonRows, usd } from "@/features/pricing/data/offers";
 import { CheckoutButton } from "@/features/pricing/components/CheckoutButton";
 
-interface ComparisonRow {
-  label: string;
-  values: string[];
-}
+const columns = ["Free", PLAN_NAMES.portfolio_pro, PLAN_NAMES.ai_credits, PLAN_NAMES.bundle];
 
-const comparisonRows: ComparisonRow[] = [
-  {
-    label: "Max Active Resumes & Letters",
-    values: ["1 of each", "1 of each", "Unlimited", "Unlimited"],
-  },
-  {
-    label: "Public Portfolio Webpage",
-    values: ["Subdomain", "Subdomain", "Subdomain", "Subdomain"],
-  },
-  {
-    label: "Monthly AI Credits",
-    values: ["0", "0", "1,000 / mo", "1,000 / mo"],
-  },
-  {
-    label: "Master Profile (Single Source of Truth)",
-    values: ["Unlocked", "Unlocked", "Unlocked", "Unlocked"],
-  },
-  {
-    label: "GitHub & LinkedIn Connect",
-    values: ["Locked", "Locked", "Unlocked", "Unlocked"],
-  },
-  {
-    label: "Legacy PDF/DOCX Importer",
-    values: ["Locked", "Locked", "Unlocked", "Unlocked"],
-  },
-  {
-    label: "Watermark & Branding",
-    values: ["Custom badge", "Removed", "N/A", "Removed"],
-  },
-];
+const grid = "grid grid-cols-[minmax(200px,1.2fr)_repeat(4,140px)]";
+// The label column stays in view while the plans scroll sideways on a phone.
+const stickyLabel = "sticky left-0 z-10 bg-[#222222] dark:bg-paper-2 pr-4";
 
-function renderCell(val: string, colIndex: number) {
-  const isBundle = colIndex === 3;
-  const isPositive =
-    ["Subdomain", "Unlimited", "Unlocked", "Removed", "1.5%"].includes(val) || val === "1,000 / mo";
-  const isNegative = ["Locked", "Not included", "Draft only", "0", "5.0%", "Custom badge"].includes(
-    val,
-  );
-
-  if (isPositive) {
-    return (
-      <span
-        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold transition-colors ${
-          isBundle
-            ? "bg-accent/15 border-accent/30 text-accent"
-            : "border-white/10 bg-white/5 text-white"
-        }`}
-      >
-        <CheckCircle2 className="size-3.5 shrink-0" />
-        <span>{val}</span>
-      </span>
-    );
-  }
-
-  if (isNegative) {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-white/5 bg-white/[0.02] px-3 py-1 text-xs font-medium text-white/40">
-        <Minus className="size-3.5 shrink-0" aria-hidden="true" />
-        <span>{val}</span>
-      </span>
-    );
-  }
-
-  if (val === "N/A") {
-    return (
-      <span className="text-[10px] font-bold tracking-wider text-white/35 uppercase">{val}</span>
-    );
-  }
-
-  return <span className="text-xs font-semibold text-white/80">{val}</span>;
-}
-
-const ComparisonTable = ({ paymentsBlocked = false }: { paymentsBlocked?: boolean }) => {
+const ComparisonTable = () => {
   const checkoutUrl = `${siteConfig.links.app}/checkout?productKey=bundle&interval=annual`;
 
   return (
@@ -99,58 +29,68 @@ const ComparisonTable = ({ paymentsBlocked = false }: { paymentsBlocked?: boolea
             </h2>
           </div>
 
-          <p className="border-t border-white/20 pt-5 text-base leading-7 text-[#f5f4ef]/70">
-            Core resume and portfolio editors stay free forever. Upgrade when you need premium
-            templates, custom SEO configurations, or advanced AI content tailoring.
+          <p className="border-t border-white/20 pt-5 text-base leading-7 text-[#f5f4ef]/80">
+            The editors stay free, and so does publishing on a veriworkly.com subdomain. Upgrade for
+            premium templates, badge removal, analytics, SEO controls or AI writing credits.
           </p>
         </div>
 
+        {/* Keyboard-reachable scroll region; the table roles sit on the inner grid. */}
         <div
-          role="table"
-          aria-label="Feature and plan comparison"
-          className="mt-14 overflow-x-auto rounded-4xl border border-white/10 bg-white/5"
+          tabIndex={0}
+          role="group"
+          aria-label="Feature and plan comparison, scrollable"
+          className="focus-visible:ring-accent/60 mt-14 overflow-x-auto rounded-4xl border border-white/10 bg-white/5 focus-visible:ring-2 focus-visible:outline-none"
         >
-          <div className="min-w-[900px]">
+          <div className="min-w-[760px]" role="table" aria-label="Feature and plan comparison">
             <div
-              className="grid grid-cols-[minmax(280px,1.2fr)_repeat(4,155px)] bg-white/10 px-6 py-5 text-xs font-bold tracking-[0.15em] text-[#f5f4ef]/85 uppercase"
+              className={`${grid} items-center bg-white/10 text-xs font-bold tracking-[0.15em] text-[#f5f4ef] uppercase`}
               role="row"
             >
-              <span role="columnheader">What&apos;s included</span>
-
-              <span className="text-center" role="columnheader">
-                Free
+              <span role="columnheader" className={`${stickyLabel} px-6 py-5`}>
+                What&apos;s included
               </span>
 
-              <span className="text-center" role="columnheader">
-                Creator Pro
-              </span>
-
-              <span className="text-center" role="columnheader">
-                AI Standalone
-              </span>
-
-              <span className="text-accent text-center" role="columnheader">
-                Bundle
-              </span>
+              {columns.map((name, index) => (
+                <span
+                  key={name}
+                  role="columnheader"
+                  className={`py-5 text-center ${index === 3 ? "text-accent" : ""}`}
+                >
+                  {name}
+                </span>
+              ))}
             </div>
 
-            {comparisonRows.map(({ label, values }) => (
+            {comparisonRows.map(([label, ...values]) => (
               <div
                 role="row"
                 key={label}
-                className="grid grid-cols-[minmax(280px,1.2fr)_repeat(4,155px)] items-center border-t border-white/10 px-6 py-4.5 text-xs tracking-normal transition-colors hover:bg-white/5 sm:text-base"
+                className={`${grid} items-center border-t border-white/10 text-sm transition-colors hover:bg-white/5`}
               >
-                <span className="pr-4 text-sm font-medium text-white/90" role="cell">
+                <span role="rowheader" className={`${stickyLabel} px-6 py-4.5 font-medium`}>
                   {label}
                 </span>
 
-                {values.map((val, index) => (
-                  <span
-                    className="grid place-items-center text-center"
-                    key={`${label}-${index}`}
-                    role="cell"
-                  >
-                    {renderCell(val, index)}
+                {values.map((included, index) => (
+                  <span className="grid place-items-center" key={columns[index]} role="cell">
+                    {/* Every cell is an icon, so the words are what a screen reader hears. */}
+                    <span className="sr-only">{included ? "Included" : "Not included"}</span>
+                    {included ? (
+                      <span
+                        className={`inline-flex rounded-full border p-1 ${
+                          index === 3
+                            ? "bg-accent/15 border-accent/40 text-accent"
+                            : "border-white/20 bg-white/10 text-white"
+                        }`}
+                      >
+                        <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />
+                      </span>
+                    ) : (
+                      <span className="inline-flex rounded-full border border-white/15 p-1 text-white/70">
+                        <Minus className="size-4 shrink-0" aria-hidden="true" />
+                      </span>
+                    )}
                   </span>
                 ))}
               </div>
@@ -165,13 +105,14 @@ const ComparisonTable = ({ paymentsBlocked = false }: { paymentsBlocked?: boolea
             </p>
 
             <h3 className="mt-2 text-2xl font-bold tracking-[-0.03em] text-white sm:text-3xl">
-              A full year for $11.99 per month.
+              A full year of the {PLAN_NAMES.bundle} for {usd(annualPerMonth("bundle"))} per month.
             </h3>
           </div>
 
           <CheckoutButton
+            plan="bundle"
             href={checkoutUrl}
-            disabled={paymentsBlocked}
+            noteClassName="text-white/90"
             className="text-accent hover:bg-paper-2 bg-white shadow-lg"
           >
             Get the yearly bundle

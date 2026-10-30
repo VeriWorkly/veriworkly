@@ -1,5 +1,6 @@
 import { siteConfig } from "@/config/site";
 import { landingFaqs } from "@/features/faq/constants";
+import { aggregateOffer } from "@/features/pricing/data/offers";
 
 import LandingMotion from "@/components/LandingMotion";
 import Navigation from "@/components/Navigation";
@@ -24,103 +25,7 @@ const HomePage = () => {
     applicationCategory: "BusinessApplication",
     operatingSystem: "All",
     browserRequirements: "Requires JavaScript. Requires HTML5.",
-    offers: {
-      "@type": "AggregateOffer",
-      priceCurrency: "USD",
-      lowPrice: "0",
-      highPrice: "14.99",
-      offerCount: "7",
-      offers: [
-        {
-          "@type": "Offer",
-          name: "Draft Tier",
-          price: "0",
-          priceCurrency: "USD",
-        },
-
-        {
-          "@type": "Offer",
-          name: "3-Day Sprint Pass",
-          price: "2.99",
-          priceCurrency: "USD",
-        },
-
-        {
-          "@type": "Offer",
-          name: "7-Day Hunt Pass",
-          price: "5.99",
-          priceCurrency: "USD",
-        },
-
-        {
-          "@type": "Offer",
-          name: "Job Hunter Bundle (Annual)",
-          price: "11.99",
-          priceCurrency: "USD",
-          priceSpecification: {
-            "@type": "UnitPriceSpecification",
-            price: "11.99",
-            priceCurrency: "USD",
-            referenceQuantity: {
-              "@type": "QuantitativeValue",
-              value: "1",
-              unitCode: "MON",
-            },
-          },
-        },
-
-        {
-          "@type": "Offer",
-          name: "Job Hunter Bundle (Monthly)",
-          price: "14.99",
-          priceCurrency: "USD",
-          priceSpecification: {
-            "@type": "UnitPriceSpecification",
-            price: "14.99",
-            priceCurrency: "USD",
-            referenceQuantity: {
-              "@type": "QuantitativeValue",
-              value: "1",
-              unitCode: "MON",
-            },
-          },
-        },
-
-        {
-          "@type": "Offer",
-          name: "Creator Pro (Monthly)",
-          price: "9.99",
-          priceCurrency: "USD",
-          priceSpecification: {
-            "@type": "UnitPriceSpecification",
-            price: "9.99",
-            priceCurrency: "USD",
-            referenceQuantity: {
-              "@type": "QuantitativeValue",
-              value: "1",
-              unitCode: "MON",
-            },
-          },
-        },
-
-        {
-          "@type": "Offer",
-          name: "AI Credits Standalone (Monthly)",
-          price: "5.99",
-          priceCurrency: "USD",
-          priceSpecification: {
-            "@type": "UnitPriceSpecification",
-            price: "5.99",
-            priceCurrency: "USD",
-            referenceQuantity: {
-              "@type": "QuantitativeValue",
-              value: "1",
-              unitCode: "MON",
-            },
-          },
-        },
-      ],
-    },
+    offers: aggregateOffer(`${siteConfig.links.portfolio}/pricing`),
   };
 
   const faqSchema = {
