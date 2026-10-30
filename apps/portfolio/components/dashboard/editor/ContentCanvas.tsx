@@ -1,4 +1,6 @@
 import { PanelRightClose } from "lucide-react";
+import Link from "next/link";
+import { hasPortfolioAccess, upgradeHref } from "@/lib/portfolio-status";
 import { usePortfolioStore } from "@/store/portfolio-store";
 import { EditorPanel } from "./EditorPanel";
 import { Field } from "./Field";
@@ -24,7 +26,7 @@ export function ContentCanvas({ selectedSectionId, onClose }: ContentCanvasProps
     ? pages.find((p) => p.id === selectedPageId)?.sections || []
     : rootSections;
   const selectedSection = sections.find((section) => section.id === selectedSectionId);
-  const isPremiumUser = usePortfolioStore((state) => state.billing.status === "ACTIVE");
+  const isPremiumUser = usePortfolioStore((state) => hasPortfolioAccess(state.billing));
 
   return (
     <section className="border-line bg-paper hidden min-h-0 overflow-y-auto border-r p-3 lg:block">
@@ -116,7 +118,7 @@ export function ContentCanvas({ selectedSectionId, onClose }: ContentCanvasProps
             onUploaded={(avatar) => updateIdentity({ avatar })}
           />
           <div className="mt-4 border-t border-white/5 pt-4">
-            <Field label="Remove 'Made by VeriWorkly' badge">
+            <Field label="Remove the 'Built with VeriWorkly' badge">
               <label className="mt-1 flex cursor-pointer items-center gap-3">
                 <div className="relative inline-flex items-center">
                   <input
@@ -140,6 +142,14 @@ export function ContentCanvas({ selectedSectionId, onClose }: ContentCanvasProps
                   )}
                 </span>
               </label>
+              {!isPremiumUser ? (
+                <p className="text-muted mt-2 text-[11px]">
+                  Creator Pro, the Job Hunter Bundle or a pass removes the badge.{" "}
+                  <Link className="text-accent font-bold" href={upgradeHref("badge")}>
+                    See plans
+                  </Link>
+                </p>
+              ) : null}
             </Field>
           </div>
         </EditorPanel>

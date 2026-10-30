@@ -5,7 +5,11 @@ import { describe, expect, it } from "vitest";
 // with NODE_ENV=test, so `isDev` is false and the production hosts are asserted.
 import { portfolioWorkspaceUrl } from "@/config/site";
 import { createDefaultPortfolio, type PortfolioContent } from "@/lib/portfolio";
-import { getPortfolioReadiness, isPortfolioPubliclyVisible } from "@/lib/portfolio-status";
+import {
+  getPortfolioReadiness,
+  hasPortfolioAccess,
+  isPortfolioPubliclyVisible,
+} from "@/lib/portfolio-status";
 import {
   checkSubdomain,
   defaultSubdomain,
@@ -173,5 +177,14 @@ describe("subdomains (P-023, P-019)", () => {
     expect(subdomainCheckMessage(invalid)).toBe(
       '"gautam" is reserved or not allowed. Choose another name.',
     );
+  });
+});
+
+describe("paid portfolio access (P-010)", () => {
+  it("follows canPublish, not the subscription status", () => {
+    // A pass has no subscription row; an AI Credits plan is ACTIVE but buys no portfolio access.
+    expect(hasPortfolioAccess({ canPublish: true, plan: "BUNDLE" })).toBe(true);
+    expect(hasPortfolioAccess({ canPublish: false, plan: "AI_CREDITS" })).toBe(false);
+    expect(hasPortfolioAccess(null)).toBe(false);
   });
 });

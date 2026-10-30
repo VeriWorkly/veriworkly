@@ -4,7 +4,11 @@ import { useMemo } from "react";
 
 import { useAnalytics, useWorkspace } from "@/components/WorkspaceProvider";
 import { parsePortfolioContent, type CloudPortfolioDraft } from "@/lib/portfolio";
-import { getPortfolioReadiness, isPortfolioPubliclyVisible } from "@/lib/portfolio-status";
+import {
+  getPortfolioReadiness,
+  hasPortfolioAccess,
+  isPortfolioPubliclyVisible,
+} from "@/lib/portfolio-status";
 import { DashboardHeader } from "./DashboardHeader";
 import { DashboardMetrics } from "./DashboardMetrics";
 import { DashboardStatus } from "./DashboardStatus";
@@ -18,7 +22,7 @@ export function PortfolioDashboardWorkspace() {
 
   const publicationStatus = data.workspace?.publication?.status;
   const isLive = isPortfolioPubliclyVisible(publicationStatus);
-  const canPublish = Boolean(data.workspace?.billing?.canPublish);
+  const canPublish = hasPortfolioAccess(data.workspace?.billing);
 
   // `parsePortfolioContent` is a full sanitize pass over every section and item, and the
   // draft it runs on has usually been parsed once already by the store's hydration. Left

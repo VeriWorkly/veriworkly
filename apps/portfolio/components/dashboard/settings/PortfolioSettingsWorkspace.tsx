@@ -4,7 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { isPremiumTemplate } from "@/lib/portfolio";
 import { uploadPortfolioAsset } from "@/lib/portfolio-assets";
-import { isPortfolioPubliclyVisible } from "@/lib/portfolio-status";
+import { hasPortfolioAccess, isPortfolioPubliclyVisible } from "@/lib/portfolio-status";
 import { portfolioWorkspaceUrl } from "@/config/site";
 import { usePortfolioStore, type ActionResult } from "@/store/portfolio-store";
 import { useWorkspace } from "@/components/WorkspaceProvider";
@@ -37,7 +37,7 @@ export function PortfolioSettingsWorkspace() {
     else toast.error(result.message);
   };
 
-  const isPremium = billing.canPublish;
+  const isPremium = hasPortfolioAccess(billing);
   // Mirrors EditorCommandBar's publish gate — saving settings for an already-live portfolio
   // re-publishes it, so it needs the same production block (enforced server-side either way).
   const publishingDisabledInProd = isProd && !isAdmin;
@@ -53,7 +53,7 @@ export function PortfolioSettingsWorkspace() {
 
       if (isPremiumTemplate(content.templateId) && !isPremium) {
         toast.error(
-          `"${content.templateId}" is a premium template. Upgrade to Creator Pro to save live settings.`,
+          `"${content.templateId}" is a premium template. Creator Pro, the Job Hunter Bundle or a pass is needed to update your live site, or switch to Signal or Atelier.`,
         );
         return;
       }
@@ -75,7 +75,7 @@ export function PortfolioSettingsWorkspace() {
       return;
     }
     if (!isPremium) {
-      toast.error("Uploading custom sharing images requires an active Creator Pro subscription.");
+      toast.error("Custom sharing images come with Creator Pro, the Job Hunter Bundle or a pass.");
       return;
     }
     setUploading(true);

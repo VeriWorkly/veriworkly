@@ -93,3 +93,24 @@ export function getPortfolioReadiness(
     percent: Math.round((completed / checks.length) * 100),
   };
 }
+
+type BillingLike = {
+  canPublish?: boolean;
+  plan?: string;
+  access?: { tier: string; isPaying: boolean };
+} | null;
+
+/**
+ * The one rule for paid portfolio features in the workspace (P-010): premium templates, badge
+ * removal, extra pages, SEO controls and analytics. `canPublish` is the server's
+ * portfolio_publish grant: Creator Pro, the Bundle or an active pass. An AI Credits plan or a
+ * credit pack buys AI credits only, so those accounts get the free rules.
+ */
+export function hasPortfolioAccess(billing: BillingLike | undefined) {
+  return Boolean(billing?.canPublish);
+}
+
+/** Where a locked control sends the user, telling pricing what they wanted. */
+export function upgradeHref(from: string) {
+  return `/pricing?from=${encodeURIComponent(from)}`;
+}
