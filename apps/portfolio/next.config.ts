@@ -28,6 +28,9 @@ const cspDirectives = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Platform pages and published portfolios have separate root layouts, so a URL that matches no
+  // route needs app/global-not-found.tsx to render a document of its own.
+  experimental: { globalNotFound: true },
   // `next` is hoisted to the monorepo root, so Turbopack cannot find it from this app directory
   // and infers the wrong workspace root. Pin it explicitly, as the docs and blog apps do.
   turbopack: {
