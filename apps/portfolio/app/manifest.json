@@ -1,6 +1,9 @@
 {
-  "name": "VeriWorkly",
-  "short_name": "VeriWorkly",
+  "name": "VeriWorkly Portfolio",
+  "short_name": "Portfolio",
+  "description": "Build a portfolio website from your VeriWorkly profile and publish it on your own veriworkly.com subdomain.",
+  "start_url": "/dashboard",
+  "scope": "/",
 
   "icons": [
     {
@@ -32,7 +35,7 @@
     }
   ],
 
-  "theme_color": "#dffcff",
-  "background_color": "#dffcff",
+  "theme_color": "#2563eb",
+  "background_color": "#f5f4ef",
   "display": "standalone"
 }

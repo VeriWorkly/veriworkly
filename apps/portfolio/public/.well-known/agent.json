@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "name": "VeriWorkly Portfolio Agent Card",
-  "description": "VeriWorkly Portfolio (portfolio.veriworkly.com) is the web portfolio builder and publishing engine for developers, designers, and creators. Supports responsive templates (Signal, Atelier, Nimbus, Cipher), multi-page portfolios, custom subdomain publishing (*.veriworkly.com), and view analytics.",
+  "description": "VeriWorkly Portfolio (portfolio.veriworkly.com) is the web portfolio builder and publishing engine for developers, designers, and creators. Supports responsive templates (Signal, Atelier, Nimbus, Cipher), free subdomain publishing (*.veriworkly.com) on every plan, and, with Creator Pro, multi-page portfolios and view analytics.",
   "contact_email": "info@veriworkly.com",
   "site_url": "https://portfolio.veriworkly.com",
   "llms_txt": "https://portfolio.veriworkly.com/llms.txt",
@@ -31,7 +31,7 @@
     {
       "name": "Subdomain Publishing Engine",
       "url": "https://portfolio.veriworkly.com/dashboard",
-      "description": "Publish web portfolios to custom subdomains (*.veriworkly.com) with multi-page support."
+      "description": "Publish web portfolios to their own subdomain (*.veriworkly.com), free on every plan; multi-page sites need Creator Pro."
     },
     {
       "name": "Portfolio Analytics",

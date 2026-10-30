@@ -20,14 +20,13 @@ const FaqSection = () => {
         <p className="mb-5 text-[0.72rem] font-bold tracking-[0.16em] uppercase">Got questions?</p>
 
         <h2 className="max-w-4xl text-[clamp(3.4rem,7vw,7rem)] leading-none tracking-tighter wrap-normal">
-          <span className="sr-only">Portfolio builder FAQ: </span>
           Frequently asked. <br />
           <span className="text-accent">Clearly answered.</span>
         </h2>
 
         <p className="text-ink-2/60 mt-10 max-w-md text-sm leading-6">
-          Everything you need to know about custom subdomains, layout template switches, image
-          hosting, and exports.
+          Everything you need to know about subdomains, switching templates, what is free and what
+          is paid.
         </p>
 
         <div className="mt-10">

@@ -1,6 +1,8 @@
 import React from "react";
 import { Check, Clock3 } from "lucide-react";
 
+import type { PlanKey } from "@/features/pricing/data/offers";
+
 import { CheckoutButton } from "./CheckoutButton";
 
 interface PriceCardProps {
@@ -15,7 +17,7 @@ interface PriceCardProps {
   featured?: boolean;
   href: string;
   toggle?: React.ReactNode;
-  paymentsBlocked?: boolean;
+  plan: PlanKey;
 }
 
 export function PriceCard({
@@ -30,7 +32,7 @@ export function PriceCard({
   featured,
   href,
   toggle,
-  paymentsBlocked = false,
+  plan,
 }: PriceCardProps) {
   return (
     <article
@@ -98,8 +100,10 @@ export function PriceCard({
 
         <CheckoutButton
           href={href}
-          disabled={paymentsBlocked}
-          className={`mt-auto w-full transition-all duration-200 active:scale-[0.97] ${
+          plan={plan}
+          wrapperClassName="mt-auto w-full"
+          noteClassName={featured ? "text-white/85" : "text-muted"}
+          className={`w-full transition-all duration-200 active:scale-[0.97] ${
             featured
               ? "text-accent hover:bg-paper-2 bg-white shadow-[0_8px_20px_rgba(255,255,255,0.1)]"
               : "bg-accent hover:bg-accent-strong text-white shadow-[0_8px_20px_rgba(37,99,235,0.15)]"

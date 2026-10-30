@@ -8,6 +8,15 @@ import { templates } from "@/lib/portfolio";
 const action =
   "inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-sm font-bold transition duration-300 hover:-translate-y-1";
 
+const namesOf = (premium: boolean) =>
+  templates
+    .filter((template) => Boolean(template.isPremium) === premium)
+    .map((template) => template.name)
+    .join(" and ");
+
+const freeNames = namesOf(false);
+const premiumNames = namesOf(true);
+
 const TemplateLinksSection = () => {
   return (
     <section className="bg-accent py-32 text-white md:py-48" id="templates">
@@ -18,7 +27,6 @@ const TemplateLinksSection = () => {
           </p>
 
           <h2 className="max-w-xl text-[clamp(3rem,6vw,6.2rem)] leading-[0.9] tracking-tighter wrap-normal">
-            <span className="sr-only">Portfolio website templates: </span>
             Switch templates without starting over.
           </h2>
 
@@ -27,15 +35,22 @@ const TemplateLinksSection = () => {
             structured portfolio content.
           </p>
 
+          <p className="mt-4 max-w-md text-sm leading-7 font-bold text-white">
+            {freeNames} are free on yourname.veriworkly.com, with a small “Built with VeriWorkly”
+            badge. {premiumNames} come with Creator Pro.
+          </p>
+
           <div className="mt-7 grid gap-2">
             {templates.map((template) => (
               <Link
                 key={template.id}
                 href={`/templates/${template.id}`}
-                className="group flex items-center justify-between rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm font-bold transition hover:bg-white hover:text-[#11110f]"
+                className="group flex items-center justify-between gap-3 rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm font-bold transition hover:bg-white hover:text-[#11110f]"
               >
                 {template.name}
-                <span className="text-xs font-bold opacity-65">{template.mood}</span>
+                <span className="rounded-full border border-current px-2.5 py-0.5 text-xs font-bold">
+                  {template.isPremium ? "Creator Pro" : "Free"}
+                </span>
               </Link>
             ))}
           </div>
