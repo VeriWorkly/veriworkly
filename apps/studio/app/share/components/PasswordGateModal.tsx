@@ -55,7 +55,10 @@ const PasswordGateModal = ({
                   placeholder="••••••••"
                   onChange={(event) => onPasswordChange(event.target.value)}
                   className="bg-card border-border focus:ring-accent/20 h-12 rounded-xl text-center text-lg font-black tracking-[0.4em] md:h-14 md:rounded-2xl md:text-xl"
-                  onKeyDown={(event) => (event.key === "Enter" ? onUnlock() : undefined)}
+                  // Ignored mid-check like the disabled button: each press is a POST, 5 per 5 min (S-402).
+                  onKeyDown={(event) =>
+                    event.key === "Enter" && !verifying ? onUnlock() : undefined
+                  }
                 />
               </div>
 

@@ -30,6 +30,11 @@ vi.mock("next/font/google", () => ({
   Geist_Mono: () => ({ variable: "" }),
 }));
 
+// The card's menu needs a mounted app router; the cards are rendered without one.
+vi.mock("@/app/(main)/(dashboard)/documents/components/DocumentActionsMenu", () => ({
+  DocumentActionsMenu: () => null,
+}));
+
 describe("dashboard navigation contracts", () => {
   it("defines expected main navigation items", () => {
     const labels = mainNav.map((item) => item.label);
@@ -275,5 +280,81 @@ describe("library, search and shell copy (Phase 9 Part D)", () => {
   it("O6 LOW the share error page uses Next 16's retry, and the proxy no longer lists a deleted file", () => {
     expect(read("app/share/error.tsx")).toContain("retry()");
     expect(read("proxy.ts")).not.toContain("/icon0.svg");
+  });
+});
+
+describe("S-369 the recently edited card does not pass a template sample off as the document", () => {
+  it("S-369 a template picture is labelled as the template, by name", async () => {
+    const { default: RecentCard } = await import("@/app/(main)/(dashboard)/components/RecentCard");
+    const noop = () => {};
+    const html = renderToStaticMarkup(
+      createElement(RecentCard, {
+        doc: {
+          source: "document",
+          id: "doc_1",
+          type: "RESUME",
+          title: "Untitled resume",
+          description: "",
+          templateId: "executive-clarity",
+          templateName: "Executive Clarity",
+          templateDescription: "",
+          previewImage: "/templates/resume/executive-clarity.png",
+          updatedAt: "2026-10-30T00:00:00.000Z",
+          sync: {
+            enabled: false,
+            status: "local-only",
+            cloudDocumentId: null,
+            lastSyncedAt: null,
+            revision: 0,
+          },
+        },
+        syncing: false,
+        onDeleteAction: noop,
+        onShareAction: noop,
+        onRenameAction: noop,
+        onSyncNowAction: noop,
+        onSyncDetailsAction: noop,
+      }),
+    );
+
+    expect(html).toContain('alt="Executive Clarity template sample"');
+    expect(html).toContain("Executive Clarity template");
+
+    // The library grid shows the same sample and must say the same.
+    const { DocumentPreviewCard } =
+      await import("@/app/(main)/(dashboard)/documents/components/DocumentPreviewCard");
+    const library = renderToStaticMarkup(
+      createElement(DocumentPreviewCard, {
+        doc: {
+          source: "document",
+          id: "doc_1",
+          type: "RESUME",
+          title: "Untitled resume",
+          description: "",
+          templateId: "executive-clarity",
+          templateName: "Executive Clarity",
+          templateDescription: "",
+          previewImage: "/templates/resume/executive-clarity.png",
+          updatedAt: "2026-10-30T00:00:00.000Z",
+          sync: {
+            enabled: false,
+            status: "local-only",
+            cloudDocumentId: null,
+            lastSyncedAt: null,
+            revision: 0,
+          },
+        },
+        syncing: false,
+        telemetry: null,
+        onDeleteAction: noop,
+        onShareAction: noop,
+        onRenameAction: noop,
+        onSyncNowAction: noop,
+        onSyncDetailsAction: noop,
+      }),
+    );
+
+    expect(library).toContain('alt="Executive Clarity template sample"');
+    expect(library).toContain("Executive Clarity template</span>");
   });
 });

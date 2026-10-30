@@ -673,3 +673,64 @@ describe("share-link expiry (owner decision B)", () => {
     expect(source).toContain('"Expired" : "Expires"');
   });
 });
+
+describe("S-402 the password gate sends one unlock at a time", () => {
+  // Finds the password input in the gate's element tree, to press Enter on it.
+  function findById(node: unknown, id: string): { props: Record<string, unknown> } | null {
+    if (!node || typeof node !== "object") return null;
+    if (Array.isArray(node)) {
+      for (const child of node) {
+        const found = findById(child, id);
+        if (found) return found;
+      }
+      return null;
+    }
+    const element = node as { props?: Record<string, unknown> };
+    if (!element.props) return null;
+    if (element.props.id === id) return element as { props: Record<string, unknown> };
+    return findById(element.props.children, id);
+  }
+
+  it("S-402 Enter while a check is in flight does not post again (5 tries per 5 minutes)", async () => {
+    const { PasswordGateModal } = await import("@/app/share/components/PasswordGateModal");
+    const pressEnter = (verifying: boolean) => {
+      const onUnlock = vi.fn();
+      const tree = PasswordGateModal({
+        password: "wrong",
+        verifying,
+        error: null,
+        onUnlock,
+        onPasswordChange: () => {},
+      });
+      const input = findById(tree, "share-password");
+      (input?.props.onKeyDown as (event: { key: string }) => void)({ key: "Enter" });
+      return onUnlock.mock.calls.length;
+    };
+
+    expect(pressEnter(false)).toBe(1);
+    // The button is disabled while verifying; Enter must be too.
+    expect(pressEnter(true)).toBe(0);
+  });
+});
+
+describe("S-400 the renamed-title warning", () => {
+  it("S-400 compares the link with the server's document slug, not a client re-slug of the title", async () => {
+    const { isShareSlugOutOfSync } = await import("@/components/modals/ShareDocumentModal");
+
+    // Titles the server slugs differently from an ASCII `\w` slugify: never renamed.
+    for (const [token, documentSlug] of [
+      ["resume", "resume"], // "Résumé"
+      ["jane-o-neil-cv", "jane-o-neil-cv"], // "Jane O'Neil CV"
+      ["my_resume", "my_resume"], // "my_resume"
+      ["document", "document"], // "रिज्यूमे"
+      ["cafe-2026-2", "cafe-2026"], // a second link took the -2 suffix
+    ]) {
+      expect(isShareSlugOutOfSync({ token, documentSlug })).toBe(false);
+    }
+
+    expect(isShareSlugOutOfSync({ token: "old-title", documentSlug: "new-title" })).toBe(true);
+    expect(isShareSlugOutOfSync({ token: "cafe-old", documentSlug: "cafe" })).toBe(true);
+    // A list cached before the server sent `documentSlug`: nothing to compare, no alarm.
+    expect(isShareSlugOutOfSync({ token: "anything" })).toBe(false);
+  });
+});

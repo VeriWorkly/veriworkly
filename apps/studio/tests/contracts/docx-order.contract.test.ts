@@ -140,3 +140,45 @@ describe("the DOCX carries the PDF's content in the PDF's order", () => {
     }, 120_000);
   }
 });
+
+describe("S-401 the DOCX is valid XML whatever was pasted", () => {
+  // XML 1.0 forbids C0 controls other than tab, LF and CR; Word refuses or "repairs" the file.
+  const FORBIDDEN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/;
+  const dirty = (text: string) => `${text}\u0002 x\u001F\u000B\u0000\uFFFE`;
+
+  it("S-401 control characters in a resume never reach the DOCX", async () => {
+    const base = PARITY_FIXTURES.default.resume();
+    const resume = {
+      ...base,
+      basics: {
+        ...base.basics,
+        fullName: dirty(base.basics.fullName),
+        headline: dirty(base.basics.headline),
+      },
+      summary: dirty(base.summary),
+      experience: base.experience.map((item) => ({
+        ...item,
+        role: dirty(item.role),
+        highlights: item.highlights.map(dirty),
+      })),
+    };
+    const xml = (await unzipDocx(await buildResumeDocx(resume))).get("word/document.xml") ?? "";
+
+    expect(xml).toContain(base.basics.fullName);
+    expect(xml).not.toMatch(FORBIDDEN);
+  });
+
+  it("S-401 control characters in a cover letter never reach the DOCX", async () => {
+    const content = PARITY_FIXTURES.default.coverLetter() as CoverLetterContent;
+    const letter = {
+      ...content,
+      senderName: dirty(content.senderName),
+      body: dirty(content.body),
+      subject: dirty(content.subject),
+    };
+    const xml =
+      (await unzipDocx(await buildCoverLetterDocx(letter))).get("word/document.xml") ?? "";
+
+    expect(xml).not.toMatch(FORBIDDEN);
+  });
+});

@@ -90,9 +90,12 @@ export function getOrderedResumeSections(resume: ResumeData): ResumeSection[] {
 /**
  * Collapses runs of spaces and tabs but keeps line breaks: a summary typed as paragraphs
  * must reach the preview and the PDF as paragraphs, the way DOCX already receives it.
+ * Control characters XML 1.0 forbids (pasted from a PDF) are dropped: one makes Word refuse
+ * the DOCX (S-401).
  */
 export function cleanResumeText(value: string | null | undefined): string {
   return stripEmoji(safeText(value ?? ""))
+    .replace(/[\u0000-\u0008\u000E-\u001F￾￿]/g, "")
     .replace(/[^\S\n]+/g, " ")
     .replace(/ ?\n ?/g, "\n");
 }

@@ -173,7 +173,9 @@ function parseHeader(markdown: string, resume: ResumeData) {
       continue;
     }
 
-    const fields = line.split(/(?<!\\) \| /);
+    // The export ends a contact line of one item without an "@" with " |" (S-412).
+    const marked = /(?<!\\) \|$/.test(line);
+    const fields = (marked ? line.slice(0, -2) : line).split(/(?<!\\) \| /);
     const links = fields.map(parseLink);
 
     if (links.every(Boolean)) {
@@ -187,7 +189,7 @@ function parseHeader(markdown: string, resume: ResumeData) {
     }
 
     const values = fields.map(unescapeMarkdown);
-    const isContact = fields.length > 1 || values.some((value) => value.includes("@"));
+    const isContact = marked || fields.length > 1 || values.some((value) => value.includes("@"));
 
     if (isContact) {
       for (const value of values) {

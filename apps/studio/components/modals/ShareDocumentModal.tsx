@@ -86,29 +86,19 @@ export function shareDownloadPayload(choice: boolean | null) {
   return choice === null ? {} : { allowDownload: choice };
 }
 
-const slugify = (text: string) =>
-  text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/[\s_-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+/**
+ * Whether the link still carries the document's old slug. The server builds a link slug from
+ * the document's slug, plus `-N` when taken, so that is what it is compared with: re-slugging
+ * the title here folded accents, apostrophes, `_` and non-Latin text differently and warned
+ * about titles that were never renamed (S-400). A list without `documentSlug` never warns.
+ */
+export function isShareSlugOutOfSync(link: { token: string; documentSlug?: string }) {
+  const { token, documentSlug } = link;
+  if (!documentSlug || token === documentSlug) return false;
 
-const isSlugMatching = (token: string, documentTitle: string) => {
-  const baseSlug = slugify(documentTitle);
-  if (!token) return false;
-
-  const tokenSlug = slugify(token);
-  if (tokenSlug === baseSlug) return true;
-
-  const prefix = baseSlug + "-";
-  if (tokenSlug.startsWith(prefix)) {
-    const suffix = tokenSlug.slice(prefix.length);
-    return /^\d+$/.test(suffix);
-  }
-
-  return false;
-};
+  const prefix = `${documentSlug}-`;
+  return !(token.startsWith(prefix) && /^\d+$/.test(token.slice(prefix.length)));
+}
 
 /** True when the document was edited after the link's snapshot was taken. */
 export function isShareSnapshotStale(documentUpdatedAt: string | null, sharedAt: string) {
@@ -305,10 +295,7 @@ const ShareDocumentModal = ({
   const allowDownload = downloadChoice ?? shareAllowsDownload(activeLink);
   const offersDownloads = shareOffersDownloads(documentType);
 
-  const isSlugOutofSync = useMemo(() => {
-    if (!activeLink) return false;
-    return !isSlugMatching(activeLink.token, documentTitle);
-  }, [activeLink, documentTitle]);
+  const isSlugOutofSync = activeLink ? isShareSlugOutOfSync(activeLink) : false;
 
   // A link serves the snapshot taken when it was last saved, not the live document.
   const isSnapshotStale = useMemo(() => {
