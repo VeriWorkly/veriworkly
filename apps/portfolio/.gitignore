@@ -49,3 +49,4 @@ next-env.d.ts
 
 # testing
 /app/og-generator
+/app/(platform)/og-generator
