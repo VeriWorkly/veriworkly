@@ -52,7 +52,8 @@ export const metadata: Metadata = {
 };
 
 export default async function PricingPage() {
-  const user = await fetchServerApiData<{ email: string | null }>("/users/me");
+  // An outage only hides the admin checkout, so it must not fail the public pricing page.
+  const user = await fetchServerApiData<{ email: string | null }>("/users/me").catch(() => null);
   const isProd = process.env.NODE_ENV === "production";
   const paymentsBlocked = isProd && !isAdminUser(user);
 

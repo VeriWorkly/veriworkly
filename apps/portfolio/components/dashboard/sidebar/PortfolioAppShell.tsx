@@ -5,24 +5,29 @@ import Image from "next/image";
 import { useState } from "react";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
-import type { PortfolioWorkspaceBootstrap } from "@/store/portfolio-store";
-
 import { Button } from "@veriworkly/ui";
+
+import type { CloudPortfolioDraft } from "@/lib/portfolio";
+
+import { portfolioWorkspaceUrl } from "@/config/site";
+import { isPortfolioPubliclyVisible } from "@/lib/portfolio-status";
+import { useWorkspace } from "@/components/WorkspaceProvider";
 
 import { Header } from "./Header";
 import { ProfileControl } from "./ProfileControl";
 import { WorkspaceNavigation } from "./WorkspaceNavigation";
 import { WorkspaceThemeControl } from "./WorkspaceThemeControl";
 
-export function PortfolioAppShell({
-  children,
-  user,
-  publicUrl,
-}: {
-  children: React.ReactNode;
-  user: PortfolioWorkspaceBootstrap["user"];
-  publicUrl?: string;
-}) {
+export function PortfolioAppShell({ children }: { children: React.ReactNode }) {
+  const { user, workspace } = useWorkspace();
+  // From the store rather than the server render, so "View site" goes away the moment the
+  // user unpublishes. Only offered while the public site actually resolves.
+  const slug = (workspace?.draft as CloudPortfolioDraft | null | undefined)?.slug;
+  const publicUrl =
+    slug && isPortfolioPubliclyVisible(workspace?.publication?.status)
+      ? portfolioWorkspaceUrl(slug).href
+      : undefined;
+
   const [collapsed, setCollapsed] = useState(
     () =>
       typeof window !== "undefined" &&

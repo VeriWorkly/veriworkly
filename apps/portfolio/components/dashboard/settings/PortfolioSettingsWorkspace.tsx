@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { isPremiumTemplate } from "@/lib/portfolio";
+import { uploadPortfolioAsset } from "@/lib/portfolio-assets";
+import { isPortfolioPubliclyVisible } from "@/lib/portfolio-status";
 import { portfolioWorkspaceUrl } from "@/config/site";
 import { usePortfolioStore } from "@/store/portfolio-store";
 import { useWorkspace } from "@/components/WorkspaceProvider";
@@ -34,15 +36,7 @@ export function PortfolioSettingsWorkspace() {
   const publishingDisabledInProd = isProd && !isAdmin;
 
   const handleSave = async () => {
-    if (!user) {
-      await saveDraft();
-      toast.success("Settings saved locally.");
-      return;
-    }
-
-    const isLive = publication && (publication.status === "LIVE" || publication.status === "GRACE");
-
-    if (isLive) {
+    if (isPortfolioPubliclyVisible(publication?.status) && user) {
       if (publishingDisabledInProd) {
         toast.error(
           "Publishing is disabled in production right now, so live settings can't be updated. It's available in development.",
@@ -56,12 +50,15 @@ export function PortfolioSettingsWorkspace() {
         );
         return;
       }
-      await publish();
-      toast.success("Settings updated and published successfully!");
-    } else {
-      await saveDraft();
-      toast.success("Settings saved successfully!");
+      const result = await publish();
+      if (result.ok) toast.success("Settings saved and your live site updated.");
+      else toast.error(result.message);
+      return;
     }
+
+    const result = await saveDraft();
+    if (result.ok) toast.success(user ? "Settings saved." : result.message);
+    else toast.error(result.message);
   };
 
   const updateSeo = (patch: Partial<typeof content.seo>) =>
@@ -78,30 +75,16 @@ export function PortfolioSettingsWorkspace() {
       return;
     }
     setUploading(true);
-    try {
-      const { authenticatedFetch } = await import("@/lib/authenticated-fetch");
-      const prepared = await authenticatedFetch("/portfolio-assets/upload-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "SOCIAL_IMAGE", mimeType: file.type, sizeBytes: file.size }),
-      }).then((r) => r.json());
-      await fetch(prepared.data.uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
-      const completed = await authenticatedFetch("/portfolio-assets/complete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assetId: prepared.data.assetId }),
-      }).then((r) => r.json());
-      updateSeo({ socialImage: completed.data });
-      toast.success("Social sharing image uploaded successfully!");
-    } catch {
-      toast.error("Failed to upload image. Please try again.");
-    } finally {
-      setUploading(false);
+    const result = await uploadPortfolioAsset("SOCIAL_IMAGE", file);
+    setUploading(false);
+    // Never `socialImage: undefined`: the key would drop out of the draft and the server
+    // would refuse every later save (P-003). A failure leaves the current image in place.
+    if (!result.ok) {
+      toast.error(result.message);
+      return;
     }
+    updateSeo({ socialImage: result.asset });
+    toast.success("Social image uploaded.");
   };
 
   const title = content.seo.title || `${content.identity.name} | Portfolio`;

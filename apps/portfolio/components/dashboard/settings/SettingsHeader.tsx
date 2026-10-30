@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Save } from "lucide-react";
+import { UnpublishButton } from "@/components/dashboard/UnpublishButton";
 
 const action =
   "inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 text-xs font-extrabold transition";
@@ -22,13 +23,15 @@ export function SettingsHeader({ status, onSave }: SettingsHeaderProps) {
           work.
         </p>
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
+        <UnpublishButton className={`${action} border-line bg-panel text-ink border`} />
         <Link className={`${action} border-line bg-panel text-ink border`} href="/editor">
           Open editor
         </Link>
         <button
           className={`${action} bg-accent text-accent-ink hover:bg-accent-strong`}
           onClick={onSave}
+          type="button"
         >
           <Save size={14} /> {status === "Saving" ? "Saving..." : "Save settings"}
         </button>

@@ -27,7 +27,9 @@ import {
 export type PortfolioContent = CorePortfolioContent<TemplateId>;
 export type CloudPortfolioDraft = CoreCloudPortfolioDraft<TemplateId>;
 
-export const PORTFOLIO_CACHE_KEY = "veriworkly:portfolio:draft-cache:v4";
+// v5: holds a guest's draft only. v4 also mirrored whoever was signed in, so it could hand one
+// user's draft to the next guest on the browser or merge it into another account.
+export const PORTFOLIO_CACHE_KEY = "veriworkly:portfolio:guest-draft:v5";
 
 export function createId(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;

@@ -29,6 +29,12 @@ export function loadPortfolioCache(): {
   }
 }
 
+/** Called once a guest draft has reached the account it was carried into. */
+export function clearPortfolioCache() {
+  window.localStorage.removeItem(PORTFOLIO_CACHE_KEY);
+}
+
+/** The guest's draft. Signed-in drafts live in the cloud and are never written here. */
 export function savePortfolioCache(draft: Pick<CloudPortfolioDraft, "slug" | "content">) {
   window.localStorage.setItem(
     PORTFOLIO_CACHE_KEY,

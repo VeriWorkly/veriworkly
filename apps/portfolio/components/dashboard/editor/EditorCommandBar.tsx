@@ -70,31 +70,16 @@ export function EditorCommandBar() {
       return;
     }
 
-    try {
-      const saved = await saveDraft();
-      if (!saved && user) {
-        toast.error("Save your latest changes before publishing.");
-        return;
-      }
-      await publish();
-      toast.success("Portfolio published successfully!");
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to publish portfolio.";
-      toast.error(errorMessage);
-    }
+    // `publish` saves first and reports whichever step failed.
+    const result = await publish();
+    if (result.ok) toast.success("Portfolio published.");
+    else toast.error(result.message);
   };
 
   const handleSave = async () => {
-    try {
-      await saveDraft();
-      if (!user) {
-        toast.success("Changes saved locally. Log in to sync to cloud.");
-      } else {
-        toast.success("Draft saved successfully!");
-      }
-    } catch {
-      toast.error("Failed to save changes.");
-    }
+    const result = await saveDraft();
+    if (result.ok) toast.success(result.message);
+    else toast.error(result.message);
   };
 
   const { href: urlPath, display: urlDisplay } = portfolioWorkspaceUrl(slug);
