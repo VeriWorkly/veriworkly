@@ -19,8 +19,8 @@ const InteractiveCTA = () => {
           </h2>
 
           <p className="mb-10 max-w-[48ch] text-lg text-zinc-500 dark:text-zinc-400">
-            No account creation required to start. Export recruiter-approved ATS PDFs and publish
-            your live web portfolio instantly.
+            No account creation required to start. Export recruiter-approved ATS PDFs and build and
+            preview your web portfolio today.
           </p>
 
           <div>

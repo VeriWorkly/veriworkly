@@ -124,6 +124,7 @@ const TermsPage = () => {
         aside={
           <LegalHeroMeta
             effectiveDate={termsEffectiveDate}
+            lastUpdated={termsLastUpdated}
             links={[
               { label: "About the project", href: "/about" },
               { label: "Contact legal support", href: "/contact" },

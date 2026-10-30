@@ -4,6 +4,11 @@ import { useState } from "react";
 import { Users, Sparkles, TrendingUp } from "lucide-react";
 import { m } from "framer-motion";
 
+import { PLAN_PRICES } from "@/features/pricing/data/offers";
+
+const PRO_MONTHLY = PLAN_PRICES.portfolio_pro.monthly.toFixed(2);
+const BUNDLE_MONTHLY = PLAN_PRICES.bundle.monthly.toFixed(2);
+
 const AffiliateCalculator = () => {
   const [referrals, setReferrals] = useState(50);
   const [selectedPlan, setSelectedPlan] = useState<"pro" | "bundle">("pro");
@@ -38,7 +43,8 @@ const AffiliateCalculator = () => {
 
   const { tier, rate, ratePercent, nextTier, needed } = getTierDetails(referrals);
 
-  const planPrice = selectedPlan === "pro" ? 9.99 : 14.99;
+  const planPrice =
+    selectedPlan === "pro" ? PLAN_PRICES.portfolio_pro.monthly : PLAN_PRICES.bundle.monthly;
   const monthlyCommissionPerUser = planPrice * rate;
   const monthlyEarnings = referrals * monthlyCommissionPerUser;
   const annualEarnings = monthlyEarnings * 12;
@@ -141,7 +147,7 @@ const AffiliateCalculator = () => {
                       : "text-muted hover:text-foreground"
                   }`}
                 >
-                  Creator Pro ($9.99/mo)
+                  Creator Pro (${PRO_MONTHLY}/mo)
                 </button>
                 <button
                   type="button"
@@ -153,7 +159,7 @@ const AffiliateCalculator = () => {
                       : "text-muted hover:text-foreground"
                   }`}
                 >
-                  Job Hunter ($14.99/mo)
+                  Job Hunter (${BUNDLE_MONTHLY}/mo)
                 </button>
               </div>
             </div>
@@ -223,8 +229,9 @@ const AffiliateCalculator = () => {
             <div className="text-muted/80 flex items-start gap-3 rounded-2xl border border-blue-500/10 bg-blue-500/5 p-4 text-xs leading-relaxed">
               <TrendingUp className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
               <p>
-                Calculates yield from the selected plan: Creator Pro ($9.99/mo) or Job Hunter Bundle
-                ($14.99/mo). Payouts are reviewed manually once your balance reaches $25.
+                Calculates yield from the selected plan: Creator Pro (${PRO_MONTHLY}/mo) or Job
+                Hunter Bundle (${BUNDLE_MONTHLY}/mo). Payouts are reviewed manually once your
+                balance reaches $25.
               </p>
             </div>
           </div>

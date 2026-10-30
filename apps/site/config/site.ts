@@ -18,6 +18,8 @@ export const siteConfig = {
 
   creator: "Gautam Raj",
   email: "info@veriworkly.com",
+  /** Where security reports go; public/.well-known/security.txt and SECURITY.md name the same inbox. */
+  securityEmail: "grievance@veriworkly.com",
 
   creatorLinks: {
     github: "https://github.com/Gautam25Raj",

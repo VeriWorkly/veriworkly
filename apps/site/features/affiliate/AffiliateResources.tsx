@@ -27,17 +27,17 @@ const AffiliateResources = () => {
             </span>
           </h2>
           <p className="text-muted max-w-sm text-sm leading-relaxed">
-            Access our official high-resolution vector logos, custom logomarks, typography tokens,
-            and branding assets to style your promotional materials.
+            Download our official logo mark, app icons, colour tokens, and type and usage guidelines
+            to style your promotional materials.
           </p>
           <div className="text-muted flex flex-col gap-3 pt-2 font-mono text-[10px]">
             <div className="flex items-center gap-2">
               <FileType className="h-4 w-4 text-blue-500" />
-              <span>Includes SVG, PNG, and EPS source files</span>
+              <span>Includes PNG logo mark and icons, up to 512 px</span>
             </div>
             <div className="flex items-center gap-2">
               <FileType className="h-4 w-4 text-blue-500" />
-              <span>Light, dark, and monochromatic variants</span>
+              <span>Light and dark colour tokens, plus usage rules</span>
             </div>
           </div>
         </div>
@@ -55,14 +55,14 @@ const AffiliateResources = () => {
             </div>
 
             <p className="text-muted max-w-md text-xs leading-relaxed">
-              Download the complete ZIP archive including scalable vector locks, standalone brand
-              icons, dark/light visual locks, and clearance spacing parameters.
+              Download the ZIP archive with the PNG logo mark and app icons, light and dark colour
+              tokens (palette.json), typography, and clear-space rules.
             </p>
 
             <div className="pt-2">
               <m.a
                 whileTap={{ scale: 0.97 }}
-                href="/veriworkly-logo.png"
+                href="/brand/veriworkly-brand-kit.zip"
                 download
                 onClick={handleDownload}
                 className="group inline-flex w-full items-center justify-center rounded-xl bg-zinc-950 px-6 py-3 text-xs font-bold text-zinc-100 shadow-sm transition-colors duration-200 hover:bg-zinc-900 sm:w-auto dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
@@ -70,11 +70,11 @@ const AffiliateResources = () => {
                 {downloading ? (
                   <>
                     <Check className="mr-2 h-4 w-4 animate-pulse text-emerald-500" />
-                    Downloading Logo...
+                    Downloading Kit...
                   </>
                 ) : (
                   <>
-                    Download Logo Asset
+                    Download Brand Kit
                     <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                   </>
                 )}
@@ -106,9 +106,9 @@ const AffiliateResources = () => {
 
             <div className="z-10 flex flex-col items-center gap-0.5">
               <span className="font-mono text-[8px] font-bold tracking-widest text-zinc-500 uppercase">
-                Vector Lockups
+                Logo Mark
               </span>
-              <span className="font-mono text-[7px] text-zinc-600">1024 × 1024 px</span>
+              <span className="font-mono text-[7px] text-zinc-600">PNG · up to 512 px</span>
             </div>
           </div>
         </div>

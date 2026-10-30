@@ -45,12 +45,12 @@ const statsMetadata = {
   path: "/stats",
   title: `Development & AI Platform Statistics | ${siteConfig.shortName}`,
   description:
-    "Follow dynamic platform development statistics, AI feature logs, issue counts, and release metrics.",
+    "Follow live development statistics from our public GitHub repository: open and closed issues, pull requests, and completion rate.",
   ogTitle: "The Development Board, Live and Public",
   ogDescription:
     "Real issue counts, pull request activity, and completion rates synced straight from our GitHub repository.",
   twitterTitle: "Our dev activity, live and unfiltered",
-  twitterDescription: "Live platform development stats, AI feature logs, and release metrics.",
+  twitterDescription: "Live issue, pull request, and completion-rate stats from our GitHub.",
   image: pageOgImage,
   imageAlt: "VeriWorkly Development & AI Platform Statistics",
   keywords: [

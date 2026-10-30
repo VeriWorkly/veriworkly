@@ -9,7 +9,7 @@ import { m, AnimatePresence } from "framer-motion";
 import { useMounted } from "@/hooks/use-mounted";
 import { useSlidingPill } from "@/hooks/use-sliding-pill";
 
-const AmbassadorNav = () => {
+const AmbassadorNav = ({ programEnabled }: { programEnabled: boolean }) => {
   const mounted = useMounted();
 
   const { resolvedTheme, setTheme } = useTheme();
@@ -128,12 +128,18 @@ const AmbassadorNav = () => {
             </button>
           )}
 
-          <Link
-            href="/ambassador/apply"
-            className="py-1.8 relative inline-flex items-center justify-center rounded-full bg-zinc-950 px-4 text-[10px] font-black tracking-wider text-white uppercase transition-all duration-300 hover:bg-zinc-900 active:scale-[0.97] dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100"
-          >
-            Apply Program
-          </Link>
+          {programEnabled ? (
+            <Link
+              href="/ambassador/apply"
+              className="py-1.8 relative inline-flex items-center justify-center rounded-full bg-zinc-950 px-4 text-[10px] font-black tracking-wider text-white uppercase transition-all duration-300 hover:bg-zinc-900 active:scale-[0.97] dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100"
+            >
+              Apply Program
+            </Link>
+          ) : (
+            <span className="py-1.8 relative inline-flex items-center justify-center rounded-full bg-zinc-950 px-4 text-[10px] font-black tracking-wider text-white uppercase dark:bg-white dark:text-zinc-950">
+              Opening Soon
+            </span>
+          )}
         </div>
       </div>
     </header>

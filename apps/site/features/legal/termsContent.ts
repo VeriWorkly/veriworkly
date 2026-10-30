@@ -3,7 +3,7 @@ import type { LegalSection } from "./types";
 import { siteConfig } from "@/config/site";
 
 export const termsEffectiveDate = "July 23, 2026";
-export const termsLastUpdated = "2026-10-27";
+export const termsLastUpdated = "2026-10-29";
 
 export const termsSections: LegalSection[] = [
   {
@@ -277,7 +277,7 @@ export const termsSections: LegalSection[] = [
       {
         heading: "Credit expiration",
         paragraphs: [
-          "Subscription AI credits, on monthly and annual plans alike, are granted each month and do not roll over to the next month. One-time credit-pack purchases expire 90 days after purchase, or immediately upon cancellation of an associated subscription where stated. Pass-granted credits expire when the pass's time window ends.",
+          "Subscription AI credits, on monthly and annual plans alike, are granted each month and do not roll over to the next month. One-time credit-pack purchases expire 90 days after purchase, whether or not you hold or cancel a subscription. Pass-granted credits expire when the pass's time window ends.",
         ],
       },
       {

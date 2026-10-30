@@ -57,7 +57,7 @@ const SCAN_FACTS = [
   },
   {
     title: "What it reads",
-    body: "PDF, DOCX, TXT or Markdown. On a PDF it also measures the page layout, which pasted text cannot show.",
+    body: "PDF, DOCX, TXT, Markdown or a JSON Resume file. On a PDF it also measures the page layout, which pasted text cannot show.",
   },
 ];
 

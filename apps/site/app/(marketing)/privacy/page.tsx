@@ -118,6 +118,7 @@ const PrivacyPage = () => {
         aside={
           <LegalHeroMeta
             effectiveDate={privacyEffectiveDate}
+            lastUpdated={privacyLastUpdated}
             links={[
               { label: "Read security architecture", href: "/security" },
               { label: "Contact our Grievance Officer", href: "/contact" },

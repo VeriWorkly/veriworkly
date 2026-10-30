@@ -8,7 +8,6 @@ import { webSiteRef } from "@/utils/schema";
 import AmbassadorNav from "@/features/ambassador/AmbassadorNav";
 import AmbassadorHero from "@/features/ambassador/AmbassadorHero";
 import AmbassadorPerks from "@/features/ambassador/AmbassadorPerks";
-import AmbassadorLeaderboard from "@/features/ambassador/AmbassadorLeaderboard";
 import AmbassadorFAQ from "@/features/ambassador/AmbassadorFAQ";
 import AmbassadorFooter from "@/features/ambassador/AmbassadorFooter";
 import "./ambassador.css";
@@ -23,25 +22,29 @@ const pageOgImage = ogPageImage("ambassador");
 // Flags come from the runtime env (the build does not pass them), so re-read them every 5 minutes.
 export const revalidate = 300;
 
-export const metadata: Metadata = buildPageMetadata({
-  path: "/ambassador",
+// Kept out of the index while applications are closed: the page can only say "open soon".
+export function generateMetadata(): Metadata {
+  const open = isAmbassadorProgramEnabled();
 
-  title: `Student Ambassador Program | ${siteConfig.shortName}`,
+  return buildPageMetadata({
+    path: "/ambassador",
+    noIndex: !open,
 
-  description:
-    "A campus program for college students in its founding phase. Apply to represent VeriWorkly, shape what ambassadors get, and build career tools for students.",
+    title: `Student Ambassador Program | ${siteConfig.shortName}`,
 
-  ogTitle: "Represent VeriWorkly on Campus",
-  ogDescription:
-    "Applications are open for the founding cohort. Every one is read by a person, and the first ambassadors help decide how the program rewards its leaders.",
+    description:
+      "A campus program for college students in its founding phase. Represent VeriWorkly, shape what ambassadors get, and build career tools for students.",
 
-  twitterTitle: "VeriWorkly Campus Ambassadors",
-  twitterDescription:
-    "Founding cohort applications for the student ambassador program. Reviewed by hand.",
+    ogTitle: "Represent VeriWorkly on Campus",
+    ogDescription: `${open ? "Applications are open for the founding cohort." : "Applications for the founding cohort open soon."} Every one is read by a person, and the first ambassadors help decide how the program rewards its leaders.`,
 
-  image: pageOgImage,
-  imageAlt: "VeriWorkly Student Ambassador Program",
-});
+    twitterTitle: "VeriWorkly Campus Ambassadors",
+    twitterDescription: `Founding cohort applications ${open ? "are open" : "open soon"} for the student ambassador program. Reviewed by hand.`,
+
+    image: pageOgImage,
+    imageAlt: "VeriWorkly Student Ambassador Program",
+  });
+}
 
 const AmbassadorPage = async () => {
   // Without this the pitch rendered while Apply dead-ended on the flagged-off apply page.
@@ -72,13 +75,12 @@ const AmbassadorPage = async () => {
       />
 
       <div className="bg-background relative min-h-screen">
-        <AmbassadorNav />
+        <AmbassadorNav programEnabled={programEnabled} />
 
         <main>
           <AmbassadorHero programEnabled={programEnabled} />
           <AmbassadorPerks />
           <AmbassadorPlaybook />
-          <AmbassadorLeaderboard />
           <AmbassadorFAQ />
         </main>
 

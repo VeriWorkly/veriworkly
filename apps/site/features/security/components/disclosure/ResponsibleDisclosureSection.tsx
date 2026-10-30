@@ -38,7 +38,7 @@ export const ResponsibleDisclosureSection = () => (
 
       <div className="mt-14 flex flex-wrap gap-3">
         <a
-          href={`mailto:${siteConfig.email}`}
+          href={`mailto:${siteConfig.securityEmail}`}
           className={`${linkClass} bg-accent-foreground text-accent group`}
         >
           Email a security report

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -369,5 +369,68 @@ describe("the ATS Engine page agrees with the engine and the docs it points to",
     const failed = gaming.failedChecks.map((rule) => rule.id);
     expect(failed).toContain("ats-v2.integrity.promptInjection");
     expect(failed).toContain("ats-v2.integrity.keywordStuffing");
+  });
+});
+
+describe("privacy, pricing and ambassador copy match the server", () => {
+  const repoRoot = join(__dirname, "..", "..", "..", "..");
+  const retentionJob = readFileSync(
+    join(repoRoot, "apps", "server", "src", "jobs", "retentionJob.ts"),
+    "utf8",
+  );
+  const privacy = readFileSync(
+    join(__dirname, "..", "..", "features", "legal", "privacyContent.ts"),
+    "utf8",
+  );
+  const faq = readFileSync(
+    join(__dirname, "..", "..", "features", "faq", "data", "faqItems.ts"),
+    "utf8",
+  );
+
+  /** The default a retention rule falls back to, read from the server source. */
+  const retentionDays = (variable: string) => {
+    const match = retentionJob.match(new RegExp(`days\\("${variable}", (\\d+)\\)`));
+    expect(match, `${variable} default not found in retentionJob.ts`).not.toBeNull();
+    return Number(match![1]);
+  };
+
+  it("states the retention windows the nightly job enforces", () => {
+    const clicks = retentionDays("RETENTION_AFFILIATE_CLICK_DAYS");
+    const views = retentionDays("RETENTION_PORTFOLIO_VIEW_DAYS");
+    const deleted = retentionDays("RETENTION_DELETED_DOCUMENT_DAYS");
+
+    expect(clicks).toBeGreaterThan(0);
+    expect(views).toBe(clicks);
+    expect(privacy).toMatch(new RegExp(`after ${clicks} days a click keeps only its count`));
+    expect(privacy).toMatch(new RegExp(`older than ${views} days are merged`));
+    expect(privacy).toMatch(new RegExp(`${deleted} days after you delete a document`));
+    expect(privacy).toMatch(/request log[^"]*deleted after 90 days/);
+    expect(retentionJob).toMatch(
+      /days\("RETENTION_AUDIT_LOG_DAYS", config\.logging\.auditRetentionDays\)/,
+    );
+  });
+
+  it("does not say retention is unautomated or that the guest cookie renews", () => {
+    expect(privacy).not.toMatch(/not built that automation|not timers enforced/i);
+    expect(privacy).not.toMatch(/30 days after your last visit/i);
+  });
+
+  it("does not offer LinkedIn import as free: every import spends AI credits", () => {
+    expect(pricingMd).not.toMatch(/Free tier:[^\n]*LinkedIn/);
+    expect(pricingMd).toMatch(/LinkedIn import is AI-parsed and spends AI credits/);
+    expect(faq).toMatch(/Every LinkedIn import spends AI credits/);
+  });
+
+  it("does not say documents reach the database only when sync is turned on", () => {
+    expect(faq).not.toMatch(/only if you turn on cloud sync/i);
+  });
+
+  it("shows no invented ambassador rankings: the server keeps no points ledger", () => {
+    const ambassadorDir = join(__dirname, "..", "..", "features", "ambassador");
+    const files = readdirSync(ambassadorDir, { recursive: true, withFileTypes: true });
+    for (const file of files.filter((entry) => entry.isFile())) {
+      const source = readFileSync(join(file.parentPath, file.name), "utf8");
+      expect(source, file.name).not.toMatch(/school:\s*"|points:\s*\d/);
+    }
   });
 });

@@ -48,7 +48,7 @@ const COMPARISON_DATA: ComparisonRow[] = [
     description: "Minimum balance required to trigger a transfer.",
     veriworkly: {
       value: "$25.00 Payout",
-      description: "Instant access to cashflow limits.",
+      description: "Request a payout at $25; each is reviewed by hand.",
       icon: BadgeDollarSign,
     },
     industry: {
@@ -60,8 +60,8 @@ const COMPARISON_DATA: ComparisonRow[] = [
     feature: "Metric Dispatch Speed",
     description: "Time elapsed before click and conversion logs appear.",
     veriworkly: {
-      value: "Real-Time Sync",
-      description: "State changes update instantaneously on panels.",
+      value: "Within a Minute",
+      description: "Sales show once recorded; clicks within 60 seconds.",
       icon: Zap,
     },
     industry: {
