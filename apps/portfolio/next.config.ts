@@ -1,7 +1,26 @@
+import fs from "fs";
 import path from "path";
 import type { NextConfig } from "next";
 
 const isProd = process.env.NODE_ENV === "production";
+
+// A production build from the mock template library publishes "Mock Signal
+// Template: <name>" on every portfolio (P-046). CI builds the mock on purpose
+// (scripts/mock-template-library.mjs) because it cannot read the private repo,
+// and sets CI; a real deploy (the VPS) does not, so it must have the real one.
+const registryFile = path.join(__dirname, "template-library", "registry.ts");
+if (
+  isProd &&
+  !process.env.CI &&
+  fs.existsSync(registryFile) &&
+  fs.readFileSync(registryFile, "utf8").includes("Mock")
+) {
+  throw new Error(
+    "apps/portfolio/template-library is the mock template library. Check out the real " +
+      "VeriWorkly/portfolio-templates submodule (git submodule update --init) before a " +
+      "production build.",
+  );
+}
 
 // Not nonce-based (that would require threading a per-request nonce through
 // every layout/template render path, including the 4 independent portfolio
