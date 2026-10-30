@@ -1,4 +1,6 @@
-import { renderToStaticMarkup } from "react-dom/server";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { renderToStaticMarkup, renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import AtelierTemplate from "@/template-library/atelier/AtelierTemplate";
@@ -6,8 +8,19 @@ import CipherTemplate from "@/template-library/cipher/CipherTemplate";
 import NimbusTemplate from "@/template-library/nimbus/NimbusTemplate";
 import SignalTemplate from "@/template-library/signal/SignalTemplate";
 import { templatesRegistry } from "@/template-library/registry";
-import { createDefaultPortfolio, demoPortfolio } from "@/lib/portfolio";
+import { createDefaultPortfolio, demoPortfolio, portfolioSectionTypes } from "@/lib/portfolio";
 import type { PortfolioProject } from "@/template-library/types";
+
+/**
+ * CI cannot read the private template repo, so it builds against
+ * scripts/mock-template-library.mjs, whose registry says "Mock". The content
+ * assertions below only mean something against the real templates, so they
+ * run locally (and anywhere the submodule is checked out) and skip on the mock.
+ */
+const IS_MOCK_LIBRARY = readFileSync(
+  fileURLToPath(new URL("../template-library/registry.ts", import.meta.url)),
+  "utf8",
+).includes("Mock");
 
 /**
  * Contract coverage for every template in the registry.
@@ -83,14 +96,144 @@ describe.each(entries)("template: %s", (id, Template) => {
     content.sections = content.sections.map((section) => ({ ...section, visible: false }));
     const markup = renderToStaticMarkup(<Template project={content} />);
     for (const section of content.sections) {
-      // `contact` is deliberately exempt: every template renders its contact
-      // block from `project.identity` outside the section loop, so it is not
-      // subject to per-section visibility.
+      // `contact` is checked by the real-template suite below: the CI mock
+      // renders it regardless of visibility.
       if (section.type === "contact") continue;
       expect(markup).not.toContain(`data-section="${section.type}"`);
     }
   });
 });
+
+/** Every section type, visible, with one item whose fields carry unique markers. */
+function fullProject(): PortfolioProject {
+  return {
+    ...createDefaultPortfolio(),
+    identity: {
+      name: "Ada Quorum",
+      headline: "Builds careful payment systems",
+      bio: "BioMarker paragraph about the owner.",
+      location: "Lisbon",
+      email: "ada@example.com",
+      availability: "Open to work",
+      avatar: { id: "avatar", url: "https://cdn.example.com/ada.png" },
+    },
+    socialLinks: [{ id: "gh", label: "GitHub", url: "https://github.com/ada" }],
+    sections: portfolioSectionTypes.map((type) => ({
+      id: `sec-${type}`,
+      type,
+      title: `Title${type}`,
+      subtitle: `Sub${type}`,
+      visible: true,
+      items:
+        type === "contact"
+          ? []
+          : [
+              {
+                id: `${type}-1`,
+                title: `Item${type}`,
+                role: `Item${type}`,
+                school: `Item${type}`,
+                summary: `Body${type}`,
+                score: "1520",
+                level: "Fluent",
+                coverImage: { id: "c", url: `https://cdn.example.com/${type}.png` },
+              },
+            ],
+    })),
+  };
+}
+
+describe.skipIf(IS_MOCK_LIBRARY)(
+  "real templates: server-rendered content (skipped when template-library is the CI mock)",
+  () => {
+    describe.each(entries)("%s", (_id, Template) => {
+      it("puts the name, every headline word, the bio and every visible section in the HTML", () => {
+        const project = fullProject();
+        const markup = renderToString(<Template project={project} />);
+        expect(markup).toContain("Ada Quorum");
+        for (const word of project.identity.headline.split(" ")) expect(markup).toContain(word);
+        expect(markup).toContain("BioMarker paragraph about the owner.");
+        for (const section of project.sections) {
+          expect(markup, section.type).toContain(`Title${section.type}`);
+          if (section.type !== "contact")
+            expect(markup, section.type).toContain(`Body${section.type}`);
+        }
+      });
+
+      it("renders the profile photo and the project cover", () => {
+        const markup = renderToString(<Template project={fullProject()} />);
+        expect(markup).toContain("https://cdn.example.com/ada.png");
+        expect(markup).toContain("https://cdn.example.com/projects.png");
+      });
+
+      it("leaves hidden sections, including contact, out of the page", () => {
+        const project = fullProject();
+        project.sections = project.sections.map((s) => ({ ...s, visible: s.type === "projects" }));
+        const markup = renderToString(<Template project={project} />);
+        expect(markup).toContain("Titleprojects");
+        for (const section of project.sections) {
+          if (section.type === "projects") continue;
+          expect(markup, section.type).not.toContain(`Title${section.type}`);
+          expect(markup, section.type).not.toContain(`Body${section.type}`);
+        }
+        expect(markup).not.toContain('data-section="contact"');
+        expect(markup).not.toContain("Subcontact");
+      });
+
+      it("shows the contact section's own title and subtitle when it is on", () => {
+        const markup = renderToString(<Template project={fullProject()} />);
+        expect(markup).toContain("Titlecontact");
+        expect(markup).toContain("Subcontact");
+        expect(markup).toContain("mailto:ada@example.com");
+      });
+
+      it("shows an edited imported item, not the stale imported copy (P-028)", () => {
+        const project = fullProject();
+        project.sections = [
+          {
+            id: "p",
+            type: "projects",
+            title: "Work",
+            visible: true,
+            // An import writes both keys; the editor then changes `title` and `summary`.
+            items: [
+              {
+                id: "p1",
+                name: "ImportedName",
+                title: "EditedName",
+                description: "ImportedBody",
+                summary: "EditedBody",
+              },
+            ],
+          },
+        ];
+        const markup = renderToString(<Template project={project} />);
+        expect(markup).toContain("EditedName");
+        expect(markup).toContain("EditedBody");
+        expect(markup).not.toContain("ImportedName");
+        expect(markup).not.toContain("ImportedBody");
+      });
+
+      it("prints a test score as entered and invents nothing", () => {
+        const markup = renderToString(<Template project={fullProject()} />);
+        expect(markup).toContain("1520");
+        for (const invented of [
+          "Product Engineering",
+          "compiler-optimized",
+          "Obsession",
+          "Built with React",
+          "Subscribe to Technical Logs",
+          "Grade ",
+          "Let&#x27;s build",
+          "Open for the next useful idea",
+          ">Developer<",
+        ]) {
+          expect(markup, invented).not.toContain(invented);
+        }
+      });
+    });
+  },
+);
 
 /**
  * Regressions for TEMPLATE-AUDIT.md §1 — Signal used to supply real-sounding
