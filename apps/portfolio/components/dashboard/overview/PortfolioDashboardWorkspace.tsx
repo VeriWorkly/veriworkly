@@ -21,6 +21,8 @@ export function PortfolioDashboardWorkspace() {
   const draft = data.workspace?.draft as CloudPortfolioDraft | undefined;
 
   const publicationStatus = data.workspace?.publication?.status;
+  // The address the site is live on, not the draft slug, which may have changed since (P-031).
+  const liveSubdomain = data.workspace?.publication?.subdomain;
   const isLive = isPortfolioPubliclyVisible(publicationStatus);
   const canPublish = hasPortfolioAccess(data.workspace?.billing);
 
@@ -39,7 +41,7 @@ export function PortfolioDashboardWorkspace() {
   return (
     <main className="surface-grid min-h-[calc(100dvh-4.25rem)] px-4 py-8 sm:px-6 sm:py-10 xl:px-10">
       <div className="mx-auto max-w-7xl">
-        <DashboardHeader userName={data.user?.name} slug={draft?.slug} isLive={isLive} />
+        <DashboardHeader userName={data.user?.name} slug={liveSubdomain} isLive={isLive} />
 
         <DashboardMetrics
           totalViews={analytics?.totalViews ?? 0}
@@ -49,7 +51,7 @@ export function PortfolioDashboardWorkspace() {
           projectCount={readiness.projectCount}
           readiness={readiness.percent}
           isLive={isLive}
-          slug={draft?.slug}
+          slug={liveSubdomain}
         />
 
         <section className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(19rem,.55fr)]">

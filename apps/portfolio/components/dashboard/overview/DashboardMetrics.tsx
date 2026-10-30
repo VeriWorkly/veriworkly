@@ -12,6 +12,7 @@ export interface DashboardMetricsProps {
   projectCount: number;
   readiness: number;
   isLive: boolean;
+  /** The live publication's subdomain. */
   slug?: string;
 }
 
@@ -40,7 +41,7 @@ export function DashboardMetrics({
         icon={<Eye size={16} />}
       />
       <Metric
-        label="Published sections"
+        label="Visible sections"
         value={String(visibleSections)}
         detail={`${projectCount} project ${projectCount === 1 ? "story" : "stories"}`}
         icon={<LayoutTemplate size={16} />}
@@ -54,7 +55,7 @@ export function DashboardMetrics({
       <Metric
         label="Publication"
         value={isLive ? "Live" : "Draft"}
-        detail={slug ? portfolioWorkspaceUrl(slug).display : "Create your first draft"}
+        detail={isLive && slug ? portfolioWorkspaceUrl(slug).display : "Not published yet"}
         icon={<Sparkles size={16} />}
       />
     </section>

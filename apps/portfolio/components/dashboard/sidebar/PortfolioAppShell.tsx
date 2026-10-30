@@ -7,8 +7,6 @@ import { LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 import { Button } from "@veriworkly/ui";
 
-import type { CloudPortfolioDraft } from "@/lib/portfolio";
-
 import { portfolioWorkspaceUrl, siteConfig } from "@/config/site";
 import { backendApiUrl } from "@/lib/backend";
 import { isPortfolioPubliclyVisible } from "@/lib/portfolio-status";
@@ -34,11 +32,12 @@ function readCollapsed() {
 export function PortfolioAppShell({ children }: { children: React.ReactNode }) {
   const { user, workspace } = useWorkspace();
   // From the store rather than the server render, so "View site" goes away the moment the
-  // user unpublishes. Only offered while the public site actually resolves.
-  const slug = (workspace?.draft as CloudPortfolioDraft | null | undefined)?.slug;
+  // user unpublishes. Only offered while the public site actually resolves, at the address it is
+  // live on: the draft's slug may be a new name that is not published yet (P-031).
+  const publication = workspace?.publication;
   const publicUrl =
-    slug && isPortfolioPubliclyVisible(workspace?.publication?.status)
-      ? portfolioWorkspaceUrl(slug).href
+    publication?.subdomain && isPortfolioPubliclyVisible(publication.status)
+      ? portfolioWorkspaceUrl(publication.subdomain).href
       : undefined;
 
   // Expanded in the server render and while hydrating, then the saved choice. Reading

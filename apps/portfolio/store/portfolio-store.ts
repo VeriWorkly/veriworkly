@@ -18,6 +18,7 @@ import {
   type PortfolioPage,
 } from "@/lib/portfolio";
 import { defaultSubdomain, isAllowedSubdomain } from "@/lib/subdomain";
+import { PORTFOLIO_LIMITS } from "@/lib/portfolio-limits";
 import { sectionLabels, sectionSubtitleDefaults } from "@/lib/section-fields";
 import {
   clearPortfolioCache,
@@ -519,6 +520,10 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
 
       addSection: (type) =>
         set((state) => {
+          const page = state.selectedPageId
+            ? state.content.pages?.find((p) => p.id === state.selectedPageId)
+            : undefined;
+          if ((page ?? state.content).sections.length >= PORTFOLIO_LIMITS.sections) return {};
           const newSection: PortfolioSection = {
             id: createId("section"),
             type,
@@ -575,6 +580,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
 
       addPage: (slug, title) =>
         set((state) => {
+          if ((state.content.pages?.length ?? 0) >= PORTFOLIO_LIMITS.pages) return {};
           const newPage: PortfolioPage = {
             id: createId("page"),
             slug,

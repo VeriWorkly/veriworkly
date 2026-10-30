@@ -8,13 +8,16 @@ import { hasPortfolioAccess, upgradeHref } from "@/lib/portfolio-status";
 
 export interface TemplatePickerProps {
   open: boolean;
+  /** A template chosen in the gallery that this account cannot use yet (`/editor?template=`). */
+  highlightId?: string;
   onClose: () => void;
 }
 
-export function TemplatePicker({ open, onClose }: TemplatePickerProps) {
+export function TemplatePicker({ open, highlightId, onClose }: TemplatePickerProps) {
   const activeTemplateId = usePortfolioStore((state) => state.content.templateId);
   const updateContent = usePortfolioStore((state) => state.updateContent);
   const isPremiumUser = usePortfolioStore((state) => hasPortfolioAccess(state.billing));
+  const highlighted = templateCatalog.find((template) => template.id === highlightId);
 
   return (
     <Modal open={open} onClose={onClose}>
@@ -29,7 +32,7 @@ export function TemplatePicker({ open, onClose }: TemplatePickerProps) {
               Choose a template
             </h2>
             <p id="template-picker-description" className="text-muted mt-1 text-xs">
-              Preview the complete layout before applying it.
+              Your content carries over to whichever layout you pick.
             </p>
           </div>
           <button
@@ -42,6 +45,12 @@ export function TemplatePicker({ open, onClose }: TemplatePickerProps) {
           </button>
         </header>
         <div className="grid gap-4 overflow-y-auto p-4 md:grid-cols-2">
+          {highlighted ? (
+            <p className="bg-accent-soft text-ink rounded-lg p-3 text-xs font-bold md:col-span-2">
+              You picked {highlighted.name}. Creator Pro, the Job Hunter Bundle or a pass unlocks
+              it. Until then, Signal and Atelier are free.
+            </p>
+          ) : null}
           {templateCatalog.map((template) => {
             const isDisabled = template.isPremium && !isPremiumUser;
             const card = (
@@ -84,7 +93,7 @@ export function TemplatePicker({ open, onClose }: TemplatePickerProps) {
                   key={template.id}
                   href={upgradeHref(template.id)}
                   className={`group relative overflow-hidden rounded-xl border text-left transition ${
-                    activeTemplateId === template.id
+                    activeTemplateId === template.id || highlightId === template.id
                       ? "border-accent ring-accent-soft ring-2"
                       : "border-line hover:border-line-strong"
                   }`}

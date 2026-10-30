@@ -94,6 +94,12 @@ describe("portfolio store", () => {
     });
   });
 
+  it("stops adding sections at the server's cap of 24 (P-025)", () => {
+    store.setState({ ready: true });
+    for (let i = 0; i < 30; i++) store.getState().addSection("projects");
+    expect(store.getState().content.sections).toHaveLength(24);
+  });
+
   it("normalizes slug input through updateSlug", () => {
     store.getState().updateSlug("  Gautam Raj!! ");
     expect(store.getState().slug).toBe("gautam-raj");

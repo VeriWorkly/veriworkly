@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { PanelRightClose } from "lucide-react";
 import Link from "next/link";
 import { hasPortfolioAccess, upgradeHref } from "@/lib/portfolio-status";
+import { PORTFOLIO_LIMITS as LIMITS, fieldIds, isValidEmail } from "@/lib/portfolio-limits";
 import { usePortfolioStore } from "@/store/portfolio-store";
 import { EditorPanel } from "./EditorPanel";
 import { Field } from "./Field";
@@ -11,11 +13,13 @@ import { PortfolioAiAssist } from "./PortfolioAiAssist";
 import { SocialLinksEditor } from "./SocialLinksEditor";
 
 export interface ContentCanvasProps {
+  /** Display classes from the editor layout (a tab below `lg`). */
+  visibility: string;
   selectedSectionId: string;
   onClose: () => void;
 }
 
-export function ContentCanvas({ selectedSectionId, onClose }: ContentCanvasProps) {
+export function ContentCanvas({ visibility, selectedSectionId, onClose }: ContentCanvasProps) {
   const content = usePortfolioStore((state) => state.content);
   const updateContent = usePortfolioStore((state) => state.updateContent);
   const updateIdentity = usePortfolioStore((state) => state.updateIdentity);
@@ -29,9 +33,16 @@ export function ContentCanvas({ selectedSectionId, onClose }: ContentCanvasProps
     : rootSections;
   const selectedSection = sections.find((section) => section.id === selectedSectionId);
   const isPremiumUser = usePortfolioStore((state) => hasPortfolioAccess(state.billing));
+  // Checked when the field is left, not on every keystroke of a half-typed address.
+  const [emailError, setEmailError] = useState("");
 
   return (
-    <section className="border-line bg-paper hidden min-h-0 overflow-y-auto border-r p-3 lg:block">
+    <section
+      id="editor-panel-content"
+      role="tabpanel"
+      aria-labelledby="editor-tab-content"
+      className={`border-line bg-paper ${visibility} min-h-0 overflow-y-auto border-r p-3`}
+    >
       <div className="mb-3 flex items-center justify-between px-1">
         <div>
           <p className="text-sm font-extrabold">
@@ -40,7 +51,7 @@ export function ContentCanvas({ selectedSectionId, onClose }: ContentCanvasProps
           <p className="text-muted mt-0.5 text-[11px]">Edit only the selected area.</p>
         </div>
         <button
-          className="text-muted hover:bg-panel grid size-8 place-items-center rounded-lg"
+          className="text-muted hover:bg-panel hidden size-8 place-items-center rounded-lg lg:grid"
           onClick={onClose}
           aria-label="Close content editor"
           type="button"
@@ -51,17 +62,24 @@ export function ContentCanvas({ selectedSectionId, onClose }: ContentCanvasProps
 
       {selectedSectionId === "profile" ? (
         <EditorPanel title="Introduction" detail="Write the first screen people should remember.">
-          <Field label="Name">
+          <Field label="Name" count={{ length: content.identity.name.length, max: LIMITS.name }}>
             <input
+              id={fieldIds.name}
               className={input}
+              maxLength={LIMITS.name}
               value={content.identity.name}
               onChange={(e) => updateIdentity({ name: e.target.value })}
             />
           </Field>
-          <Field label="Professional headline">
+          <Field
+            label="Professional headline"
+            count={{ length: content.identity.headline.length, max: LIMITS.headline }}
+          >
             <textarea
+              id={fieldIds.headline}
               className={input}
               rows={2}
+              maxLength={LIMITS.headline}
               value={content.identity.headline}
               onChange={(e) => updateIdentity({ headline: e.target.value })}
             />
@@ -72,10 +90,15 @@ export function ContentCanvas({ selectedSectionId, onClose }: ContentCanvasProps
             onApply={(headline) => updateIdentity({ headline })}
             text={content.identity.headline}
           />
-          <Field label="Short introduction">
+          <Field
+            label="Short introduction"
+            count={{ length: content.identity.bio.length, max: LIMITS.bio }}
+          >
             <textarea
+              id={fieldIds.bio}
               className={input}
               rows={5}
+              maxLength={LIMITS.bio}
               value={content.identity.bio}
               onChange={(e) => updateIdentity({ bio: e.target.value })}
             />
@@ -90,27 +113,48 @@ export function ContentCanvas({ selectedSectionId, onClose }: ContentCanvasProps
             text={content.identity.bio}
           />
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Location">
+            <Field
+              label="Location"
+              count={{ length: content.identity.location.length, max: LIMITS.location }}
+            >
               <input
                 className={input}
+                maxLength={LIMITS.location}
                 value={content.identity.location}
                 onChange={(e) => updateIdentity({ location: e.target.value })}
               />
             </Field>
-            <Field label="Availability">
+            <Field
+              label="Availability"
+              count={{ length: content.identity.availability.length, max: LIMITS.availability }}
+            >
               <input
                 className={input}
+                maxLength={LIMITS.availability}
                 value={content.identity.availability}
                 onChange={(e) => updateIdentity({ availability: e.target.value })}
               />
             </Field>
           </div>
-          <Field label="Public email">
+          <Field label="Public email" error={emailError}>
             <input
+              id={fieldIds.email}
               className={input}
               type="email"
+              maxLength={LIMITS.email}
+              aria-invalid={emailError ? true : undefined}
               value={content.identity.email}
-              onChange={(e) => updateIdentity({ email: e.target.value })}
+              onChange={(e) => {
+                updateIdentity({ email: e.target.value });
+                if (emailError && isValidEmail(e.target.value)) setEmailError("");
+              }}
+              onBlur={(e) =>
+                setEmailError(
+                  isValidEmail(e.target.value)
+                    ? ""
+                    : "Enter a full email address, like you@example.com, or leave it empty.",
+                )
+              }
             />
           </Field>
           <AssetUpload
@@ -121,7 +165,8 @@ export function ContentCanvas({ selectedSectionId, onClose }: ContentCanvasProps
           />
           <SocialLinksEditor />
           <div className="border-line mt-4 border-t pt-4">
-            <Field label="Remove the 'Built with VeriWorkly' badge">
+            <div className="grid gap-1.5 text-xs font-bold text-[var(--color-ink-soft)]">
+              <p>&ldquo;Built with VeriWorkly&rdquo; badge</p>
               <label className="mt-1 flex cursor-pointer items-center gap-3">
                 <div className="relative inline-flex items-center">
                   <input
@@ -137,7 +182,7 @@ export function ContentCanvas({ selectedSectionId, onClose }: ContentCanvasProps
                   <div className="peer peer-checked:bg-accent bg-line-strong after:border-line peer-focus-visible:ring-accent-soft h-5 w-9 rounded-full peer-focus-visible:ring-4 peer-disabled:opacity-50 after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:border after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full"></div>
                 </div>
                 <span className="text-ink-soft text-xs">
-                  Hide the badge from your portfolio
+                  Hide &ldquo;Built with VeriWorkly&rdquo; on your site
                   {!isPremiumUser && (
                     <span className="bg-accent ml-2 rounded-full px-2 py-0.5 text-[9px] font-bold tracking-widest text-white uppercase">
                       PRO
@@ -153,7 +198,7 @@ export function ContentCanvas({ selectedSectionId, onClose }: ContentCanvasProps
                   </Link>
                 </p>
               ) : null}
-            </Field>
+            </div>
           </div>
         </EditorPanel>
       ) : selectedSection ? (

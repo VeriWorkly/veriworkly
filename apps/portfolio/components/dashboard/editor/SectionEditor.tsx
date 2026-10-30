@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { createId, type PortfolioSection } from "@/lib/portfolio";
 import { usePortfolioStore } from "@/store/portfolio-store";
@@ -8,6 +9,8 @@ import { AssetUpload } from "./AssetUpload";
 import { actionClass as action, inputClass as input, sectionInfo } from "./constants";
 import { PortfolioAiAssist } from "./PortfolioAiAssist";
 import { ItemFields } from "./ItemFields";
+import { ConfirmDelete, type DeleteRequest } from "./ConfirmDelete";
+import { PORTFOLIO_LIMITS as LIMITS, fieldIds } from "@/lib/portfolio-limits";
 import { emptyItemFor, sectionFields, sectionSubtitleDefaults } from "@/lib/section-fields";
 
 export interface SectionEditorProps {
@@ -17,6 +20,8 @@ export interface SectionEditorProps {
 export function SectionEditor({ section }: SectionEditorProps) {
   const updateSection = usePortfolioStore((state) => state.updateSection);
   const documentId = usePortfolioStore((state) => state.draft?.id);
+  const [pendingDelete, setPendingDelete] = useState<DeleteRequest>(null);
+  const itemsFull = section.items.length >= LIMITS.items;
   const replaceItems = (items: Array<Record<string, unknown>>) =>
     updateSection(section.id, { items });
   const updateItem = (index: number, patch: Record<string, unknown>) =>
@@ -31,12 +36,18 @@ export function SectionEditor({ section }: SectionEditorProps) {
 
   return (
     <EditorPanel
-      title={section.title.trim() || `Untitled ${sectionInfo[section.type].label}`}
+      title={section.title.trim() || `${sectionInfo[section.type].label} (needs a title)`}
       detail={`${section.items.length} ${section.items.length === 1 ? "item" : "items"} · ${sectionInfo[section.type].detail}`}
     >
-      <Field label="Section title">
+      <Field
+        label="Section title"
+        count={{ length: section.title.length, max: LIMITS.sectionTitle }}
+        error={section.title.trim() ? undefined : "Add a title. Publishing needs one."}
+      >
         <input
+          id={fieldIds.sectionTitle}
           className={input}
+          maxLength={LIMITS.sectionTitle}
           value={section.title}
           onChange={(e) => updateSection(section.id, { title: e.target.value })}
         />
@@ -45,9 +56,14 @@ export function SectionEditor({ section }: SectionEditorProps) {
         <Field
           label="Section subtitle"
           help="Shown under the heading. Clear it to hide the subtitle entirely."
+          count={{
+            length: typeof section.subtitle === "string" ? section.subtitle.length : 0,
+            max: LIMITS.sectionSubtitle,
+          }}
         >
           <input
             className={input}
+            maxLength={LIMITS.sectionSubtitle}
             placeholder={sectionSubtitleDefaults[section.type]}
             value={typeof section.subtitle === "string" ? section.subtitle : ""}
             onChange={(e) => updateSection(section.id, { subtitle: e.target.value })}
@@ -112,7 +128,11 @@ export function SectionEditor({ section }: SectionEditorProps) {
                   label="Delete item"
                   danger
                   onClick={() =>
-                    replaceItems(section.items.filter((_, itemIndex) => itemIndex !== index))
+                    setPendingDelete({
+                      title: `Delete item ${index + 1}?`,
+                      detail: `It will be removed from ${section.title.trim() || "this section"}.`,
+                      run: () => replaceItems(section.items.filter((other) => other !== item)),
+                    })
                   }
                 >
                   <Trash2 size={13} aria-hidden="true" />
@@ -150,6 +170,7 @@ export function SectionEditor({ section }: SectionEditorProps) {
         {section.type !== "contact" ? (
           <button
             className={`${action} border-line bg-panel text-ink border`}
+            disabled={itemsFull}
             onClick={() =>
               updateSection(section.id, {
                 items: [...section.items, { id: createId("item"), ...emptyItemFor(section.type) }],
@@ -160,7 +181,13 @@ export function SectionEditor({ section }: SectionEditorProps) {
             <Plus size={14} aria-hidden="true" /> Add item
           </button>
         ) : null}
+        {itemsFull ? (
+          <p className="text-muted text-[11px]">
+            A section can have up to {LIMITS.items} items. Delete one to add another.
+          </p>
+        ) : null}
       </div>
+      <ConfirmDelete request={pendingDelete} onClose={() => setPendingDelete(null)} />
     </EditorPanel>
   );
 }

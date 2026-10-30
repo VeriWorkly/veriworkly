@@ -42,7 +42,7 @@ export function PortfolioSettingsWorkspace() {
   // Mirrors EditorCommandBar's publish gate (enforced server-side either way).
   const publishingDisabledInProd = isProd && !isAdmin;
 
-  // Saves the draft only (P-037). Republishing from here sent the whole in-memory draft live,
+  // Saves only the draft (P-037). Republishing from here sent the whole in-memory draft live,
   // editor changes included, without the owner choosing to publish them.
   const handleSave = async () => {
     const result = await saveDraft();
