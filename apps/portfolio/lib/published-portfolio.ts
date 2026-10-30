@@ -50,7 +50,10 @@ export function publicView(snapshot: PortfolioContent, isPaid: boolean): Portfol
  * exist" (P-007).
  */
 export const getPublishedPortfolio = cache(
-  async (subdomain: string): Promise<PublishedPortfolio | null> => {
+  async (name: string): Promise<PublishedPortfolio | null> => {
+    // Subdomains are lowercase, and the server revalidates "portfolio-<lowercase>": a mixed-case
+    // platform path (/portfolios/Alice) otherwise cached under a tag nothing ever expires.
+    const subdomain = name.toLowerCase();
     const response = await fetch(
       backendApiUrl(`/portfolios/public/${encodeURIComponent(subdomain)}`, true),
       {

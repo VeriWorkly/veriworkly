@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { parsePortfolioContent, type PortfolioContent, type TemplateId } from "@/lib/portfolio";
 import { templateLoaders } from "@/template-library/registry";
 import { Watermark } from "@/components/Watermark";
+import { loadPortfolioCache } from "@/lib/portfolio-storage";
 
 const templates = Object.fromEntries(
   Object.entries(templateLoaders).map(([id, loader]) => [id, dynamic(loader)]),
@@ -40,15 +41,32 @@ export function isEditorMessage(
   );
 }
 
+/**
+ * A guest's draft lives only in this browser, so the server renders the default. Opened on its
+ * own (Preview, not the editor's frame, which posts the live content), it shows the saved draft.
+ */
+export function standaloneGuestContent(self: { parent: unknown }) {
+  return self.parent === self ? (loadPortfolioCache()?.content ?? null) : null;
+}
+
 export function LivePortfolioPreview({
   initialContent,
   canPublish,
+  guest = false,
 }: {
   initialContent: PortfolioContent;
   canPublish: boolean;
+  guest?: boolean;
 }) {
   const [content, setContent] = useState(initialContent);
   const [pageId, setPageId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const cached = guest ? standaloneGuestContent(window) : null;
+    // localStorage is only readable after mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (cached) setContent(cached);
+  }, [guest]);
 
   useEffect(() => {
     const receive = (event: MessageEvent) => {

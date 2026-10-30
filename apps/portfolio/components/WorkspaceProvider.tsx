@@ -1,12 +1,13 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useState } from "react";
 
 import type { PortfolioAnalyticsData, PortfolioWorkspaceBootstrap } from "@/store/portfolio-store";
 
 import {
   buildHydratedState,
   createPortfolioStore,
+  keepEditsForSignIn,
   PortfolioStoreProvider,
   shouldAutosave,
   usePortfolioStore,
@@ -14,7 +15,7 @@ import {
   usePortfolioStoreApi,
 } from "@/store/portfolio-store";
 import { loadPortfolioCache } from "@/lib/portfolio-storage";
-import { setSignedIn } from "@/lib/authenticated-fetch";
+import { setBeforeSignOut, setSignedIn } from "@/lib/authenticated-fetch";
 import { WorkspaceNotice } from "@/components/WorkspaceNotice";
 
 interface WorkspaceContextType {
@@ -76,13 +77,17 @@ function WorkspaceBridge({
   const load = usePortfolioStore((state) => state.loadWorkspace);
   const hydrate = usePortfolioStore((state) => state.hydrateWorkspace);
 
-  useEffect(() => {
+  // A layout effect, so it runs before any page's own effects: the editor's `?template=` and
+  // first-save effects then see the load already under way (`workspaceState` "loading") and wait
+  // for it, instead of editing content the load is about to replace.
+  useLayoutEffect(() => {
     if (initialData.user || initialData.workspace) {
       // A guest draft left in this browser was made before signing in. `loadWorkspace` finds it
       // and asks whether to bring it into the account; the server seed knows nothing of it.
       if (initialData.user && loadPortfolioCache()) void load();
-      else if (initialData.workspace)
-        hydrate({ ...initialData, analytics: initialData.analytics ?? null });
+      // The store was seeded from this same bootstrap at render; hydrating it again here
+      // undid any change a page had already made.
+      else if (initialData.workspace) return;
       else void load();
     } else {
       // Guest mode! Hydrate using local data only, do not load from server
@@ -118,6 +123,13 @@ function WorkspaceBridge({
 
   // Only a signed-in tab may be signed out by a 401; a guest just gets an inline "Log in" prompt.
   useEffect(() => setSignedIn(!!user), [user]);
+
+  // An expired session mid-edit goes to the login page with its edits kept in this browser.
+  const store = usePortfolioStoreApi();
+  useEffect(() => {
+    setBeforeSignOut(() => keepEditsForSignIn(store));
+    return () => setBeforeSignOut(null);
+  }, [store]);
 
   // `ready` is already true on the first render whenever the server supplied a workspace,
   // so this normally reads from the store immediately. The fallback still matters for

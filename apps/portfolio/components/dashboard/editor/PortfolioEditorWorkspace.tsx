@@ -27,6 +27,9 @@ export function PortfolioEditorWorkspace() {
   const storeApi = usePortfolioStoreApi();
   const save = usePortfolioStore((state) => state.saveDraft);
   const ready = usePortfolioStore((state) => state.ready);
+  // Read at fire time below too: WorkspaceBridge starts a load in a layout effect, after this
+  // render but before these effects, and the content it brings replaces what is on screen.
+  const workspaceState = usePortfolioStore((state) => state.workspaceState);
   const selectedPageIdState = usePortfolioStore((state) => state.selectedPageId);
   const setSelectedPageId = usePortfolioStore((state) => state.setSelectedPageId);
   // The fallback stays outside the selector: a new [] per call makes the store loop forever.
@@ -47,12 +50,15 @@ export function PortfolioEditorWorkspace() {
       ? selectedSectionId
       : "profile";
 
+  // A signed-in account without a draft gets its first one. Never a guest: that wrote the blank
+  // default to this browser, which was then offered over the account's draft after logging in.
   useEffect(() => {
-    if (!ready || storeApi.getState().draft) return;
+    const state = storeApi.getState();
+    if (!ready || state.workspaceState !== "ready" || state.draft || !state.user) return;
     void save().then((result) => {
       if (!result.ok) storeApi.getState().setMessage(result.message);
     });
-  }, [ready, save, storeApi]);
+  }, [ready, workspaceState, save, storeApi]);
 
   // Autosave and the leave-page warning run for the whole workspace (WorkspaceProvider). Leaving
   // the editor sends what is pending now rather than up to 12 s later (P-022).
@@ -72,7 +78,9 @@ export function PortfolioEditorWorkspace() {
   // address so a reload does not apply it again.
   const templateParamRead = useRef(false);
   useEffect(() => {
-    if (!ready || templateParamRead.current) return;
+    if (!ready || storeApi.getState().workspaceState !== "ready" || templateParamRead.current) {
+      return;
+    }
     templateParamRead.current = true;
     const url = new URL(window.location.href);
     const id = url.searchParams.get("template");
@@ -93,7 +101,7 @@ export function PortfolioEditorWorkspace() {
       state.updateContent({ templateId: template.id });
       toast.success(`${template.name} applied.`);
     }
-  }, [ready, storeApi]);
+  }, [ready, workspaceState, storeApi]);
 
   const selectSection = useCallback((id: string) => {
     setSelectedSectionId(id);

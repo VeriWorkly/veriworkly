@@ -67,6 +67,24 @@ export function StructureRail({
   const sectionsFull = sections.length >= PORTFOLIO_LIMITS.sections;
   const pagesFull = pages.length >= PORTFOLIO_LIMITS.pages;
 
+  const homeButton = (
+    <button
+      className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs font-bold ${
+        selectedPageId === null ? "bg-accent text-accent-ink" : "hover:bg-paper"
+      }`}
+      aria-current={selectedPageId === null ? "page" : undefined}
+      onClick={() => setSelectedPageId(null)}
+      type="button"
+    >
+      <FileText
+        size={14}
+        aria-hidden="true"
+        className={selectedPageId === null ? "text-accent-ink/65" : "text-muted"}
+      />
+      <span className="min-w-0 flex-1 truncate">Home</span>
+    </button>
+  );
+
   const projectsSection = rootSections.find((s) => s.type === "projects");
   const projectItems = projectsSection?.items || [];
   const projectDetailPages = projectItems.map((item, index) => {
@@ -166,21 +184,7 @@ export function StructureRail({
             </div>
           )}
           <div className="space-y-1">
-            <button
-              className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs font-bold ${
-                selectedPageId === null ? "bg-accent text-accent-ink" : "hover:bg-paper"
-              }`}
-              aria-current={selectedPageId === null ? "page" : undefined}
-              onClick={() => setSelectedPageId(null)}
-              type="button"
-            >
-              <FileText
-                size={14}
-                aria-hidden="true"
-                className={selectedPageId === null ? "text-accent-ink/65" : "text-muted"}
-              />
-              <span className="min-w-0 flex-1 truncate">Home</span>
-            </button>
+            {homeButton}
             {pages.map((page) => (
               <div
                 key={page.id}
@@ -222,6 +226,11 @@ export function StructureRail({
           </div>
         </div>
       )}
+      {/* The publish checklist can open a sub-page for a plan that has lapsed; Home is the
+          way back, so it shows outside the paid Pages list. */}
+      {!isPremiumUser && selectedPageId !== null ? (
+        <div className="mb-2 px-2">{homeButton}</div>
+      ) : null}
       {!isPremiumUser ? (
         <p className="border-line text-muted mb-2 border-b px-2 pt-1 pb-3 text-[11px] leading-5">
           Extra pages come with Creator Pro, the Job Hunter Bundle or a pass.{" "}

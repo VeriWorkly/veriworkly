@@ -11,6 +11,7 @@ import {
   isPortfolioPubliclyVisible,
   planLabel,
   publicationNotice,
+  publishEndsGrace,
 } from "@/lib/portfolio-status";
 import {
   checkSubdomain,
@@ -206,6 +207,20 @@ describe("planLabel", () => {
       "Credits customer",
     );
     expect(planLabel({ plan: "FREE", access: { tier: "free", isPaying: false } })).toBe("Free");
+  });
+});
+
+// The server publishes with the plan in effect, so a publish in GRACE drops the badge removal,
+// paid SEO and extra pages the grace period was keeping: the editor and Settings ask first.
+describe("publishing in GRACE asks first", () => {
+  it("asks only while the site is in GRACE", () => {
+    expect(publishEndsGrace({ status: "GRACE" })).toBe(true);
+    for (const status of ["LIVE", "SUSPENDED"]) expect(publishEndsGrace({ status })).toBe(false);
+    expect(publishEndsGrace(null)).toBe(false);
+  });
+
+  it("offers no direct publish on the status card in GRACE, only Renew", () => {
+    expect(publicationNotice({ status: "GRACE" }, null, (iso) => iso).action).toBe("renew");
   });
 });
 

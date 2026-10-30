@@ -14,6 +14,14 @@ export function setSignedIn(value: boolean) {
   signedIn = value;
 }
 
+// Runs just before an expired session is sent to the login page: the workspace registers one
+// that keeps unsaved edits in this browser, so they are offered back after logging in.
+let beforeSignOut: (() => void) | null = null;
+
+export function setBeforeSignOut(callback: (() => void) | null) {
+  beforeSignOut = callback;
+}
+
 export function isInvalidSessionResponse(path: string, status: number, hadSession: boolean) {
   if (!hadSession) return false;
   return status === 401 || (status === 404 && path.split("?")[0] === "/users/me");
@@ -29,6 +37,7 @@ async function clearInvalidSessionAndRedirect() {
 
   cleanupPromise = (async () => {
     try {
+      beforeSignOut?.();
       await fetch(backendApiUrl("/auth/sign-out"), {
         method: "POST",
         credentials: "include",

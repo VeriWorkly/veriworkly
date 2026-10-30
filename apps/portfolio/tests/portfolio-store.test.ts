@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Publication } from "@/store/portfolio-store";
+import { createDefaultPortfolio } from "@/lib/portfolio";
 
 // Must be set before `@/store/portfolio-store` (and its `@/lib/backend`
 // import) is first evaluated, since backendApiUrl reads these into
@@ -242,6 +243,76 @@ describe("portfolio store", () => {
       expect(store.getState().guestDraft).toBeNull();
       expect(localStorageMock.getItem(CACHE_KEY)).toBeNull();
     });
+
+    // An expired session that opened /editor left the blank default here; bringing it in
+    // replaced the account's real draft with an empty one.
+    it("does not offer an untouched default guest draft", async () => {
+      localStorageMock.setItem(
+        CACHE_KEY,
+        JSON.stringify({
+          slug: "my-portfolio",
+          content: createDefaultPortfolio(),
+          updatedAt: null,
+        }),
+      );
+      signIn(cloudDraft);
+
+      await store.getState().loadWorkspace();
+
+      expect(store.getState().guestDraft).toBeNull();
+      expect(store.getState().content.identity.bio).toBe("cloud");
+      expect(localStorageMock.getItem(CACHE_KEY)).toBeNull();
+    });
+
+    it("keeps the account's subdomain when the guest draft has every guest's default", async () => {
+      localStorageMock.setItem(
+        CACHE_KEY,
+        JSON.stringify({ slug: "my-portfolio", content: localContent, updatedAt: null }),
+      );
+      signIn(cloudDraft);
+      await store.getState().loadWorkspace();
+
+      await store.getState().keepGuestDraft();
+
+      expect(store.getState().slug).toBe("cloud-slug");
+      expect(sentBodies.at(-1)).toMatchObject({ subdomain: "cloud-slug" });
+    });
+  });
+
+  it("writes nothing to the guest cache until a guest edits", async () => {
+    const guest = createPortfolioStore({ ready: true, workspaceState: "ready" });
+
+    expect((await guest.getState().saveDraft()).ok).toBe(true);
+    expect(localStorageMock.getItem(CACHE_KEY)).toBeNull();
+
+    guest.getState().updateIdentity({ bio: "guest edit" });
+    await guest.getState().saveDraft();
+    expect(JSON.parse(localStorageMock.getItem(CACHE_KEY) ?? "{}").content.identity.bio).toBe(
+      "guest edit",
+    );
+  });
+
+  // A session that expires mid-edit is sent to log in; the edits wait in this browser and are
+  // offered back after logging in, and the leave-page warning does not stop the redirect.
+  it("keeps a signed-in owner's unsaved edits for after the login", async () => {
+    const { keepEditsForSignIn } = await import("@/store/portfolio-store");
+    const signedIn = createPortfolioStore({
+      user: { name: "A", email: "a@x.com" },
+      slug: "a",
+      content: baseContent,
+      ready: true,
+      workspaceState: "ready",
+    });
+    signedIn.getState().updateIdentity({ bio: "typed before expiry" });
+
+    keepEditsForSignIn(signedIn);
+
+    const cached = JSON.parse(localStorageMock.getItem(CACHE_KEY) ?? "{}");
+    expect(cached).toMatchObject({
+      slug: "a",
+      content: { identity: { bio: "typed before expiry" } },
+    });
+    expect(warnOnLeave(signedIn.getState())).toBe(false);
   });
 
   it("never writes a signed-in draft to the browser cache", async () => {
@@ -376,6 +447,25 @@ describe("portfolio store", () => {
     });
   });
 
+  // The editor's ?template= and first-save effects wait while this reads "loading", so the load
+  // must say so at once and leave the content alone until its answer is in.
+  it("marks the workspace loading as soon as a load starts, without touching the content", async () => {
+    localStorageMock.setItem(
+      CACHE_KEY,
+      JSON.stringify({ slug: "guest", content: { ...baseContent, templateId: "atelier" } }),
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse(null, 503)),
+    );
+    const before = store.getState().content;
+
+    const loading = store.getState().loadWorkspace();
+    expect(store.getState().workspaceState).toBe("loading");
+    expect(store.getState().content).toBe(before);
+    await loading;
+  });
+
   it("shares a single in-flight load across concurrent loadWorkspace() calls", async () => {
     let usersMeCallCount = 0;
 
@@ -485,6 +575,8 @@ describe("portfolio store", () => {
       const state = store.getState();
       expect(state.workspaceState).toBe("error");
       expect(state.status).toBe("Not saved");
+      // The guest draft in this browser is not shown as if it were the account's.
+      expect(state.content.identity.bio).not.toBe("cached-bio");
       expect(calls.some((url) => url.includes("/portfolios/me"))).toBe(false);
 
       // An edit and an autosave in this state must neither save as a guest nor touch the cache.
@@ -569,6 +661,16 @@ describe("portfolio store", () => {
         // The editor points at each field from these (P-004).
         details: [{ path: "identity.bio", message: "Add a short bio." }],
       });
+    });
+
+    it("does not stay on Publishing... when the save returns before sending", async () => {
+      const publishing = signedIn();
+      publishing.setState({ workspaceState: "error", status: "Not saved" });
+
+      const result = await publishing.getState().publish();
+
+      expect(result.ok).toBe(false);
+      expect(publishing.getState().status).toBe("Not saved");
     });
 
     it("does not publish when the save before it fails", async () => {
@@ -726,6 +828,27 @@ describe("portfolio store", () => {
         expect(state.slug).toBe("gautam-cloud");
         expect(state.draft?.revision).toBe(7);
         expect(state).toMatchObject({ status: "Saved", isDirty: false });
+      });
+
+      // Section edits go to the selected page; one the cloud copy lacks swallowed them all.
+      it("goes back to Home when the loaded copy no longer has the selected page", async () => {
+        const stale = signedIn();
+        stale.setState({
+          status: "Conflict",
+          content: {
+            ...baseContent,
+            pages: [{ id: "p1", slug: "work", title: "Work", sections: [] }],
+          },
+          selectedPageId: "p1",
+        });
+        stubApi({
+          "/portfolios/me": () =>
+            jsonResponse({ draft: cloudDraft, publication: null, billing: null }),
+        });
+
+        await stale.getState().resolveConflict("cloud");
+
+        expect(stale.getState().selectedPageId).toBeNull();
       });
 
       it("keeps this copy by saving it at the cloud copy's revision", async () => {

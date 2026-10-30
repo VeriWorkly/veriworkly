@@ -35,7 +35,9 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 export default async function PreviewPage({ params }: Params) {
   const { documentId } = await params;
   if (documentId === "guest") {
-    return <LivePortfolioPreview initialContent={createDefaultPortfolio()} canPublish={false} />;
+    return (
+      <LivePortfolioPreview initialContent={createDefaultPortfolio()} canPublish={false} guest />
+    );
   }
 
   const [billingData, preview] = await Promise.all([
