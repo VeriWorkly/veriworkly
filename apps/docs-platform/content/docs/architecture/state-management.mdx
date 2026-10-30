@@ -152,9 +152,10 @@ every **12 seconds while dirty** on every workspace page (editor, dashboard, Set
 saves what is pending when it unmounts, and `beforeunload` warns while changes are unsaved. A save
 that loses to another tab or device (`409`) becomes a **Conflict** that pauses autosave until the
 owner keeps the cloud copy or their own. Only a guest draft
-is cached in the browser; on login it is carried into the account when it is newer than the cloud
-draft (compared by `updatedAt`), then cleared. A signed-in draft is never cached locally. It does
-not share Studio's sync engine.
+is cached in the browser. On login the owner is asked whether to bring it into the account (it
+replaces the cloud draft) or discard it; an untouched default is never offered. A signed-in draft is
+cached only when the session expires mid-edit, so the edits come back through the same question
+after logging in again. It does not share Studio's sync engine.
 
 ---
 

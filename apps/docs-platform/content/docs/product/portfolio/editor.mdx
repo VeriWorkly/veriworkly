@@ -46,10 +46,10 @@ parameter is then removed from the address.
 ## Draft storage and merging
 
 The editor keeps its own draft layer, independent of Studio's document sync engine. Only a guest
-draft is kept in the browser; a signed-in draft lives in the account and is never cached locally, so
-a shared browser cannot hand one user's draft to the next. On login, a guest draft is carried into
-the account when it is newer than the cloud draft (compared by `updatedAt`), then cleared from the
-browser.
+draft is kept in the browser; a signed-in draft lives in the account. On login you are asked
+whether to bring a guest draft into your account (it replaces the draft there) or discard it, so
+nothing moves into an account without the owner choosing it. If your session expires while you
+edit, your unsaved changes are kept in the browser and offered back the same way after you log in.
 
 If the API cannot be reached for a signed-in user, the workspace says it cannot reach your
 workspace and offers Retry. It does not fall back to guest mode, and it does not save until your
