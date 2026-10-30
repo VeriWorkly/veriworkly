@@ -23,7 +23,13 @@ const LandingMotion = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    revealItems.forEach((item) => {
+    // Only content still below the fold is hidden for the reveal: anything the visitor can
+    // already see from the server render stays put. Reads first, then writes, so one layout.
+    const belowFold = revealItems.filter(
+      (item) => item.getBoundingClientRect().top > window.innerHeight,
+    );
+
+    belowFold.forEach((item) => {
       item.style.opacity = "0";
       item.style.transform = "translate3d(0, 42px, 0)";
       item.style.transition =
@@ -48,7 +54,7 @@ const LandingMotion = ({ children }: { children: ReactNode }) => {
       { threshold: 0.14 },
     );
 
-    revealItems.forEach((item) => observer.observe(item));
+    belowFold.forEach((item) => observer.observe(item));
 
     let frame = 0;
 
@@ -64,8 +70,13 @@ const LandingMotion = ({ children }: { children: ReactNode }) => {
         if (progress) progress.style.transform = `scaleX(${progressValue})`;
         if (marquee) marquee.style.transform = `translate3d(${-progressValue * 42}%, 0, 0)`;
 
+        // Measure everything before writing any transform: interleaving the two forces a
+        // layout per element on every frame.
+        const cardRects = stackCards.map((card) => card.getBoundingClientRect());
+        const parallaxRects = parallaxItems.map((item) => item.getBoundingClientRect());
+
         stackCards.forEach((card, index) => {
-          const rect = card.getBoundingClientRect();
+          const rect = cardRects[index]!;
           const center = window.scrollY + rect.top + rect.height * 0.5;
 
           const distance = Math.abs(viewportMid - center);
@@ -75,11 +86,10 @@ const LandingMotion = ({ children }: { children: ReactNode }) => {
           card.style.opacity = `${0.72 + focus * 0.28}`;
         });
 
-        parallaxItems.forEach((item) => {
+        parallaxItems.forEach((item, index) => {
           const speed = Number(item.dataset.parallax || 0.08);
-          const rect = item.getBoundingClientRect();
 
-          const local = (rect.top - window.innerHeight * 0.5) * speed;
+          const local = (parallaxRects[index]!.top - window.innerHeight * 0.5) * speed;
           const base = item.dataset.parallaxBase ? `${item.dataset.parallaxBase} ` : "";
 
           item.style.transform = `${base}translate3d(0, ${local}px, 0)`;

@@ -11,6 +11,7 @@ import {
 } from "@/features/pricing/components/PricingAccount";
 import type { PlanKey } from "@/features/pricing/data/offers";
 import FaqAccordionItem from "@/features/faq/components/FaqAccordionItem";
+import TemplateLinksSection from "@/components/landing/TemplateLinksSection";
 
 const checkoutHref = "https://app.example/checkout?productKey=bundle&interval=annual";
 
@@ -124,5 +125,16 @@ describe("FAQ answers (P-075)", () => {
 
     expect(html).toMatch(/<h3[^>]*><button/);
     expect(html).not.toMatch(/<button[^>]*>[^]*<h[1-6]/);
+  });
+});
+
+describe("landing template links (P-080)", () => {
+  it("marks the free and the Creator Pro templates", () => {
+    const html = renderToStaticMarkup(<TemplateLinksSection />);
+
+    expect(html).toContain("Signal and Atelier are free on yourname.veriworkly.com");
+    expect(html).toContain("Nimbus and Cipher come with Creator Pro");
+    expect(html.match(/>Creator Pro</g)).toHaveLength(2);
+    expect(html.match(/>Free</g)).toHaveLength(2);
   });
 });

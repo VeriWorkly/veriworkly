@@ -36,7 +36,6 @@ const HowItWorksSection = () => {
           </p>
 
           <h2 className="text-[clamp(3.4rem,7vw,7rem)] leading-[0.9] tracking-tighter wrap-normal">
-            <span className="sr-only">How the portfolio builder works: </span>
             Build it once. Keep it alive.
           </h2>
         </div>

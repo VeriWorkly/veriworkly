@@ -13,15 +13,15 @@ const seoTopics = [
 
   {
     title: "Professional portfolio with SEO controls",
-    copy: "Update the page title, social description, public URL, and template presentation as your work evolves.",
+    copy: "Pick your public address and template for free. Creator Pro adds control of the page title and social description.",
   },
 ];
 
 const proofPoints = [
   { id: "content", text: "Fill profile content once" },
   { id: "templates", text: "Switch visual templates anytime" },
-  { id: "subdomain", text: "Publish on a VeriWorkly subdomain" },
-  { id: "seo", text: "Control SEO title and description" },
+  { id: "subdomain", text: "Publish free on a VeriWorkly subdomain" },
+  { id: "seo", text: "SEO title and description with Creator Pro" },
   { id: "previews", text: "Preview real templates before choosing" },
   { id: "drafts", text: "Keep private drafts while editing" },
 ];

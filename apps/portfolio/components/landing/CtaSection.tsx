@@ -24,7 +24,6 @@ const CtaSection = () => {
           </p>
 
           <h2 className="relative z-2 mx-auto max-w-5xl text-[clamp(4rem,9vw,9rem)] leading-[0.9] tracking-[-0.06em] wrap-normal">
-            <span className="sr-only">Start your professional portfolio: </span>
             Now make it impossible to overlook.
           </h2>
 

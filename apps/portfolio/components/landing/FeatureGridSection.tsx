@@ -10,7 +10,6 @@ const FeatureGridSection = () => {
           </p>
 
           <h2 className="max-w-4xl text-[clamp(3.4rem,7vw,7rem)] leading-[0.9] tracking-tighter wrap-normal">
-            <span className="sr-only">Portfolio features: </span>
             Your professional presence, already handled.
           </h2>
         </div>
@@ -95,7 +94,8 @@ const FeatureGridSection = () => {
               </h3>
 
               <p className="mt-3 text-xs leading-7 text-white/50">
-                Set the title and description that appear on search, social, and link previews.
+                With Creator Pro, set the title and description that appear on search, social, and
+                link previews.
               </p>
             </div>
 

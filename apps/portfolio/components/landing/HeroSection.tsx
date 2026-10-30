@@ -19,7 +19,6 @@ const HeroSection = () => {
         </p>
 
         <h1 className="mx-auto max-w-3xl text-[clamp(3.6rem,8vw,8.2rem)] leading-none tracking-[-0.06em] wrap-normal lg:max-w-4xl xl:max-w-6xl">
-          <span className="sr-only">VeriWorkly Professional Portfolio Builder: </span>
           One form. A portfolio that feels{" "}
           <span className="bg-accent border-ink-2 relative inline-block h-[clamp(2.5rem,5.8vw,5.5rem)] w-[clamp(5.5rem,10vw,9rem)] rotate-[-4deg] overflow-hidden rounded-full border-3 align-[0.05em] max-sm:hidden">
             <span className="absolute inset-[18%_12%] rotate-12 border-y-[3px] border-[#f8fbff]" />
@@ -29,7 +28,7 @@ const HeroSection = () => {
 
         <p className="text-ink-2/62 mx-auto mt-10 max-w-2xl text-base text-[clamp(1rem,1.5vw,1.2rem)] leading-7 sm:mt-12 md:leading-8">
           Turn scattered work into a sharp portfolio in minutes. Update once, switch templates
-          freely, publish on a subdomain, and control how your site appears in search and social.
+          freely, and publish free on your own veriworkly.com subdomain.
         </p>
 
         <div className="mt-12 flex flex-wrap justify-center gap-3">
