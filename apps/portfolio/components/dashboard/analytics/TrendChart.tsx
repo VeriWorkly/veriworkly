@@ -31,7 +31,7 @@ export function TrendChart({ daily }: TrendChartProps) {
             x2={width - pad}
             y1={pad + row * ((height - pad * 2) / 3)}
             y2={pad + row * ((height - pad * 2) / 3)}
-            stroke="rgba(23,23,23,.1)"
+            stroke="var(--color-line)"
           />
         ))}
         <polyline

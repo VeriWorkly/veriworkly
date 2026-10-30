@@ -397,3 +397,70 @@ describe("editor preview follows the live rules (P-059)", () => {
     expect(previewProject(content, null).sections).toBe(content.sections);
   });
 });
+
+describe("analytics tells the truth (P-044)", () => {
+  function renderAnalytics(
+    analytics: ReturnType<typeof bootstrap>["analytics"] | null,
+    {
+      unavailable = false,
+      canPublish = true,
+      asOf,
+    }: { unavailable?: boolean; canPublish?: boolean; asOf?: string } = {},
+    children: React.ReactNode = <PortfolioAnalyticsWorkspace />,
+  ) {
+    const data = bootstrap({ canPublish });
+    return renderToStaticMarkup(
+      <WorkspaceProvider initialData={data}>
+        <AnalyticsProvider analytics={analytics} unavailable={unavailable} asOf={asOf}>
+          {children}
+        </AnalyticsProvider>
+      </WorkspaceProvider>,
+    );
+  }
+
+  it("says a failed request is an outage, not a paid feature, for a paying user", () => {
+    const markup = renderAnalytics(null, { unavailable: true });
+    expect(markup).toContain("Analytics are unavailable right now. Try again later.");
+    expect(markup).not.toContain("/pricing?from=analytics");
+    expect(markup).not.toContain("premium feature");
+
+    const dashboard = renderAnalytics(null, { unavailable: true }, <PortfolioDashboardWorkspace />);
+    expect(dashboard).toContain("Unavailable right now");
+    expect(dashboard).not.toContain("With Creator Pro");
+  });
+
+  it("still shows the lock to a free user when the request failed", () => {
+    const markup = renderAnalytics(null, { unavailable: true, canPublish: false });
+    expect(markup).toContain("/pricing?from=analytics");
+    expect(markup).not.toContain("unavailable right now");
+  });
+
+  it("counts only the last 30 calendar days", () => {
+    const markup = renderAnalytics(
+      {
+        locked: false,
+        totalViews: 50,
+        daily: [
+          { date: "2026-10-30T00:00:00.000Z", count: 3 },
+          { date: "2026-10-01T00:00:00.000Z", count: 4 },
+          { date: "2026-09-30T00:00:00.000Z", count: 40 },
+        ],
+        referrers: [],
+      },
+      { asOf: "2026-10-30" },
+    );
+    // Oct 1..Oct 30 is the window: 3 + 4, not the 47 of every day that had views.
+    expect(markup).toMatch(/Last 30 days<\/p>[\s\S]*?>7<\/p>/);
+    expect(markup).toContain("2 active days");
+  });
+
+  it("tells a live site with no views that it has no visits yet", () => {
+    const markup = renderAnalytics(
+      { locked: false, totalViews: 0, daily: [], referrers: [] },
+      { asOf: "2026-10-30" },
+    );
+    expect(markup).toContain("No visits yet");
+    expect(markup).not.toContain("Analytics start after publishing");
+    expect(markup).toContain("Referring sites (top 10)");
+  });
+});

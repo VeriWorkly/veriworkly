@@ -232,3 +232,27 @@ export function publicationNotice(
     action: "republish",
   });
 }
+
+/**
+ * The 30 calendar days ending on `asOf` (a UTC "YYYY-MM-DD"), oldest first, with a zero for each
+ * day without views. The server sends the last 30 days that HAD views, which can reach back
+ * months, so summing it was not "last 30 days" (P-044). Without `asOf` the newest day is used.
+ */
+export function lastCalendarDays(
+  daily: Array<{ date: string; count: number }>,
+  asOf?: string,
+  days = 30,
+) {
+  const counts = new Map<string, number>();
+  for (const item of daily) {
+    const day = String(item.date).slice(0, 10);
+    counts.set(day, (counts.get(day) ?? 0) + item.count);
+  }
+  const end = asOf ?? [...counts.keys()].sort().at(-1);
+  if (!end) return [];
+  const endMs = Date.parse(`${end}T00:00:00.000Z`);
+  return Array.from({ length: days }, (_, index) => {
+    const date = new Date(endMs - (days - 1 - index) * 86_400_000).toISOString().slice(0, 10);
+    return { date, count: counts.get(date) ?? 0 };
+  });
+}
