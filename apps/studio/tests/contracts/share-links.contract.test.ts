@@ -28,14 +28,20 @@ describe("share links contract", () => {
     mockedBackendApiUrl.mockClear();
   });
 
-  it("creates a share link for a document", async () => {
+  it("S-418: creates a share link with the request body the server validates", async () => {
+    // The real create response: the stored link without its password hash or snapshot.
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({
         data: {
           id: "sl_1",
           token: "tok_123",
+          username: "jane",
+          documentId: defaultResume.id,
+          documentSlug: "jane-doe",
           expiresAt: null,
+          allowDownload: true,
+          hasPassword: false,
         },
       }),
     } as Response);
@@ -55,7 +61,17 @@ describe("share links contract", () => {
       },
     );
 
-    expect(result.token).toBe("tok_123");
+    expect(result).toMatchObject({ token: "tok_123", username: "jane", expiresAt: null });
+    // Since SV-37 the server rejects a date sent together with noExpiry, so the body is the contract.
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(JSON.parse(init.body as string)).toEqual({
+      documentId: defaultResume.id,
+      snapshot: expect.objectContaining({ type: "RESUME", title: "Jane Doe" }),
+      expiresAt: null,
+      noExpiry: true,
+      updateSlug: false,
+      removePassword: false,
+    });
     expect(fetchMock).toHaveBeenCalledWith(
       `http://localhost:4000/api/v1/shares`,
       expect.objectContaining({

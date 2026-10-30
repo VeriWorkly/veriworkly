@@ -149,7 +149,7 @@ describe("server fetch contract", () => {
   it("S-087 V-193: a program switched off on the server is 'unavailable', not an empty dashboard", async () => {
     const { readFileSync } = await import("node:fs");
     const flagSource = readFileSync(
-      `${process.cwd()}/../server/src/middleware/featureFlag.ts`,
+      `${__dirname}/../../../server/src/middleware/featureFlag.ts`,
       "utf8",
     );
     const code = flagSource.match(/code: "([A-Z_]+)"/)?.[1];
@@ -209,7 +209,7 @@ describe("server fetch contract", () => {
     const { join } = await import("node:path");
     const { isCorsRejection } = await import("@/lib/server-fetch-core");
     const source = readFileSync(
-      join(process.cwd(), "..", "server", "src", "middleware", "cors.ts"),
+      join(`${__dirname}/../..`, "..", "server", "src", "middleware", "cors.ts"),
       "utf8",
     );
     const [, message] = /new ApiError\(403, "([^"]+)"\)/.exec(source) ?? [];

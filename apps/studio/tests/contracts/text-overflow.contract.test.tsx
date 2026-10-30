@@ -64,7 +64,7 @@ function face(weight: number): Face {
   if (cached) return cached;
 
   const entry = FONT_REGISTRY.geist.pdfFonts.find((f) => String(f.fontWeight) === key)!;
-  const loaded = fontkit.openSync(join(process.cwd(), "public", entry.src)) as Face;
+  const loaded = fontkit.openSync(join(`${__dirname}/../..`, "public", entry.src)) as Face;
 
   faces.set(key, loaded);
   return loaded;

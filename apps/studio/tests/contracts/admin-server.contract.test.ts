@@ -167,7 +167,7 @@ describe("admin server contract", () => {
 
   it("S-050: document and portfolio pages read their own summaries, not the full overview", async () => {
     for (const page of ["app/admin/documents/page.tsx", "app/admin/portfolios/page.tsx"]) {
-      const source = await readFile(path.join(process.cwd(), page), "utf8");
+      const source = await readFile(path.join(`${__dirname}/../..`, page), "utf8");
 
       expect(source, page).not.toContain("fetchAdminOverview");
     }
@@ -318,7 +318,7 @@ describe("admin mutation contract", () => {
   it("S-189: the admin entitlement list matches the server's", async () => {
     const { ADMIN_ENTITLEMENT_KEYS } = await import("@/features/admin/services/admin-actions");
     const validator = await readFile(
-      path.join(process.cwd(), "../server/src/validators/admin/adminBillingValidator.ts"),
+      path.join(`${__dirname}/../..`, "../server/src/validators/admin/adminBillingValidator.ts"),
       "utf8",
     );
     const serverKeys = [
@@ -333,7 +333,7 @@ describe("admin mutation contract", () => {
       "app/admin/billing/entitlements/page.tsx",
       "app/admin/users/[id]/UserAdminActions.tsx",
     ]) {
-      const source = await readFile(path.join(process.cwd(), file), "utf8");
+      const source = await readFile(path.join(`${__dirname}/../..`, file), "utf8");
       expect(source, file).not.toContain("custom_subdomain");
     }
   });
@@ -388,7 +388,9 @@ describe("admin mutation contract", () => {
 describe("admin route boundaries", () => {
   async function adminFiles(name: string) {
     const { readdir } = await import("node:fs/promises");
-    const entries = await readdir(path.join(process.cwd(), "app/admin"), { recursive: true });
+    const entries = await readdir(path.join(`${__dirname}/../..`, "app/admin"), {
+      recursive: true,
+    });
 
     return entries
       .map((entry) => entry.split(path.sep).join("/"))
@@ -429,7 +431,7 @@ describe("admin route boundaries", () => {
     expect(loaders).toContain("loading.tsx");
 
     for (const loader of loaders.filter((file) => file !== "loading.tsx")) {
-      const source = await readFile(path.join(process.cwd(), "app/admin", loader), "utf8");
+      const source = await readFile(path.join(`${__dirname}/../..`, "app/admin", loader), "utf8");
       expect(source.trim(), loader).toBe('export { default } from "../loading";');
     }
   });
@@ -445,7 +447,7 @@ describe("admin route boundaries", () => {
       const { skeleton, path: route } = resolveAdminRoute(routeOf(page).replaceAll("[id]", "x"));
       expect(route, page).toBe(routeOf(page));
 
-      const source = await readFile(path.join(process.cwd(), "app/admin", page), "utf8");
+      const source = await readFile(path.join(`${__dirname}/../..`, "app/admin", page), "utf8");
       const statRow = source.match(/<section className="grid gap-3[^"]*">([\s\S]*?)<\/section>/);
       const statCount = statRow?.[1].match(/<AdminStatCard\b/g)?.length ?? 0;
 
@@ -479,7 +481,10 @@ async function renderAdminText(element: ReactElement) {
 }
 
 const adminBillingServiceSource = () =>
-  readFile(path.join(process.cwd(), "../server/src/services/admin/adminBillingService.ts"), "utf8");
+  readFile(
+    path.join(`${__dirname}/../..`, "../server/src/services/admin/adminBillingService.ts"),
+    "utf8",
+  );
 
 async function serverUpdateSubscription() {
   const source = await adminBillingServiceSource();
@@ -592,7 +597,7 @@ describe("admin copy says what the server does", () => {
       "affiliates/commissions/page.tsx",
       "affiliates/withdrawals/page.tsx",
     ]) {
-      const source = await readFile(path.join(process.cwd(), "app/admin", page), "utf8");
+      const source = await readFile(path.join(`${__dirname}/../..`, "app/admin", page), "utf8");
       expect(source, page).toContain("<AdminUserLink");
       expect(source, page).not.toMatch(
         /href=\{`\/admin\/(users|affiliates)\/\$\{row\.(user|affiliate)\.id\}`\}/,
@@ -647,7 +652,7 @@ describe("admin copy says what the server does", () => {
     // Server V-203: only PRIVATE suspends a portfolio; UNLISTED on a moderation-locked one lifts
     // the lock (the site stays offline until the owner publishes), and changes nothing on a live one.
     const source = await readFile(
-      path.join(process.cwd(), "../server/src/services/admin/adminDocumentService.ts"),
+      path.join(`${__dirname}/../..`, "../server/src/services/admin/adminDocumentService.ts"),
       "utf8",
     );
     expect(source.replace(/\s+/g, " ")).toContain(
@@ -712,7 +717,7 @@ describe("admin copy says what the server does", () => {
 
   it("S-334: account deletion is blocked by the same chargeable-subscription rule as the server", async () => {
     const source = await readFile(
-      path.join(process.cwd(), "../server/src/services/userService.ts"),
+      path.join(`${__dirname}/../..`, "../server/src/services/userService.ts"),
       "utf8",
     );
     const serverRaw = [
@@ -764,7 +769,7 @@ describe("SV verification follow-ups", () => {
     expect(html).not.toContain("href");
 
     const source = await readFile(
-      path.join(process.cwd(), "app/admin/billing/webhooks/page.tsx"),
+      path.join(`${__dirname}/../..`, "app/admin/billing/webhooks/page.tsx"),
       "utf8",
     );
     expect(source).not.toMatch(/row\.user \?/);
@@ -871,11 +876,11 @@ describe("admin dashboard page", () => {
   /** Every export of the "use client" modules a page imports: React serialises their props. */
   async function clientComponentsImportedBy(page: string) {
     const { existsSync } = await import("node:fs");
-    const source = await readFile(path.join(process.cwd(), page), "utf8");
+    const source = await readFile(path.join(`${__dirname}/../..`, page), "utf8");
     const refs = new Set<unknown>();
 
     for (const [, specifier] of source.matchAll(/from "(@\/[^"]+)"/g)) {
-      const base = path.join(process.cwd(), specifier.slice(2));
+      const base = path.join(`${__dirname}/../..`, specifier.slice(2));
       const file = [".tsx", ".ts"].map((ext) => base + ext).find((item) => existsSync(item));
       if (!file || !(await readFile(file, "utf8")).trimStart().startsWith('"use client"')) continue;
 
@@ -1117,9 +1122,9 @@ describe("Phase 9 Part E: admin console", () => {
 
   it("S-339 V-266: the user page shows the server's access summary, not one worked out from grants", async () => {
     const { existsSync } = await import("node:fs");
-    expect(existsSync(path.join(process.cwd(), "features/admin/utils/admin-access.ts"))).toBe(
-      false,
-    );
+    expect(
+      existsSync(path.join(`${__dirname}/../..`, "features/admin/utils/admin-access.ts")),
+    ).toBe(false);
 
     const render = (detail: ReturnType<typeof userDetail>) =>
       withAdminServer({ fetchAdminUserDetail: async () => detail }, async () => {
@@ -1608,7 +1613,7 @@ describe("Phase 9 Part E: admin console", () => {
 
   it("V-272: an affiliate's 'See all' and 'Manage' links filter the lists by exact id", async () => {
     const source = await readFile(
-      path.join(process.cwd(), "app/admin/affiliates/[id]/page.tsx"),
+      path.join(`${__dirname}/../..`, "app/admin/affiliates/[id]/page.tsx"),
       "utf8",
     );
     const links = [...source.matchAll(/href=\{`(\/admin\/affiliates\/[a-z]+\?[^`]+)`\}/g)].map(
@@ -2044,7 +2049,7 @@ describe("affiliate and ambassador copy says what the server does", () => {
 
   it("S-255: promotion is automatic at the tier's paid-conversion count, refunds excluded", async () => {
     const commissions = await readFile(
-      path.join(process.cwd(), "../server/src/services/affiliate/commissions.ts"),
+      path.join(`${__dirname}/../..`, "../server/src/services/affiliate/commissions.ts"),
       "utf8",
     );
     // The server promotes in the conversion's own transaction, counting clean conversions only.
@@ -2079,7 +2084,7 @@ describe("affiliate and ambassador copy says what the server does", () => {
 
   it("S-258: the ambassador review dialogs say the applicant is emailed the decision with the note", async () => {
     const service = await readFile(
-      path.join(process.cwd(), "../server/src/services/ambassadorService.ts"),
+      path.join(`${__dirname}/../..`, "../server/src/services/ambassadorService.ts"),
       "utf8",
     );
     expect(service).toMatch(/sendAmbassadorDecisionEmail\(email, \{[\s\S]*reviewNote:/);
@@ -2104,7 +2109,7 @@ describe("affiliate and ambassador copy says what the server does", () => {
 });
 
 describe("admin money forms say what they do", () => {
-  const source = (file: string) => readFile(path.join(process.cwd(), file), "utf8");
+  const source = (file: string) => readFile(path.join(`${__dirname}/../..`, file), "utf8");
 
   it("SV-22 a credit adjustment sends what the credits are and the customer's note", async () => {
     const calls = mockFetch(() => ({ status: 200, body: { data: {} } }));

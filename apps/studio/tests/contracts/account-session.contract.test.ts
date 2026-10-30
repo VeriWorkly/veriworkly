@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { join } from "node:path";
 
 import type { ConvertedResume } from "@/features/ats/types";
 
@@ -897,7 +898,10 @@ describe("S-372: another account's documents stay on the device, hidden for it",
 
   it("S-372: the sign-in dialog cannot show, download or keep another account's documents", async () => {
     const { readFileSync } = await import("node:fs");
-    const source = readFileSync("features/auth/components/UnclaimedDocumentsDialog.tsx", "utf8");
+    const source = readFileSync(
+      join(__dirname, "../../features/auth/components/UnclaimedDocumentsDialog.tsx"),
+      "utf8",
+    );
 
     expect(source).not.toMatch(/another account|onDownloadBackup|origin/);
   });
@@ -1489,7 +1493,10 @@ describe("one backup file before local data is cleared", () => {
 
   it("S-347: the delete dialog promises no version histories that do not exist", async () => {
     const { readFileSync } = await import("node:fs");
-    const source = readFileSync("features/profile/components/DeleteAccountModal.tsx", "utf8");
+    const source = readFileSync(
+      join(__dirname, "../../features/profile/components/DeleteAccountModal.tsx"),
+      "utf8",
+    );
 
     expect(source).not.toMatch(/version histor/i);
     expect(source).toContain("downloadAccountBackup");

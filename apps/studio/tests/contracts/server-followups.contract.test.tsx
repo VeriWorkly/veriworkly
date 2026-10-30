@@ -101,7 +101,7 @@ function dialogTitled(title: string) {
 }
 
 const serverFile = (file: string) =>
-  readFile(path.join(process.cwd(), "../server/src", file), "utf8");
+  readFile(path.join(`${__dirname}/../..`, "../server/src", file), "utf8");
 
 beforeEach(() => {
   dialogs.length = 0;
@@ -600,7 +600,7 @@ describe("SV-37: an expired link", () => {
 
   it("the expiry comment states the server's rule, not 'missing means never'", async () => {
     const source = await readFile(
-      path.join(process.cwd(), "features/documents/services/share-expiry.ts"),
+      path.join(`${__dirname}/../..`, "features/documents/services/share-expiry.ts"),
       "utf8",
     );
 
@@ -819,7 +819,7 @@ describe("SV-35 SV-36: checkout cancel and the ATS quota tier", () => {
         .match(/tier: ("[a-z]+"(?: \| "[a-z]+")*);/)?.[1]
         .split(" | ")
         .sort();
-    const studio = await readFile(path.join(process.cwd(), "features/ats/types.ts"), "utf8");
+    const studio = await readFile(path.join(`${__dirname}/../..`, "features/ats/types.ts"), "utf8");
 
     expect(union(studio)).toEqual(union(await serverFile("services/ats/types.ts")));
     expect(union(studio)).toContain('"paused"');
@@ -877,7 +877,7 @@ describe("S-361: deleting an account with an affiliate balance", () => {
 
   it("the modal shows the forfeited amount and confirms it on the next delete", async () => {
     const source = await readFile(
-      path.join(process.cwd(), "features/profile/components/DeleteAccountModal.tsx"),
+      path.join(`${__dirname}/../..`, "features/profile/components/DeleteAccountModal.tsx"),
       "utf8",
     );
 
@@ -897,7 +897,7 @@ describe("S-361: deleting an account with an affiliate balance", () => {
 describe("S-362: what the username is used for", () => {
   it("names share links only; there is no public profile or portfolio link by username", async () => {
     const source = await readFile(
-      path.join(process.cwd(), "features/profile/components/UsernameLockedModal.tsx"),
+      path.join(`${__dirname}/../..`, "features/profile/components/UsernameLockedModal.tsx"),
       "utf8",
     );
     const routes = await serverFile("routes/shares.ts");
