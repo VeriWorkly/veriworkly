@@ -4,7 +4,9 @@ Scope: every route, component, feature module, template, lib/store, and config f
 
 Severity: **CRITICAL** (data loss / broken core flow) · **HIGH** (real bug or security gap) · **MEDIUM** (correctness risk, inconsistency, notable UX gap) · **LOW** (polish, code quality, minor optimization).
 
-**Status: all actionable findings below are fixed.** Verified with `vitest run` (30/30 passing, including new coverage), `tsc --noEmit` (0 errors), `eslint .` (0 errors, 3 pre-existing warnings unrelated to this pass), and a clean `next build`.
+**Status: all actionable findings below are fixed**, in commit 9ce53508 (2026-07-29). Verified at the time with `vitest run` (30/30 passing, including new coverage), `tsc --noEmit` (0 errors), `eslint .` (0 errors, 3 pre-existing warnings unrelated to this pass), and a clean `next build`.
+
+**Later changes (2026-10-30).** Some fixes below were reworked by later PRs; each is marked **Later** with its PR. File paths under `app/` predate #355, which moved the marketing pages and the workspace to `app/(platform)/` and the published sites to `app/(published)/portfolios/`, each with its own root layout. Template-library fixes were lost when the submodule was pinned to a mock commit (8e01127) and came back when #353 restored the real templates (pinned at 784fa53).
 
 ---
 
@@ -16,7 +18,9 @@ Severity: **CRITICAL** (data loss / broken core flow) · **HIGH** (real bug or s
 
 `SignalContactForm` and the footer newsletter form both `await`ed a fake delay, wrote the submission to `localStorage` on the **visitor's own browser**, and showed a success state implying the message was received. Nothing was ever transmitted to the portfolio owner.
 
-**Fix applied:** both forms now hand the validated submission to the visitor's own mail client via a pre-filled `mailto:` to the portfolio owner's email (real delivery, no backend required — matching how Atelier/Nimbus/Cipher already handle contact), with the on-device `localStorage` write kept only as a secondary log, and success copy corrected to describe what actually happens ("Opening your email app..."). Both forms are disabled with an explanatory message if the portfolio has no valid contact email. `signal/design.ts` and `signal/design.md` were updated to describe the new (accurate) behavior.
+**Fix applied:** the contact form hands the validated submission to the visitor's own mail client via a pre-filled `mailto:` to the portfolio owner's email (real delivery, no backend required — matching how Atelier/Nimbus/Cipher already handle contact), and success copy describes what actually happens ("Opening your email app..."). It is disabled with an explanatory message if the portfolio has no valid contact email. `signal/design.ts` and `signal/design.md` describe this behavior.
+
+**Later (#353):** the footer newsletter is gone, and no visitor data is written to `localStorage` any more (the first fix kept a local log of submissions).
 
 ### 1.2 ✅ FIXED — `TemplatePicker`'s premium gating was driven by a field that was never set
 
@@ -25,6 +29,8 @@ Severity: **CRITICAL** (data loss / broken core flow) · **HIGH** (real bug or s
 `TemplateSummary.isPremium` was read from the registry but never set on any entry, so the Template Picker never showed a "PRO" badge or disabled Nimbus/Cipher — while separate hardcoded `templateId === "nimbus" || templateId === "cipher"` checks elsewhere silently blocked publish/save later.
 
 **Fix applied:** `isPremium: true`/`false` is now set explicitly on every registry entry (signal/atelier: `false`; nimbus/cipher: `true`). Added `isPremiumTemplate(templateId)` in `templates/catalog/templates.ts` as the single source of truth, exported through `lib/portfolio.ts`, and both `EditorCommandBar.tsx` and `PortfolioSettingsWorkspace.tsx` now call it instead of duplicating the id-string check. `TemplatePicker.tsx` now correctly shows the PRO badge / disables the two premium templates for non-premium users up front.
+
+**Later (#356):** "non-premium" means no paid portfolio access: the picker, badge removal, pages, SEO and analytics all use `hasPortfolioAccess(billing)` (the server's `canPublish`: Creator Pro, the Bundle or an active pass). A locked template links to the plans. #355 added the Free / Creator Pro markers to the public gallery too.
 
 ### 1.3 ~~One-time "3-Day Sprint" / "7-Day Hunt" passes send the wrong `interval` value~~ — verified, false positive
 
@@ -40,13 +46,17 @@ On login, if a local (guest) draft and a cloud draft both existed and differed, 
 
 **Fix applied:** `lib/portfolio-storage.ts`'s cache now stores an `updatedAt` timestamp alongside `slug`/`content` on every save. `loadWorkspace()` in the store now only lets the local draft win when its `updatedAt` is _provably_ newer than the cloud draft's; otherwise the cloud draft wins, and if the local cache predates this fix (no timestamp to compare), the cloud draft is kept and the user is shown a message explaining the ambiguous local edits weren't applied — rather than silently guessing. Also fixed while in this file: `updateSlug` now normalizes internally (a future caller can no longer forget to), `loadWorkspace()` has a re-entrancy guard so concurrent calls share one in-flight load instead of racing, and the redundant `analytics: number` field (which could desync from `analyticsData.totalViews`, and was unused everywhere it mattered) was removed. Covered by new tests in `tests/portfolio-store.test.ts` (merge-wins-local, merge-wins-cloud, re-entrancy).
 
+**Later (#350):** the browser cache now holds a guest draft only (key v5). On sign-in a newer guest draft is carried into the account and then cleared; a signed-in draft is never cached, so a shared browser cannot hand it to the next user. An API outage on a request with a session cookie shows "We can't reach your workspace" with Retry instead of dropping into guest mode, and a workspace that failed to load refuses to save.
+
 ### 1.5 ✅ FIXED — `parsePortfolioContent` crashed on malformed section data, with no guard at its riskiest call site
 
 `lib/portfolio.ts`, `lib/published-portfolio.ts`
 
 `parsePortfolioContent` indexed into `section.type` without checking that each array element was actually an object first — a single `null`/primitive entry (corrupted cloud draft, truncated write) threw and crashed the parse. `published-portfolio.ts`'s fetch (which serves **every public portfolio page**) wasn't wrapped in try/catch either, so this — or any transient backend hiccup — took down a visitor's page with a hard 500.
 
-**Fix applied:** `parsePortfolioContent` now filters out non-object entries from `sections`, `items`, and `socialLinks` before touching their properties, and validates/reshapes `socialLinks` into `{id, label, url}` instead of blindly casting. `getPublishedPortfolio` in `published-portfolio.ts` is now wrapped in try/catch (returns `null` on any failure, which the caller already treats as `notFound()`) and has an 8s `AbortController` timeout so a hung backend can't hang the page render. Covered by new tests in `tests/portfolio-contract.test.tsx` (malformed sections, malformed items, non-object draft, malformed social links).
+**Fix applied:** `parsePortfolioContent` now filters out non-object entries from `sections`, `items`, and `socialLinks` before touching their properties, and validates/reshapes `socialLinks` into `{id, label, url}` instead of blindly casting. `getPublishedPortfolio` in `published-portfolio.ts` has an 8s timeout so a hung backend can't hang the page render.
+
+**Later (#355):** returning `null` on any failure let ISR cache "not found" for an hour after a blip. It now returns `null` only for a 404 (or a body without a site) and throws on 5xx, 429, a timeout or a parse error, so ISR keeps serving the last good render and a cold miss shows the error page. Covered by new tests in `tests/portfolio-contract.test.tsx` (malformed sections, malformed items, non-object draft, malformed social links).
 
 ### 1.6 ✅ FIXED — Broken login link on the Analytics page
 
@@ -70,15 +80,17 @@ Templates/Pricing/FAQ (and the "Start building" CTA) were hidden behind `hidden 
 
 `paymentsBlocked` was computed and shown in a banner but never passed down to the actual checkout buttons, which stayed fully active regardless.
 
-**Fix applied:** `paymentsBlocked` is now threaded through `BundlePricingSection`, `CustomPlansSection`, `ComparisonTable`, and `PriceCard` into `CheckoutButton`, which renders a disabled, grayed-out, non-navigating button (with an explanatory `title`) instead of a live link whenever payments are blocked.
+**Fix applied (since replaced):** `paymentsBlocked` was threaded into `CheckoutButton`, which rendered a disabled button whenever payments were blocked.
+
+**Later (#352):** the pricing page is static and reads `PAYMENTS_BLOCKED` from `features/pricing/data/offers.ts`. While checkout is closed the buttons stay enabled and say "Paid plans open soon" in visible text, under a "Paid plans open soon" notice. A subscriber sees "Your current plan" / "Manage billing" instead of a checkout, and a Creator Pro or AI Credits subscriber sees "Upgrade to the Bundle (pay the difference)".
 
 ---
 
 ## 2. Security
 
 - **✅ FIXED — `app/api/revalidate/route.ts`** — removed the hardcoded `"dev-revalidate-secret"` fallback entirely; the route now fails closed (503) if `PORTFOLIO_REVALIDATE_SECRET` isn't configured, and compares the provided secret using `crypto.timingSafeEqual` over SHA-256 digests (avoids both the timing side-channel and the length-mismatch throw a naive `timingSafeEqual` call would hit).
-- **✅ FIXED — Hardcoded admin-email gate duplicated in two places** — extracted into `lib/admin.ts`'s `isAdminUser(user)`, used by both `app/(workspace)/layout.tsx` and `app/pricing/page.tsx` (and the newly-gated `app/og-generator/page.tsx`, see §6). It fails closed: if `ADMIN_EMAIL` isn't set, nobody is treated as an admin, rather than falling back to a hardcoded personal address.
-- **✅ FIXED — Inconsistent JSON-LD escaping** — added a shared `<JsonLd data={...} />` component (`components/JsonLd.tsx`) that always escapes `<` before serializing, and replaced all 7 raw `dangerouslySetInnerHTML` JSON-LD blocks across the app (`app/layout.tsx`, `app/page.tsx`, `app/pricing/page.tsx`, `app/templates/page.tsx`, `app/templates/[id]/page.tsx`, `app/faq/page.tsx`, `app/portfolios/[username]/[[...slug]]/page.tsx`) with it.
+- **✅ FIXED — Hardcoded admin-email gate duplicated in two places** — extracted into `lib/admin.ts`'s `isAdminUser(user)`. It fails closed: if `ADMIN_EMAIL` isn't set, nobody is treated as an admin, rather than falling back to a hardcoded personal address. **Later:** its only caller is now `lib/workspace-bootstrap.ts` (the workspace's publish gate); the pricing page is static (#352) and the og-generator is a gitignored local tool (#355).
+- **✅ FIXED — Inconsistent JSON-LD escaping** — added a shared `<JsonLd data={...} />` component (`components/JsonLd.tsx`) that always escapes `<` before serializing, and replaced all 7 raw `dangerouslySetInnerHTML` JSON-LD blocks across the app (`app/layout.tsx`, `app/page.tsx`, `app/pricing/page.tsx`, `app/templates/page.tsx`, `app/templates/[id]/page.tsx`, `app/faq/page.tsx`, `app/portfolios/[username]/[[...slug]]/page.tsx`) with it. **Later (#355):** published sites no longer inherit the platform's Organization JSON-LD; their Person JSON-LD carries no email.
 - **✅ FIXED — `proxy.ts`'s `!path.includes(".")` heuristic** — replaced with `looksLikeStaticAssetPath()`, which only matches when the _final_ path segment ends in a dot-extension, so a route or username containing a dot elsewhere in the path is no longer misclassified as a static asset. Covered by new tests in `tests/proxy-middleware.test.ts`.
 - **✅ FIXED — `proxy.ts`'s hardcoded login URL** — now built from `siteConfig.links.app` (the same source of truth used elsewhere) instead of a separately hardcoded dev/prod URL pair.
 - **✅ FIXED — No `Content-Security-Policy` header** — added to `next.config.ts`: same-origin + first-party `*.veriworkly.com` allowlist for scripts/styles/connect/frames, `object-src 'none'`, `frame-ancestors 'self'`, `base-uri 'self'`, `form-action 'self'`, plus `upgrade-insecure-requests` in production. Not nonce-based (would require threading a per-request nonce through 4 independent template renderers and many inline `style={{}}` usages) — `'unsafe-inline'` is kept for script/style, but this still blocks the highest-value vector: loading a `<script src="https://attacker.example/x.js">` from an untrusted origin.
@@ -99,7 +111,7 @@ Templates/Pricing/FAQ (and the "Start building" CTA) were hidden behind `hidden 
 - **✅ FIXED — `TemplatePicker.tsx` rendering N live iframes at once** — the catalog grid now renders each template's static preview image (`next/image`, using the same `template.image` asset already used elsewhere) instead of a live `/templates/[id]/preview` iframe per card, eliminating N concurrent React app instances mounting simultaneously when the modal opens.
 - **`PreviewStage.tsx` + `TemplatePicker` iframe compounding** — resolved as a side effect of the fix above (the picker no longer mounts any iframes).
 - **✅ FIXED — OG image routes: no server-side length cap, duplicated logic** — added `lib/og-text.ts`'s `clampOgText()`, applied to every free-text query param (`title`, `description`, `badge`, `name`, `headline`, `bio`, `availability`, `location`, `subdomain`) across `app/api/og/route.tsx`, `app/api/template/signal/og/route.tsx`, and `app/api/template/atelier/og/route.tsx`. (The deeper "factor the shared layout chrome into one helper" refactor was intentionally not done — these are three independently hand-tuned visual designs, and merging their JSX carried real regression risk for a decorative, non-critical feature relative to the value of just closing the resource-abuse gap.)
-- **✅ FIXED — Editor autosave with no `beforeunload` warning** — `PortfolioEditorWorkspace.tsx` now warns on tab close/navigation while `isDirty` is true, in addition to the existing 12s autosave interval.
+- **✅ FIXED — Editor autosave with no `beforeunload` warning** — `PortfolioEditorWorkspace.tsx` now warns on tab close/navigation while `isDirty` is true, in addition to the existing 12s autosave interval. **Later (#360):** autosave and the warning moved to `WorkspaceProvider`, so the dashboard and Settings are covered too, and the editor saves what is pending when it unmounts.
 
 ## 5. Code quality / consistency
 
@@ -113,9 +125,9 @@ Templates/Pricing/FAQ (and the "Start building" CTA) were hidden behind `hidden 
 
 ## 6. SEO / metadata
 
-- **✅ FIXED — `/og-generator` was fully public, unauthenticated, and indexable** — split into a server `page.tsx` (which now carries `robots: { index: false, follow: false }` metadata and gates access behind the same `isAdminUser` check used by the rest of the internal workspace in production) and a new `OgGeneratorClient.tsx` client component holding the original UI. `app/robots.ts` also now disallows `/og-generator` for defense-in-depth.
-- **✅ FIXED — `app/manifest.json` had maskable-only icons** — added `purpose: "any"` entries alongside the existing `purpose: "maskable"` ones for both the 192×192 and 512×512 icons (same files, standard PWA dual-listing practice), so platforms that don't handle maskable-only icons well have a fallback.
-- **`app/portfolios/[username]/[[...slug]]/page.tsx` metadata** — reviewed, no changes needed.
+- **✅ FIXED — `/og-generator` was fully public, unauthenticated, and indexable** — `app/robots.ts` disallows `/og-generator`. **Later:** the page is no longer in the repository; it is a gitignored local tool at `app/(platform)/og-generator` (#355). #355 also deleted the unused, unauthenticated `/api/render` route and added Cache-Control to the OG routes.
+- **✅ FIXED — `public/manifest.json` had maskable-only icons** — added `purpose: "any"` entries alongside the existing `purpose: "maskable"` ones for both the 192×192 and 512×512 icons (same files, standard PWA dual-listing practice), so platforms that don't handle maskable-only icons well have a fallback.
+- **`app/portfolios/[username]/[[...slug]]/page.tsx` metadata** — reviewed, no changes needed at the time. **Later (#355):** published sites get an absolute title and the owner as author instead of the platform's "| VeriWorkly Portfolio", authors and keywords.
 
 ## 7. Accessibility
 
@@ -131,7 +143,7 @@ Templates/Pricing/FAQ (and the "Start building" CTA) were hidden behind `hidden 
 
 ---
 
-## Verification
+## Verification (2026-07-29)
 
 - `npx vitest run` — **30/30 passing** (4 new test files/additions: `tests/proxy-middleware.test.ts`, `tests/portfolio-store.test.ts`, plus new cases in `tests/portfolio-contract.test.tsx`).
 - `npx tsc --noEmit` — **0 errors**.

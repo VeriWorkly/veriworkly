@@ -6,17 +6,19 @@ Public surfaces use a proof-studio direction: oversized but controlled typograph
 
 ## Color Palette
 
-- Ink: `oklch(18% 0.025 258)`
-- Paper: `oklch(98% 0.004 258)`
-- Panel: `oklch(100% 0 0)`
-- Cobalt accent: `oklch(55% 0.22 262)`
-- Blue proof tint: `#DBEAFE`
-- Muted text: `oklch(47% 0.025 258)`
-- Lines: translucent ink, stronger on interactive boundaries
+Tokens live in `app/tokens.css`, with a dark set under the dark theme. Light values:
+
+- Ink: `#171717`
+- Paper: `#f5f4ef`
+- Panel: `#ffffff`
+- Cobalt accent: `#2563eb` (`#60a5fa` in dark)
+- Blue proof tint: `#dbeafe`
+- Muted text: `#5f5c54`
+- Lines: translucent ink (12%), stronger (22%) on interactive boundaries
 
 ## Typography
 
-Use Geist for the product UI and public brand for continuity with VeriWorkly. Public headlines rely on scale, weight, and composition rather than a second display family. Product text uses a compact fixed hierarchy.
+Use Outfit (`--font-outfit`, loaded in `app/(platform)/layout.tsx`) for the product UI and public brand, with a Geist, Inter, Arial fallback stack, and Geist Mono for code. Public headlines rely on scale, weight, and composition rather than a second display family. Product text uses a compact fixed hierarchy. Published templates load their own fonts.
 
 ## Components
 
