@@ -13,10 +13,17 @@ interface ChangelogTimelineProps {
   latestVersion?: string;
   /** A type filter or search is active, so an empty list means "no match", not "no data". */
   filtered: boolean;
+  /** The list did not load: the outage message, even with a filter set (W-104). */
+  failed: boolean;
 }
 
-const ChangelogTimeline = ({ entries, latestVersion, filtered }: ChangelogTimelineProps) => {
-  if (entries.length === 0 && !filtered) {
+const ChangelogTimeline = ({
+  entries,
+  latestVersion,
+  filtered,
+  failed,
+}: ChangelogTimelineProps) => {
+  if (entries.length === 0 && (failed || !filtered)) {
     return (
       <div className="bg-card rounded-3xl px-6 py-16 text-center sm:px-10">
         <p className={TYPE.title}>Release notes are unavailable right now</p>

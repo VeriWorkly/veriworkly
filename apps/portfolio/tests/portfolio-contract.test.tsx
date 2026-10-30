@@ -133,6 +133,53 @@ describe("portfolio content contract", () => {
     expect(parsePortfolioContent(null).schemaVersion).toBe(1);
   });
 
+  it("falls back to an empty portfolio, never the demo, for malformed input (P-039)", () => {
+    for (const input of [null, "garbage", { schemaVersion: 2 }, { schemaVersion: 1 }]) {
+      const parsed = parsePortfolioContent(input);
+      expect(parsed.identity.name).toBe("");
+      expect(parsed.identity.email).toBe("");
+      expect(JSON.stringify(parsed)).not.toContain(demoPortfolio.identity.name);
+    }
+
+    // A draft missing its headline gets an empty one, not the demo's.
+    const { headline: _headline, ...identity } = createDefaultPortfolio().identity;
+    void _headline;
+    const parsed = parsePortfolioContent({ ...createDefaultPortfolio(), identity });
+    expect(parsed.identity.headline).toBe("");
+  });
+
+  it("keeps sub-pages and the badge setting through a round trip (P-047)", () => {
+    const content = {
+      ...createDefaultPortfolio(),
+      removeWatermark: true,
+      pages: [
+        {
+          id: "page-1",
+          slug: "work",
+          title: "Work",
+          sections: [
+            { id: "s", type: "projects", title: "Projects", visible: true, items: [{ id: "1" }] },
+            { id: "bad", type: "script", title: "Unsafe", visible: true, items: [] },
+          ],
+        },
+      ],
+    };
+
+    const parsed = parsePortfolioContent(JSON.parse(JSON.stringify(content)));
+
+    expect(parsed.removeWatermark).toBe(true);
+    expect(parsed.pages).toHaveLength(1);
+    expect(parsed.pages?.[0]).toMatchObject({ id: "page-1", slug: "work", title: "Work" });
+    // Page sections are sanitized like top-level ones: the unknown type is dropped.
+    expect(parsed.pages?.[0].sections.map((section) => section.id)).toEqual(["s"]);
+    expect(parsed.pages?.[0].sections[0].subtitle).toBeDefined();
+    expect(parsePortfolioContent(parsed)).toEqual(parsed);
+
+    const plain = parsePortfolioContent(createDefaultPortfolio());
+    expect("pages" in plain).toBe(false);
+    expect("removeWatermark" in plain).toBe(false);
+  });
+
   it("drops malformed social links but keeps well-formed ones", () => {
     const content = createDefaultPortfolio();
     const parsed = parsePortfolioContent({

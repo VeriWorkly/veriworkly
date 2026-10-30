@@ -69,4 +69,24 @@ describe("the share-card route", () => {
     );
     expect(offenders).toEqual([]);
   });
+
+  it("gives every query string one canonical form, so extra params cannot mint new cache entries", async () => {
+    const { canonicalOgQuery } = await import("@/features/og/resolve");
+    const canonical = (query: string) => canonicalOgQuery(new URLSearchParams(query));
+
+    expect(canonical("page=pricing")).toBe("page=pricing");
+    expect(canonical("page=pricing&theme=dark")).toBe("page=pricing&theme=dark");
+    expect(canonical("theme=dark&page=pricing")).toBe("page=pricing&theme=dark");
+    expect(canonical("page=pricing&cachebust=1")).toBe("page=pricing");
+    expect(canonical("theme=light&page=pricing")).toBe("page=pricing");
+    expect(canonical("changelog=v1-0-0")).toBe("changelog=v1-0-0");
+    expect(canonical("x=1")).toBe("");
+
+    const route = readFileSync(
+      join(__dirname, "..", "..", "app", "api", "og", "route.tsx"),
+      "utf8",
+    );
+    expect(route).toContain("if (canonical !== searchParams.toString())");
+    expect(route).not.toContain("public, immutable");
+  });
 });

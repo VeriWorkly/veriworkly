@@ -4,6 +4,23 @@ import { fetchRoadmapFeatureById } from "@/features/roadmap/services/roadmap-bac
 
 import { ogPageCard, type OgCard } from "./cards";
 
+const CARD_KEYS = ["page", "changelog", "roadmap"] as const;
+
+/**
+ * The one query string that draws this card: the key resolveOgCard reads, then `theme=dark`.
+ * Anything else (extra or repeated params) redirects here, so a query string cannot mint new
+ * cache entries for the same image.
+ */
+export function canonicalOgQuery(searchParams: URLSearchParams): string {
+  const canonical = new URLSearchParams();
+  const key = CARD_KEYS.find((name) => searchParams.get(name));
+
+  if (key) canonical.set(key, searchParams.get(key)!);
+  if (key && searchParams.get("theme") === "dark") canonical.set("theme", "dark");
+
+  return canonical.toString();
+}
+
 /** Only cards our own pages define: arbitrary text would let anyone mint a branded card. */
 export async function resolveOgCard(searchParams: URLSearchParams): Promise<OgCard | null> {
   const page = searchParams.get("page");

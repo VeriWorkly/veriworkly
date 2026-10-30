@@ -20,13 +20,16 @@ import {
   type PortfolioContent as CorePortfolioContent,
   type CloudPortfolioDraft as CoreCloudPortfolioDraft,
   type PortfolioSection,
+  type PortfolioPage,
   type PortfolioAssetReference,
 } from "@veriworkly/profile-core";
 
 export type PortfolioContent = CorePortfolioContent<TemplateId>;
 export type CloudPortfolioDraft = CoreCloudPortfolioDraft<TemplateId>;
 
-export const PORTFOLIO_CACHE_KEY = "veriworkly:portfolio:draft-cache:v4";
+// v5: holds a guest's draft only. v4 also mirrored whoever was signed in, so it could hand one
+// user's draft to the next guest on the browser or merge it into another account.
+export const PORTFOLIO_CACHE_KEY = "veriworkly:portfolio:guest-draft:v5";
 
 export function createId(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -847,13 +850,67 @@ export function isPortfolioSectionType(value: unknown): value is PortfolioSectio
   return typeof value === "string" && portfolioSectionTypes.includes(value as PortfolioSectionType);
 }
 
-export function parsePortfolioContent(input: unknown, fallback = demoPortfolio): PortfolioContent {
+function parseSections(input: unknown[]): PortfolioSection[] {
+  return input
+    .filter(
+      (section): section is Record<string, unknown> => !!section && typeof section === "object",
+    )
+    .slice(0, 24)
+    .filter((section) => isPortfolioSectionType(section.type))
+    .map((section) => ({
+      id: text(section.id, createId("section"), 128),
+      type: section.type as PortfolioSectionType,
+      title: text(section.title, "Section", 120),
+      // Seeded from the neutral defaults when the key is absent entirely, so
+      // portfolios saved before subtitles existed keep a sensible line
+      // instead of losing one. An explicit "" is preserved as "hidden" —
+      // that is a deliberate clear by the user, not a missing value.
+      subtitle:
+        typeof section.subtitle === "string"
+          ? section.subtitle.slice(0, 240)
+          : sectionSubtitleDefaults[section.type as PortfolioSectionType],
+      visible: section.visible !== false,
+      items: Array.isArray(section.items)
+        ? (section.items as unknown[])
+            .filter((item): item is Record<string, unknown> => !!item && typeof item === "object")
+            .slice(0, 24)
+        : [],
+      settings:
+        section.settings && typeof section.settings === "object"
+          ? (section.settings as Record<string, unknown>)
+          : undefined,
+    }));
+}
+
+function parsePages(input: unknown): PortfolioPage[] | undefined {
+  if (!Array.isArray(input)) return undefined;
+  return input
+    .filter((page): page is Record<string, unknown> => !!page && typeof page === "object")
+    .slice(0, 10)
+    .map((page) => ({
+      id: text(page.id, createId("page"), 128),
+      slug: text(page.slug, "", 63),
+      title: text(page.title, "", 120),
+      sections: Array.isArray(page.sections) ? parseSections(page.sections) : [],
+    }));
+}
+
+/**
+ * Sanitizes a stored draft or published snapshot. A malformed input yields an empty
+ * portfolio, never sample content: whatever this returns can reach a real user's editor
+ * and be autosaved as theirs (P-039).
+ */
+export function parsePortfolioContent(
+  input: unknown,
+  fallback: PortfolioContent = createDefaultPortfolio(),
+): PortfolioContent {
   if (!input || typeof input !== "object") return fallback;
   const value = input as Record<string, unknown>;
   if (value.schemaVersion !== 1 || !value.identity || !Array.isArray(value.sections))
     return fallback;
   const identity = value.identity as Record<string, unknown>;
   const seo = (value.seo ?? {}) as Record<string, unknown>;
+  const pages = parsePages(value.pages);
   return {
     schemaVersion: 1,
     templateId:
@@ -884,34 +941,11 @@ export function parsePortfolioContent(input: unknown, fallback = demoPortfolio):
             url: text(link.url, "", 2048),
           }))
       : [],
-    sections: (value.sections as unknown[])
-      .filter(
-        (section): section is Record<string, unknown> => !!section && typeof section === "object",
-      )
-      .slice(0, 24)
-      .filter((section) => isPortfolioSectionType(section.type))
-      .map((section) => ({
-        id: text(section.id, createId("section"), 128),
-        type: section.type as PortfolioSectionType,
-        title: text(section.title, "Section", 120),
-        // Seeded from the neutral defaults when the key is absent entirely, so
-        // portfolios saved before subtitles existed keep a sensible line
-        // instead of losing one. An explicit "" is preserved as "hidden" —
-        // that is a deliberate clear by the user, not a missing value.
-        subtitle:
-          typeof section.subtitle === "string"
-            ? section.subtitle.slice(0, 240)
-            : sectionSubtitleDefaults[section.type as PortfolioSectionType],
-        visible: section.visible !== false,
-        items: Array.isArray(section.items)
-          ? (section.items as unknown[])
-              .filter((item): item is Record<string, unknown> => !!item && typeof item === "object")
-              .slice(0, 24)
-          : [],
-        settings:
-          section.settings && typeof section.settings === "object"
-            ? (section.settings as Record<string, unknown>)
-            : undefined,
-      })),
+    sections: parseSections(value.sections),
+    // Both used to be dropped here, so sub-pages 404ed and the badge setting never stuck (P-047).
+    ...(pages ? { pages } : {}),
+    ...(typeof value.removeWatermark === "boolean"
+      ? { removeWatermark: value.removeWatermark }
+      : {}),
   };
 }

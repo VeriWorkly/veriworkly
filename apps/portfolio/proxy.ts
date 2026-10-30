@@ -13,7 +13,7 @@ const publicPlatformPaths = [
   "/faq",
 ];
 
-const SESSION_COOKIE_NAMES = [
+export const SESSION_COOKIE_NAMES = [
   "__Secure-veriworkly-auth.session_token",
   "veriworkly-auth.session_token",
 ];

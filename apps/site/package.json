@@ -6,7 +6,7 @@
     "dev": "next dev",
     "prebuild": "npm run check:design && npm run build:brand-kit",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -H 127.0.0.1",
     "lint": "eslint .",
     "format": "prettier --check .",
     "format:write": "prettier --write .",

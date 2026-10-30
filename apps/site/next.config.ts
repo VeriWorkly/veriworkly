@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import type { NextConfig } from "next";
 
 import { version } from "./package.json";
@@ -92,20 +93,45 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   htmlLimitedBots: HTML_LIMITED_BOTS,
+  // Keeps 404 renders of unknown release and roadmap ids off the disk; see the file.
+  cacheHandler: join(__dirname, "cache-handler.mjs"),
   images: {
     formats: ["image/avif", "image/webp"],
-    /** Only hosts we actually render from: every allowed host is one the optimizer fetches on request. */
+    /**
+     * Exactly the avatar URLs the API sends (GitHub's `avatar_url`: /u/<id>?v=4 for people,
+     * /in/<id>?v=4 for apps) and github.com/<user>.png. The optimizer keys its disk cache on the
+     * full URL, so any looser pattern lets a visitor mint new cache entries with a query string.
+     */
     remotePatterns: [
       {
         protocol: "https",
         hostname: "avatars.githubusercontent.com",
+        port: "",
+        pathname: "/u/*",
+        search: "?v=4",
+      },
+      {
+        protocol: "https",
+        hostname: "avatars.githubusercontent.com",
+        port: "",
+        pathname: "/in/*",
+        search: "?v=4",
       },
       {
         protocol: "https",
         hostname: "github.com",
+        port: "",
         pathname: "/*.png",
+        search: "",
       },
     ],
+    // Without a cap the optimizer's disk cache may grow to half the free disk.
+    maximumDiskCacheSize: 256 * 1024 * 1024,
+    // Same freshness as the static image headers below.
+    minimumCacheTTL: 86400,
+    // Fewer widths, fewer variants per source; covers every rendered size up to the 1200 px social preview at 2x.
+    deviceSizes: [640, 828, 1200, 2400],
+    imageSizes: [32, 48, 64, 96, 128, 256, 384],
   },
 
   async redirects() {

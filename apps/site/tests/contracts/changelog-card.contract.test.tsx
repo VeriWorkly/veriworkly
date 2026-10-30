@@ -1,9 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import ChangelogEntryCard, {
-  plainSummary,
-} from "@/features/changelog/components/list/ChangelogEntryCard";
+import ChangelogEntryCard from "@/features/changelog/components/list/ChangelogEntryCard";
+import { ChangelogRichText } from "@/features/changelog/components/detail/ChangelogRichText";
 import type { ChangelogEntry } from "@/features/changelog/services/changelog-backend";
 
 // @veriworkly/ui loads next/font at import, which only works inside a Next build.
@@ -40,12 +39,19 @@ describe("a changelog card in the list", () => {
     expect(html).toContain('href="/changelog/v3-31-0"');
   });
 
-  it("keeps the summary's words and drops the markdown", () => {
-    expect(plainSummary(SUMMARY)).toBe(
-      "Fixes export in studio by @Gautam25Raj (#123), see the docs and #456.",
-    );
-    expect(plainSummary("An *italic* word and snake_case_name stay readable")).toBe(
-      "An italic word and snake_case_name stay readable",
-    );
+  it("keeps the inline styling: bold, code and the link look, as spans", () => {
+    const card = renderToStaticMarkup(<ChangelogEntryCard entry={entry} isLatest />);
+    const inline = renderToStaticMarkup(<ChangelogRichText content={SUMMARY} inline />);
+
+    expect(card).toContain('<strong class="text-foreground font-semibold">export</strong>');
+    expect(card).toMatch(/<code class="[^"]*font-mono[^"]*">studio<\/code>/);
+
+    // The inline renderer's markup inside its wrapper, with each <a ...> swapped for a <span class>.
+    const asSpans = inline
+      .replace(/^<span[^>]*>|<\/span>$/g, "")
+      .replace(/<a\b[^>]*?(class="[^"]*")[^>]*>/g, "<span $1>")
+      .replace(/<\/a>/g, "</span>");
+    expect(asSpans).not.toBe(inline);
+    expect(card).toContain(asSpans);
   });
 });

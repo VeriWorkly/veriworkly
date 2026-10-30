@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 process.env.NEXT_PUBLIC_BACKEND_URL ??= "http://127.0.0.1:1/api/v1";
@@ -96,6 +99,59 @@ describe("server-side API calls act for the visitor (W-088)", () => {
     });
     expect(visitorHeaders(new Headers({ "x-real-ip": "192.0.2.1" }))["x-forwarded-client-ip"]).toBe(
       "192.0.2.1",
+    );
+  });
+
+  it("forwards a header value only when it is an IP address", async () => {
+    const { clientIpFrom, visitorHeaders } = await import("@/lib/server-api");
+
+    expect(clientIpFrom(new Headers({ "x-real-ip": "2001:db8::1" }))).toBe("2001:db8::1");
+    expect(clientIpFrom(new Headers({ "x-real-ip": "evil" }))).toBeUndefined();
+    expect(clientIpFrom(new Headers({ "x-real-ip": "1.2.3.4, 5.6.7.8" }))).toBeUndefined();
+    expect(clientIpFrom(new Headers({ "x-forwarded-for": "1.2.3.4, not-an-ip" }))).toBeUndefined();
+
+    vi.stubEnv("INTERNAL_API_KEY", "k".repeat(40));
+    expect(visitorHeaders(new Headers({ "x-real-ip": "<script>" }))).toEqual({});
+  });
+
+  it("npm start listens on loopback only, and the README says how nginx sets the headers", () => {
+    const siteDir = join(__dirname, "..", "..");
+    const pkg = JSON.parse(readFileSync(join(siteDir, "package.json"), "utf8"));
+    const readme = readFileSync(join(siteDir, "README.md"), "utf8");
+
+    expect(pkg.scripts.start).toBe("next start -H 127.0.0.1");
+    expect(readme).toContain("proxy_set_header X-Real-IP $remote_addr;");
+    expect(readme).toContain("proxy_set_header X-Forwarded-For $remote_addr;");
+  });
+});
+
+describe("fetchApiData stays on the configured backend", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  const ok = () =>
+    vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(async () =>
+      Response.json({ success: true, message: "ok", data: {} }),
+    );
+
+  it("refuses an absolute or protocol-relative URL", async () => {
+    const fetchMock = ok();
+    vi.stubGlobal("fetch", fetchMock);
+    const { fetchApiData } = await import("@/utils/fetchApiData");
+
+    for (const path of ["https://evil.test/x", "//evil.test/x", "/\\evil.test", "javascript:x"])
+      await expect(fetchApiData(path), path).rejects.toThrow(/backend path/);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("a caller cannot replace the server-side Origin", async () => {
+    const fetchMock = ok();
+    vi.stubGlobal("fetch", fetchMock);
+    const { fetchApiData } = await import("@/utils/fetchApiData");
+
+    await fetchApiData("/changelog", { headers: { Origin: "https://evil.test" } });
+
+    expect(new Headers(fetchMock.mock.calls[0]![1]!.headers).get("origin")).toBe(
+      "https://veriworkly.com",
     );
   });
 });

@@ -8,7 +8,6 @@ import { categoryLabel, scoreTone, sortByCategoryOrder } from "@veriworkly/ats-e
 
 import { ScoreGauge } from "@/features/ats-checker/components/tool/ScoreGauge";
 import { TONE_CLASSES } from "@/features/ats-checker/data/categories";
-import { REQUIREMENT_STATUS_LABELS } from "@/features/ats-checker/data/requirements";
 
 import { ENGINE_SAMPLES } from "../data/samples";
 
@@ -267,9 +266,9 @@ export function EngineDemo() {
                     {report.requirements.slice(0, 6).map((requirement, index) => (
                       <li key={`${requirement.text}-${index}`} className="flex items-start gap-3">
                         <span
-                          className={`mt-0.5 w-28 shrink-0 rounded-full px-2 py-0.5 text-center text-sm font-semibold ${STATUS_STYLE[requirement.status]}`}
+                          className={`mt-0.5 w-28 shrink-0 rounded-full px-2 py-0.5 text-center text-sm font-semibold capitalize ${STATUS_STYLE[requirement.status]}`}
                         >
-                          {REQUIREMENT_STATUS_LABELS[requirement.status]}
+                          {requirement.status}
                         </span>
                         <span className="min-w-0 text-sm leading-relaxed">
                           {requirement.text}

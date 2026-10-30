@@ -49,6 +49,7 @@ const ChangelogPageShell = ({ description, data, activeType, search }: Changelog
 
           <ChangelogTimeline
             entries={entries}
+            failed={data?.failed ?? true}
             latestVersion={stats?.latest?.version}
             filtered={activeType !== "all" || Boolean(search)}
           />

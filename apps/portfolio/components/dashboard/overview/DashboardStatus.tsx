@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Settings } from "lucide-react";
 import type { PortfolioReadinessCheck } from "@/lib/portfolio-status";
+import { UnpublishButton } from "@/components/dashboard/UnpublishButton";
 import { HealthRow } from "./HealthRow";
 
 const primaryAction =
@@ -48,6 +49,7 @@ export function DashboardStatus({
             <Link className={secondaryAction} href="/settings">
               Publishing settings <Settings size={13} />
             </Link>
+            <UnpublishButton className={secondaryAction} />
           </div>
         </div>
         <div className="border-line bg-accent text-accent-ink relative overflow-hidden border-t p-6 md:border-t-0">

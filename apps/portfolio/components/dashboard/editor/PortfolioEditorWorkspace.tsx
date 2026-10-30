@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { usePortfolioStore, usePortfolioStoreApi } from "@/store/portfolio-store";
+import { useCallback, useEffect, useState } from "react";
+import { usePortfolioStore, usePortfolioStoreApi, type SaveResult } from "@/store/portfolio-store";
 import { EditorCommandBar } from "@/components/dashboard/editor/EditorCommandBar";
 import { StructureRail } from "@/components/dashboard/editor/StructureRail";
 import { ContentCanvas } from "@/components/dashboard/editor/ContentCanvas";
 import { PreviewStage } from "@/components/dashboard/editor/PreviewStage";
 import { TemplatePicker } from "@/components/dashboard/editor/TemplatePicker";
-import { WorkspaceNotice } from "@/components/dashboard/editor/WorkspaceNotice";
 
 export function PortfolioEditorWorkspace() {
   // These effects read the *latest* state at fire time rather than subscribing, so they
@@ -15,6 +14,14 @@ export function PortfolioEditorWorkspace() {
   // down and rebuilt on every keystroke.
   const storeApi = usePortfolioStoreApi();
   const save = usePortfolioStore((state) => state.saveDraft);
+  const setMessage = usePortfolioStore((state) => state.setMessage);
+  // Nobody clicked anything for these saves, so a failure goes to the workspace notice.
+  const noticeOnFailure = useCallback(
+    (result: SaveResult) => {
+      if (!result.ok) setMessage(result.message);
+    },
+    [setMessage],
+  );
   const ready = usePortfolioStore((state) => state.ready);
   const selectedPageIdState = usePortfolioStore((state) => state.selectedPageId);
   const pages = usePortfolioStore((state) => state.content.pages || []);
@@ -34,15 +41,15 @@ export function PortfolioEditorWorkspace() {
 
   useEffect(() => {
     if (!ready || storeApi.getState().draft) return;
-    void save();
-  }, [ready, save, storeApi]);
+    void save().then(noticeOnFailure);
+  }, [ready, save, storeApi, noticeOnFailure]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      if (storeApi.getState().isDirty) void save();
+      if (storeApi.getState().isDirty) void save().then(noticeOnFailure);
     }, 12000);
     return () => window.clearInterval(timer);
-  }, [save, storeApi]);
+  }, [save, storeApi, noticeOnFailure]);
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -100,7 +107,6 @@ export function PortfolioEditorWorkspace() {
         />
       </div>
       <TemplatePicker open={templatePickerOpen} onClose={() => setTemplatePickerOpen(false)} />
-      <WorkspaceNotice />
     </main>
   );
 }
