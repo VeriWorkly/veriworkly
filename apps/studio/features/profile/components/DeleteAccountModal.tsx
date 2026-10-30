@@ -281,10 +281,11 @@ const DeleteAccountModal = ({ open, onClose, userEmail }: DeleteAccountModalProp
                     Deleting your account removes them from this device too.{" "}
                   </>
                 ) : null}
-                Download a copy first: one JSON file with every document in your account and your
-                Master Profile. Restore a backup, on the empty Documents page or the first-run
-                guide, restores the documents, and Profile, Advanced JSON, Import restores the
-                Master Profile. For a PDF, open a document and download it.
+                Download a copy first: one JSON file with every document in your account, your
+                portfolio and link-in-bio pages, and your Master Profile. Restore a backup, on the
+                empty Documents page or the first-run guide, restores the documents, and Profile,
+                Advanced JSON, Import restores the Master Profile. For a PDF, open a document and
+                download it.
               </span>
 
               <Button

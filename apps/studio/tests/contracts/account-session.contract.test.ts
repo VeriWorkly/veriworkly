@@ -1801,6 +1801,31 @@ describe("S-347: the account backup made before deleting the account", () => {
     expect(await backupTitles()).toEqual(["My resume"]);
   });
 
+  it("S-375: portfolios and link-in-bio pages are in the backup, as stored", async () => {
+    serveAccount([
+      cloudRecord({ id: "portfolio-1", type: "PORTFOLIO" as never, title: "My site" }, 1, {
+        sections: [{ id: "hero" }],
+      }),
+      cloudRecord({ id: "bio-1", type: "LINK_IN_BIO" as never, title: "My links" }, 1, {
+        links: [],
+      }),
+    ]);
+
+    const result = await backup();
+    if (!result.ok) throw new Error(result.message);
+    const file = JSON.parse(result.json);
+
+    expect(file.sites).toEqual([
+      expect.objectContaining({
+        id: "portfolio-1",
+        type: "PORTFOLIO",
+        title: "My site",
+        content: { sections: [{ id: "hero" }] },
+      }),
+      expect.objectContaining({ id: "bio-1", type: "LINK_IN_BIO", content: { links: [] } }),
+    ]);
+  });
+
   it("S-347: unsent edits beside a newer cloud revision keep both copies", async () => {
     const pending = titled("Edited here");
     linkAs(pending, "pending", 1);

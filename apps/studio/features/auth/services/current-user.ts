@@ -152,7 +152,7 @@ export function buildWorkspaceBackup(documents: DocumentMeta[], now = new Date()
 export function serializeWorkspaceBackup(
   documents: BaseDocument[],
   now = new Date(),
-  extras: Pick<WorkspaceBackup, "masterProfile"> = {},
+  extras: Pick<WorkspaceBackup, "masterProfile" | "sites"> = {},
 ) {
   const backup: WorkspaceBackup = {
     format: WORKSPACE_BACKUP_FORMAT,

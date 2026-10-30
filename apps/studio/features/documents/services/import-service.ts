@@ -115,6 +115,8 @@ export interface WorkspaceBackup {
   exportedAt: string;
   /** The account's Master Profile, in a backup made before deleting the account. */
   masterProfile?: unknown;
+  /** Portfolio and link-in-bio pages, kept as stored; restore does not read them. */
+  sites?: Array<{ id: string; type: string; title: string; content: unknown; updatedAt: string }>;
   documents: BaseDocument[];
 }
 
