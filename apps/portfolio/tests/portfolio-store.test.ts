@@ -447,6 +447,25 @@ describe("portfolio store", () => {
     });
   });
 
+  // The editor's ?template= and first-save effects wait while this reads "loading", so the load
+  // must say so at once and leave the content alone until its answer is in.
+  it("marks the workspace loading as soon as a load starts, without touching the content", async () => {
+    localStorageMock.setItem(
+      CACHE_KEY,
+      JSON.stringify({ slug: "guest", content: { ...baseContent, templateId: "atelier" } }),
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse(null, 503)),
+    );
+    const before = store.getState().content;
+
+    const loading = store.getState().loadWorkspace();
+    expect(store.getState().workspaceState).toBe("loading");
+    expect(store.getState().content).toBe(before);
+    await loading;
+  });
+
   it("shares a single in-flight load across concurrent loadWorkspace() calls", async () => {
     let usersMeCallCount = 0;
 
@@ -644,6 +663,16 @@ describe("portfolio store", () => {
       });
     });
 
+    it("does not stay on Publishing... when the save returns before sending", async () => {
+      const publishing = signedIn();
+      publishing.setState({ workspaceState: "error", status: "Not saved" });
+
+      const result = await publishing.getState().publish();
+
+      expect(result.ok).toBe(false);
+      expect(publishing.getState().status).toBe("Not saved");
+    });
+
     it("does not publish when the save before it fails", async () => {
       const publishing = signedIn();
       let publishCalled = false;
@@ -799,6 +828,27 @@ describe("portfolio store", () => {
         expect(state.slug).toBe("gautam-cloud");
         expect(state.draft?.revision).toBe(7);
         expect(state).toMatchObject({ status: "Saved", isDirty: false });
+      });
+
+      // Section edits go to the selected page; one the cloud copy lacks swallowed them all.
+      it("goes back to Home when the loaded copy no longer has the selected page", async () => {
+        const stale = signedIn();
+        stale.setState({
+          status: "Conflict",
+          content: {
+            ...baseContent,
+            pages: [{ id: "p1", slug: "work", title: "Work", sections: [] }],
+          },
+          selectedPageId: "p1",
+        });
+        stubApi({
+          "/portfolios/me": () =>
+            jsonResponse({ draft: cloudDraft, publication: null, billing: null }),
+        });
+
+        await stale.getState().resolveConflict("cloud");
+
+        expect(stale.getState().selectedPageId).toBeNull();
       });
 
       it("keeps this copy by saving it at the cloud copy's revision", async () => {

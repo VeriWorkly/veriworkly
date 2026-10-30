@@ -416,7 +416,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
     return saveInFlight;
   };
 
-  const store: StoreApi<PortfolioStoreState> = createStore<PortfolioStoreState>()(
+  const store = createStore<PortfolioStoreState>()(
     subscribeWithSelector((set, get) => ({
       content: createDefaultPortfolio(),
       slug: defaultSubdomain(),
@@ -755,9 +755,15 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
       // Publish and unpublish report through their result only; the caller shows it.
       publish: async () => {
         if (!get().user) return { ok: false, message: "Please log in to publish your portfolio." };
+        const before = get().status;
         set({ status: "Publish pending" });
         const saved = await get().saveDraft();
-        if (!saved.ok || !saved.draft) return saved;
+        if (!saved.ok || !saved.draft) {
+          // A save that returned before sending (a workspace that did not load) left the status
+          // on "Publishing..." for good.
+          if (get().status === "Publish pending") set({ status: before });
+          return saved;
+        }
         try {
           const response = await authenticatedFetch("/portfolios/publish", {
             method: "POST",
@@ -879,6 +885,18 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
 
       ...preloaded,
     })),
+  );
+
+  // A selected page that is gone (a cloud copy or guest draft loaded without it) sent every
+  // section edit nowhere, so the editor goes back to Home.
+  store.subscribe(
+    (state) => state.content.pages,
+    (pages) => {
+      const { selectedPageId } = store.getState();
+      if (selectedPageId && !pages?.some((page) => page.id === selectedPageId)) {
+        store.setState({ selectedPageId: null });
+      }
+    },
   );
 
   return store;

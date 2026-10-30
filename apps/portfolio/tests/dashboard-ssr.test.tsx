@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 process.env.NEXT_PUBLIC_BACKEND_URL = "http://test-backend.local";
 
@@ -11,7 +11,13 @@ import { createDefaultPortfolio, type PortfolioContent } from "@/lib/portfolio";
 import { StructureRail } from "@/components/dashboard/editor/StructureRail";
 import { ContentCanvas } from "@/components/dashboard/editor/ContentCanvas";
 import { PortfolioEditorWorkspace } from "@/components/dashboard/editor/PortfolioEditorWorkspace";
-import { isEditorMessage, previewProject, showsBadge } from "@/components/LivePortfolioPreview";
+import {
+  isEditorMessage,
+  previewProject,
+  showsBadge,
+  standaloneGuestContent,
+} from "@/components/LivePortfolioPreview";
+import { createPortfolioStore, PortfolioStoreProvider } from "@/store/portfolio-store";
 
 /**
  * `renderToStaticMarkup` runs no effects, so it reproduces exactly what the server
@@ -326,6 +332,37 @@ describe("paid portfolio features follow canPublish (P-010)", () => {
   });
 });
 
+describe("a lapsed plan sent to a sub-page", () => {
+  // The publish checklist can open a sub-page for an owner whose plan lapsed; the Pages list is
+  // paid-only, so Home has to show without it or there is no way back.
+  it("still shows Home", () => {
+    const store = createPortfolioStore({
+      ready: true,
+      workspaceState: "ready",
+      billing: aiOnly,
+      content: {
+        ...completeContent,
+        pages: [{ id: "p1", slug: "work", title: "Work", sections: [] }],
+      },
+      selectedPageId: "p1",
+    });
+    const rail = renderToStaticMarkup(
+      <PortfolioStoreProvider value={store}>
+        <StructureRail
+          visibility="flex"
+          selectedSectionId="profile"
+          onSelect={() => {}}
+          onClose={() => {}}
+          onOpenTemplates={() => {}}
+        />
+      </PortfolioStoreProvider>,
+    );
+
+    expect(rail).not.toContain('aria-label="Add page"');
+    expect(rail).toContain(">Home</span>");
+  });
+});
+
 describe("site status card (P-014, P-033)", () => {
   const site = { subdomain: "gautam" };
 
@@ -410,6 +447,27 @@ describe("editor preview follows the live rules (P-059)", () => {
     expect(isEditorMessage({ ...message, source: {} } as never, self)).toBe(false);
     expect(isEditorMessage({ ...message, origin: "https://evil.test" } as never, self)).toBe(false);
     expect(isEditorMessage({ ...message, data: { type: "other" } } as never, self)).toBe(false);
+  });
+
+  // The guest preview page is server-rendered with the default; opened on its own it shows the
+  // guest's saved draft, while inside the editor's frame the editor posts the live content.
+  it("shows a guest the draft saved in this browser when opened on its own", () => {
+    const saved = { ...completeContent, identity: { ...completeContent.identity, bio: "guest" } };
+    const items = new Map([
+      ["veriworkly:portfolio:guest-draft:v5", JSON.stringify({ slug: "g", content: saved })],
+    ]);
+    const self: { parent: unknown; localStorage: unknown } = {
+      parent: null,
+      localStorage: { getItem: (key: string) => items.get(key) ?? null, removeItem() {} },
+    };
+    self.parent = self;
+    vi.stubGlobal("window", self);
+    try {
+      expect(standaloneGuestContent(self)?.identity.bio).toBe("guest");
+      expect(standaloneGuestContent({ parent: {} })).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 
