@@ -72,7 +72,7 @@ describe("proxy middleware — platform host auth gate", () => {
   });
 
   it("never redirects API routes", () => {
-    const response = proxy(requestTo("https://portfolio.veriworkly.com/api/render"));
+    const response = proxy(requestTo("https://portfolio.veriworkly.com/api/revalidate"));
     expect(response.headers.get("location")).toBeNull();
   });
 

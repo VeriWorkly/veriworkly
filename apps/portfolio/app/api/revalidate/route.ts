@@ -38,7 +38,9 @@ export async function POST(request: Request) {
   if (tags && Array.isArray(tags)) {
     for (const tag of tags) {
       try {
-        (revalidateTag as unknown as (tag: string) => void)(tag);
+        // Expire now rather than serve stale: an unpublished or suspended site must not stay up
+        // for another visit. updateTag is for Server Actions only (Next 16).
+        revalidateTag(tag, { expire: 0 });
       } catch (err) {
         console.error(`Failed to revalidate tag: ${tag}`, err);
       }

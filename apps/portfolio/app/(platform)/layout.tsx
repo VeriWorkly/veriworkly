@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
 
-import "./globals.css";
+import "../globals.css";
 
 import { siteConfig } from "@/config/site";
 
@@ -57,6 +57,10 @@ export const metadata: Metadata = {
     images: ["/og/landing-page-og.png"],
     creator: siteConfig.twitter.handle,
   },
+
+  // Linked here, not from app/manifest.json: a file there is added to every page, published
+  // portfolios included, and a user's site must not install as the VeriWorkly app (P-051).
+  manifest: "/manifest.json",
 
   icons: {
     icon: "/favicon.ico",

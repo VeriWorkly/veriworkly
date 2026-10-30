@@ -91,7 +91,10 @@ describe("the pricing page's view of the visitor's plan (P-065, P-071)", () => {
   });
 
   it("renders the pricing page without any server-side account read", () => {
-    const page = readFileSync(join(__dirname, "..", "app", "pricing", "page.tsx"), "utf8");
+    const page = readFileSync(
+      join(__dirname, "..", "app", "(platform)", "pricing", "page.tsx"),
+      "utf8",
+    );
 
     expect(page).not.toMatch(/server-api|fetchServerApiData|cookies\(|isAdminUser/);
   });

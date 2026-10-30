@@ -14,7 +14,7 @@ vi.mock("next/headers", () => ({
 }));
 
 const { loadWorkspaceBootstrap } = await import("@/lib/workspace-bootstrap");
-const { default: WorkspaceLayout } = await import("@/app/(workspace)/layout");
+const { default: WorkspaceLayout } = await import("@/app/(platform)/(workspace)/layout");
 
 const user = { name: "Gautam Raj", email: "gautam@veriworkly.com" };
 const workspace = {
