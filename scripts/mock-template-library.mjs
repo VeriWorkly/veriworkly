@@ -121,7 +121,7 @@ export function itemFirst(item: Record<string, unknown>, keys: string[], fallbac
 }
 
 export function itemProse(item: Record<string, unknown>, fallback = "") {
-  return itemFirst(item, ["description", "summary"], fallback);
+  return itemFirst(item, ["summary", "description"], fallback);
 }
 
 export function itemLabel(item: Record<string, unknown>, fallback = "") {
