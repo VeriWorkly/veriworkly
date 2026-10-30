@@ -4,8 +4,11 @@ description: >
   Returns the caller's current portfolio draft document (if any), publication
   status, and
 
-  billing summary in one call. Session-authenticated only — this route does not
-  accept an API
+  billing summary in one call. While the site is offline,
+  `publication.offlineReason` says why:
+
+  a moderator took it down, the owner unpublished it, or billing suspended it.
+  Session-authenticated only — this route does not accept an API
 
   key.
 full: true
@@ -22,8 +25,12 @@ _openapi:
           Returns the caller's current portfolio draft document (if any),
           publication status, and
 
-          billing summary in one call. Session-authenticated only — this route
-          does not accept an API
+          billing summary in one call. While the site is offline,
+          `publication.offlineReason` says why:
+
+          a moderator took it down, the owner unpublished it, or billing
+          suspended it. Session-authenticated only — this route does not accept
+          an API
 
           key.
 ---

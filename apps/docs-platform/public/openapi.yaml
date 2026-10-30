@@ -4664,6 +4664,11 @@ paths:
         `isPaid` (the owner's paid portfolio access is in effect) and `isPremiumTemplate`. The
         billing state of the publication is not returned.
 
+        The snapshot holds only what a visitor may see, not the owner's whole draft: hidden sections
+        are dropped (on the home page and on every page), `pages` is empty unless `isPaid`, and
+        `identity.email` is blank unless a visible Contact section shows it. The stored snapshot is
+        not changed.
+
         Returns `404` for a suspended portfolio, one whose document was deleted, or one whose grace
         period after a lapsed subscription has run out. A lapsed portfolio is not taken down: a
         background job moves a premium template to the closest free one and the site stays online.
@@ -4801,7 +4806,8 @@ paths:
       summary: Get My Portfolio
       description: |
         Returns the caller's current portfolio draft document (if any), publication status, and
-        billing summary in one call. Session-authenticated only — this route does not accept an API
+        billing summary in one call. While the site is offline, `publication.offlineReason` says why:
+        a moderator took it down, the owner unpublished it, or billing suspended it. Session-authenticated only — this route does not accept an API
         key.
       responses:
         "200":
@@ -11257,6 +11263,10 @@ components:
             - cipher
         snapshot:
           $ref: "#/components/schemas/PortfolioDraftContent"
+          description: |
+            The published content as a visitor may see it: visible sections only, `pages` only while
+            `isPaid` (otherwise empty), and `identity.email` blank unless a visible Contact section
+            shows it.
         updatedAt:
           type: string
           format: date-time
@@ -11264,9 +11274,9 @@ components:
           type: boolean
           description: |
             The owner's paid portfolio access (Creator Pro, the Job Hunter Bundle, a pass) is in
-            effect, or its short grace period after a lapse is still running. It decides the badge,
-            the custom subdomain and the extra pages on any template. An AI Credits plan alone does not
-            count.
+            effect, or its short grace period after a lapse is still running. It decides the badge
+            and the extra pages on any template. Every site, free or paid, is served on its own
+            subdomain. An AI Credits plan alone does not count.
         isPremiumTemplate:
           type: boolean
           description: The template is a premium one (`nimbus` or `cipher`). About the template only.
@@ -11510,6 +11520,20 @@ components:
                 - LIVE
                 - GRACE
                 - SUSPENDED
+            offlineReason:
+              type:
+                - string
+                - "null"
+              enum:
+                - moderation
+                - owner
+                - billing
+                - null
+              description: |
+                Why the site is offline, `null` while it is `LIVE` or `GRACE`. `moderation`: a
+                moderator took it down (a suspended site with no recorded reason reads the same, since
+                it cannot be republished either). `owner`: the owner unpublished it. `billing`: billing
+                suspended it. The moderator's note itself is not returned.
             publishedRevision:
               type: integer
             publishedAt:

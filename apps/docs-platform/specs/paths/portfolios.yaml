@@ -67,6 +67,11 @@ getPublicPortfolio:
       `isPaid` (the owner's paid portfolio access is in effect) and `isPremiumTemplate`. The
       billing state of the publication is not returned.
 
+      The snapshot holds only what a visitor may see, not the owner's whole draft: hidden sections
+      are dropped (on the home page and on every page), `pages` is empty unless `isPaid`, and
+      `identity.email` is blank unless a visible Contact section shows it. The stored snapshot is
+      not changed.
+
       Returns `404` for a suspended portfolio, one whose document was deleted, or one whose grace
       period after a lapsed subscription has run out. A lapsed portfolio is not taken down: a
       background job moves a premium template to the closest free one and the site stays online.
@@ -206,7 +211,8 @@ getMyPortfolio:
     summary: Get My Portfolio
     description: |
       Returns the caller's current portfolio draft document (if any), publication status, and
-      billing summary in one call. Session-authenticated only — this route does not accept an API
+      billing summary in one call. While the site is offline, `publication.offlineReason` says why:
+      a moderator took it down, the owner unpublished it, or billing suspended it. Session-authenticated only — this route does not accept an API
       key.
     responses:
       "200":

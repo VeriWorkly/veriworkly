@@ -10,6 +10,18 @@ description: >
   billing state of the publication is not returned.
 
 
+  The snapshot holds only what a visitor may see, not the owner's whole draft:
+  hidden sections
+
+  are dropped (on the home page and on every page), `pages` is empty unless
+  `isPaid`, and
+
+  `identity.email` is blank unless a visible Contact section shows it. The
+  stored snapshot is
+
+  not changed.
+
+
   Returns `404` for a suspended portfolio, one whose document was deleted, or
   one whose grace
 
@@ -45,6 +57,18 @@ _openapi:
           `isPremiumTemplate`. The
 
           billing state of the publication is not returned.
+
+
+          The snapshot holds only what a visitor may see, not the owner's whole
+          draft: hidden sections
+
+          are dropped (on the home page and on every page), `pages` is empty
+          unless `isPaid`, and
+
+          `identity.email` is blank unless a visible Contact section shows it.
+          The stored snapshot is
+
+          not changed.
 
 
           Returns `404` for a suspended portfolio, one whose document was
