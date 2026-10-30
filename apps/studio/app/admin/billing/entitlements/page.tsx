@@ -26,8 +26,9 @@ const FILTERS = [
     label: "Entitlement",
     options: [
       { label: "Any", value: "" },
-      { label: "Portfolio publish", value: "portfolio_publish" },
-      { label: "AI credits", value: "ai_credits" },
+      // Plan access, not credits: no grant adds credits (S-415).
+      { label: "Creator Pro portfolio access", value: "portfolio_publish" },
+      { label: "AI Credits plan access", value: "ai_credits" },
       { label: "SEO controls", value: "seo_controls" },
       { label: "Analytics", value: "analytics" },
       { label: "Watermark removal", value: "watermark_removal" },

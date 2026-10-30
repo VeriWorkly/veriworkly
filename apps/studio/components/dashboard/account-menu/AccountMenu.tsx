@@ -33,10 +33,10 @@ import { siteConfig } from "@/config/site";
 import { useSessionUser } from "@/store/session-user";
 import { pluralize } from "@/lib/pluralize";
 import { signInHref } from "@/lib/sign-in";
-import { accessTierLabel } from "@/features/billing/checkout-rules";
+import { accessTierLabel, accountPaymentNotice } from "@/features/billing/checkout-rules";
 import { fetchApiData } from "@/utils/fetchApiData";
 
-type PlanSummary = { label: string; credits: number } | "error";
+type PlanSummary = { label: string; credits: number; paymentNotice: string | null } | "error";
 
 /** The plan and credit balance, shown in the account menu so they are one click from anywhere. */
 function usePlanSummary(isLoggedIn: boolean) {
@@ -53,6 +53,7 @@ function usePlanSummary(isLoggedIn: boolean) {
           setPlan({
             label: accessTierLabel(billing.access.tier),
             credits: billing.credits.available,
+            paymentNotice: accountPaymentNotice(billing.access),
           });
         }
       })
@@ -224,6 +225,11 @@ export function AccountMenu({ collapsed, displayName, email, version }: AccountM
                       {plan === "error"
                         ? "Plan could not be loaded"
                         : `${plan.label} · ${pluralize(plan.credits, "credit")}`}
+                    </span>
+                  ) : null}
+                  {plan !== "error" && plan?.paymentNotice ? (
+                    <span className="text-destructive mt-0.5 block truncate text-xs font-semibold">
+                      {plan.paymentNotice}
                     </span>
                   ) : null}
                 </span>

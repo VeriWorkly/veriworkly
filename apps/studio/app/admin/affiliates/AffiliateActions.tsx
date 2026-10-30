@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import { Select, TextArea } from "@veriworkly/ui";
 
@@ -9,12 +9,14 @@ import { ADMIN_REASON_MAX_LENGTH } from "@/components/admin/admin-reason";
 import { ADMIN_INPUT_CLASS } from "@/components/admin/admin-input-class";
 import {
   createAdminCommission,
+  fetchAdminReferrer,
   updateAdminAffiliate,
   updateAdminCommission,
   updateAdminWithdrawal,
 } from "@/features/admin/services/admin-actions";
 import { formatCents } from "@/features/admin/utils/admin-format";
 import { useServerDraft } from "@/features/admin/utils/use-server-draft";
+import { useAdminAccount } from "@/features/admin/utils/use-admin-account";
 import { ApiRequestError } from "@/utils/fetchApiData";
 
 import type { AffiliateStatus, AffiliateTier } from "@/features/admin/types/admin-types";
@@ -468,14 +470,114 @@ function WithdrawalDecision({
   );
 }
 
-/** Manual commission entry for a payment that never produced a webhook. */
+type ReferrerLookup =
+  | { state: "idle" | "loading" | "none" }
+  | { state: "found"; affiliateEmail: string; blocker: string | null }
+  | { state: "error"; message: string };
+
+/**
+ * Why this referral cannot be paid a manual commission, or null. The server refuses unless the
+ * affiliate is ACTIVE (404), and a referral support rejected earns nothing (S-414).
+ */
+export function commissionBlocker(referral: {
+  status: string;
+  affiliate: { affiliateStatus: string };
+}) {
+  if (referral.affiliate.affiliateStatus !== "ACTIVE")
+    return `Affiliate not active (${referral.affiliate.affiliateStatus.toLowerCase().replace("_", " ")}): the commission would be refused.`;
+  if (referral.status === "REJECTED")
+    return "This referral was rejected, so it earns no commission.";
+  return null;
+}
+
+/** The affiliate a referred account was referred by, once that account is known. */
+function useReferrer(referredUserId: string, referredEmail: string | null): ReferrerLookup {
+  const id = referredUserId.trim();
+  const [lookup, setLookup] = useState<{ key: string; result: ReferrerLookup } | null>(null);
+  const key = `${id} ${referredEmail ?? ""}`;
+
+  useEffect(() => {
+    if (!referredEmail) return;
+
+    let active = true;
+    fetchAdminReferrer(id, referredEmail)
+      .then((referral) => {
+        if (!active) return;
+        setLookup({
+          key,
+          result: referral
+            ? {
+                state: "found",
+                affiliateEmail: referral.affiliate.email,
+                blocker: commissionBlocker(referral),
+              }
+            : { state: "none" },
+        });
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setLookup({
+          key,
+          result: {
+            state: "error",
+            message: `Could not look up the referral: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [id, referredEmail, key]);
+
+  if (!referredEmail) return { state: "idle" };
+  return lookup?.key === key ? lookup.result : { state: "loading" };
+}
+
+/**
+ * Manual commission entry for a payment that never produced a webhook. The server pays the
+ * affiliate who referred `referredUserId`, so both accounts are named before anything is created
+ * (S-414): a mistyped id that happens to be another referred user would pay a stranger. The
+ * commission is created PENDING, which nothing releases on its own, unless the admin releases
+ * it on purpose.
+ */
 export function CommissionCreateForm() {
   const [referredUserId, setReferredUserId] = useState("");
   const [providerPaymentId, setProviderPaymentId] = useState("");
   const [amountUsd, setAmountUsd] = useState("");
+  const [releaseNow, setReleaseNow] = useState(false);
+  const account = useAdminAccount(referredUserId);
+  const referrer = useReferrer(referredUserId, account.state === "found" ? account.email : null);
 
   const purchaseAmountCents = Math.round(Number(amountUsd || 0) * 100);
-  const ready = referredUserId.trim() && providerPaymentId.trim() && purchaseAmountCents > 0;
+  const ready =
+    referrer.state === "found" &&
+    referrer.blocker === null &&
+    providerPaymentId.trim() !== "" &&
+    purchaseAmountCents > 0;
+
+  const problem =
+    account.state === "missing" ||
+    account.state === "error" ||
+    referrer.state === "none" ||
+    referrer.state === "error" ||
+    (referrer.state === "found" && referrer.blocker !== null);
+  const accountLine =
+    account.state === "loading"
+      ? "Looking up the account…"
+      : account.state === "missing"
+        ? "No account has this id."
+        : account.state === "error"
+          ? account.message
+          : account.state === "found"
+            ? referrer.state === "found"
+              ? `Referred: ${account.email} · affiliate: ${referrer.affiliateEmail}${referrer.blocker ? `. ${referrer.blocker}` : ""}`
+              : referrer.state === "none"
+                ? `${account.email} was not referred by any affiliate.`
+                : referrer.state === "error"
+                  ? referrer.message
+                  : `Referred: ${account.email} · looking up the affiliate…`
+            : null;
 
   return (
     <div className="space-y-3">
@@ -486,6 +588,14 @@ export function CommissionCreateForm() {
         value={referredUserId}
         onChange={(event) => setReferredUserId(event.target.value)}
       />
+      {accountLine ? (
+        <p
+          role={problem ? "alert" : undefined}
+          className={problem ? "text-destructive text-xs font-medium" : "text-muted text-xs"}
+        >
+          {accountLine}
+        </p>
+      ) : null}
 
       <input
         className={ADMIN_INPUT_CLASS}
@@ -511,25 +621,39 @@ export function CommissionCreateForm() {
         customer&apos;s purchase amount, not the payout.
       </p>
 
+      <label className="text-muted flex items-center gap-2 text-xs">
+        <input
+          type="checkbox"
+          checked={releaseNow}
+          onChange={(event) => setReleaseNow(event.target.checked)}
+        />
+        Release now: withdrawable immediately, instead of held as pending until an admin releases it
+      </label>
+
       <AdminActionDialog
         trigger="Create commission"
         triggerVariant="primary"
         disabled={!ready}
         title="Create a manual commission"
-        description={`Recording a ${formatCents(purchaseAmountCents)} purchase against the referring affiliate. The commission amount is calculated from their tier.`}
+        description={
+          account.state === "found" && referrer.state === "found"
+            ? `Recording a ${formatCents(purchaseAmountCents)} purchase by ${account.email}. The commission goes to ${referrer.affiliateEmail}, at their tier's rate, and ${releaseNow ? "is withdrawable immediately" : "is held as pending until an admin releases it"}.`
+            : "Enter the id of a referred account."
+        }
         confirmLabel="Create commission"
         onConfirm={async (reason) => {
           await createAdminCommission({
             referredUserId: referredUserId.trim(),
             providerPaymentId: providerPaymentId.trim(),
             purchaseAmountCents,
-            status: "AVAILABLE",
+            status: releaseNow ? "AVAILABLE" : "PENDING",
             reason,
           });
 
           setReferredUserId("");
           setProviderPaymentId("");
           setAmountUsd("");
+          setReleaseNow(false);
         }}
       />
     </div>

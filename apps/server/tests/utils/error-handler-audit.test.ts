@@ -105,4 +105,22 @@ describe("errorHandler Retry-After", () => {
 
     expect(set).toHaveBeenCalledWith("Retry-After", "10");
   });
+
+  it("S-384 sets Retry-After on the 409 for an AI request that is still processing", () => {
+    const set = vi.fn();
+    const res = {
+      locals: {},
+      set,
+      status: vi.fn().mockReturnValue({ json: vi.fn() }),
+    } as unknown as Response;
+
+    errorHandler(
+      new ApiError(409, "Still working", { code: "AI_REQUEST_PROCESSING", retryAfterSeconds: 5 }),
+      { method: "POST", path: "/api/v1/ai/generate" } as Request,
+      res,
+      vi.fn(),
+    );
+
+    expect(set).toHaveBeenCalledWith("Retry-After", "5");
+  });
 });

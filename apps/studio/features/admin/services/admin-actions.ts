@@ -8,7 +8,9 @@ import type {
   AdminCommissionRow,
   AdminDocumentRow,
   AdminEntitlementRow,
+  AdminPaginatedResponse,
   AdminPortfolioRow,
+  AdminReferralRow,
   AdminSubscriptionRow,
   AdminUserRow,
   AdminWithdrawalRow,
@@ -84,6 +86,20 @@ export function updateAdminAffiliate(
   },
 ) {
   return adminRequest(`/affiliates/${segment(userId)}`, "PATCH", payload);
+}
+
+/**
+ * The referral behind a pasted referred-user id, so a manual commission names the affiliate it
+ * pays (S-414). The referral list is searched by email, then matched on the id: a search hit on a
+ * similar email, or on the affiliate side, is never taken for this account's referral.
+ */
+export async function fetchAdminReferrer(referredUserId: string, referredEmail: string) {
+  const page = await adminRequest<AdminPaginatedResponse<AdminReferralRow>>(
+    `/affiliates/referrals?query=${encodeURIComponent(referredEmail)}&limit=100`,
+    "GET",
+  );
+
+  return page.items.find((item) => item.referredUser.id === referredUserId) ?? null;
 }
 
 export function createAdminCommission(payload: {
@@ -221,13 +237,31 @@ export function adjustAdminCredits(
   amount: number,
   reason: string,
   idempotencyKey: string,
+  details: { kind?: AdminCreditKind; customerNote?: string } = {},
 ) {
   return fetchApiData("/admin/billing/credits", {
     method: "POST",
     headers: { "Idempotency-Key": idempotencyKey },
-    body: JSON.stringify({ userId, amount, reason, idempotencyKey }),
+    body: JSON.stringify({ userId, amount, reason, idempotencyKey, ...details }),
   });
 }
+
+/**
+ * What adjusted credits are (SV-22), as the server's `adminCreditAdjustmentSchema` takes them. The
+ * kind decides expiry and whether they count as paid: goodwill never expires and is the only kind
+ * that can remove credits; a restored pack expires in 90 days; a restored plan month expires with
+ * the current credit month (no rollover) and is at most 1,000.
+ */
+export const ADMIN_CREDIT_KINDS = {
+  goodwill: "Goodwill (never expires, not paid)",
+  pack: "Lost credit pack (paid, expires in 90 days)",
+  subscription_month: "Lost plan month (paid, expires with this credit month, max 1,000)",
+} as const;
+
+export type AdminCreditKind = keyof typeof ADMIN_CREDIT_KINDS;
+
+/** The server's bound on `customerNote`, the line the customer reads in their credit history. */
+export const ADMIN_CUSTOMER_NOTE_MAX_LENGTH = 200;
 
 /** The grantable entitlement keys, matching the server's `ENTITLEMENT_KEYS`. */
 export const ADMIN_ENTITLEMENT_KEYS = [
@@ -239,6 +273,18 @@ export const ADMIN_ENTITLEMENT_KEYS = [
 ] as const;
 
 export type AdminEntitlementKey = (typeof ADMIN_ENTITLEMENT_KEYS)[number];
+
+/**
+ * What each grant unlocks on the server (S-415). No key adds credits: AI features spend wallet
+ * credits only, which the credit adjustment adds.
+ */
+export const ADMIN_ENTITLEMENT_LABELS: Record<AdminEntitlementKey, string> = {
+  portfolio_publish: "Creator Pro portfolio access (premium templates; lifts free limits)",
+  ai_credits: "AI Credits plan access (lifts free limits; adds no credits, use Credit adjustment)",
+  seo_controls: "Portfolio SEO controls",
+  analytics: "Portfolio analytics",
+  watermark_removal: "No VeriWorkly badge on the portfolio",
+};
 
 export function grantAdminEntitlement(payload: {
   userId: string;

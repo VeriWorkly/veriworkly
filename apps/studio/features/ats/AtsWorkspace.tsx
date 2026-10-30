@@ -359,7 +359,12 @@ export function AtsWorkspace({ initialDocumentId }: { initialDocumentId?: string
             label="Credits available"
             value={wallet === "error" ? "Unavailable" : wallet ? String(wallet.available) : "..."}
           />
-          <Metric label="Resume data" value="Not stored" />
+          {/* An AI result is stored for a day so a retry is answered from it, not charged (S-385). */}
+          <Metric
+            label="Resume data"
+            value="Scan not stored"
+            hint="AI results kept 24 hours so a retry isn't charged twice"
+          />
         </div>
       </header>
 

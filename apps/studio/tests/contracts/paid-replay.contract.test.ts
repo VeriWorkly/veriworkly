@@ -32,4 +32,11 @@ describe("paid requests are replayed, not charged twice", () => {
     expect(body).not.toMatch(/settleRequestId\(pendingConversionRef\);/);
     expect(body).toContain("settleRequestId(pendingConversionRef, cause)");
   });
+
+  it("S-385 the ATS page does not call resume data unstored, since AI results are kept for replay", () => {
+    const source = read("features/ats/AtsWorkspace.tsx");
+
+    expect(source).not.toContain('value="Not stored"');
+    expect(source).toMatch(/AI results kept/);
+  });
 });

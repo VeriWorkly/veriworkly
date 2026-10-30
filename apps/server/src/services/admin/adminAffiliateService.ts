@@ -446,7 +446,17 @@ export async function listReferrals(query: ReferralListQuery) {
     prisma.affiliateReferral.findMany({
       where,
       include: {
-        affiliate: { select: { id: true, name: true, email: true, affiliateCode: true } },
+        // `affiliateStatus`: a manual commission is refused unless the affiliate is ACTIVE, so
+        // the console says so before the admin tries (S-414).
+        affiliate: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            affiliateCode: true,
+            affiliateStatus: true,
+          },
+        },
         referredUser: { select: { id: true, name: true, email: true, createdAt: true } },
       },
       orderBy: { createdAt: "desc" },

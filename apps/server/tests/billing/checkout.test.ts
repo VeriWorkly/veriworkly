@@ -68,7 +68,7 @@ const prismaMock = {
     create: vi.fn(),
     count: vi.fn(),
   },
-  entitlementGrant: { updateMany: vi.fn(), upsert: vi.fn(), findFirst: vi.fn() },
+  entitlementGrant: { updateMany: vi.fn(), upsert: vi.fn(), findFirst: vi.fn(), findMany: vi.fn() },
   portfolioPublication: { updateMany: vi.fn(), findUnique: vi.fn() },
   billingWebhookEvent: {
     create: vi.fn(),
@@ -109,7 +109,7 @@ vi.mock("#utils/portfolioPublicationCache", () => ({
 }));
 vi.mock("#services/affiliate/index", () => ({ AffiliateService: { createCommission: vi.fn() } }));
 vi.mock("#services/creditService", () => ({
-  CreditService: { grant: vi.fn(), getWallet: vi.fn() },
+  CreditService: { grant: vi.fn(), getWallet: vi.fn(), paidCreditsRemaining: vi.fn() },
 }));
 // billingService imports the deleted-account check from userService, which pulls in better-auth.
 vi.mock("#services/userService", () => ({ isDeletedAccount: vi.fn().mockResolvedValue(false) }));
@@ -680,5 +680,61 @@ describe("the webhook settles the checkout record", () => {
         where: expect.objectContaining({ userId: USER, providerSubId: { not: "sub_2" } }),
       }),
     );
+  });
+});
+
+describe("billing summary (S-330)", () => {
+  it("S-330 says a billing account exists after a one-time purchase is spent, so receipts stay reachable", async () => {
+    const { CreditService } = await import("#services/creditService");
+    prismaMock.user.findUnique.mockResolvedValue({ id: USER, billingCustomerId: "cus_1" });
+    prismaMock.entitlementGrant.findMany.mockResolvedValue([]);
+    vi.mocked(CreditService.getWallet).mockResolvedValue({ available: 0 } as never);
+    vi.mocked(CreditService.paidCreditsRemaining).mockResolvedValue(0);
+
+    const summary = await BillingService.getSummary(USER);
+
+    expect(summary.access).toMatchObject({ tier: "free", isPaying: false });
+    expect(summary.hasBillingAccount).toBe(true);
+  });
+
+  it("S-330 has no billing account for someone who never paid", async () => {
+    const { CreditService } = await import("#services/creditService");
+    prismaMock.user.findUnique.mockResolvedValue({ id: USER, billingCustomerId: null });
+    prismaMock.entitlementGrant.findMany.mockResolvedValue([]);
+    vi.mocked(CreditService.getWallet).mockResolvedValue({ available: 0 } as never);
+    vi.mocked(CreditService.paidCreditsRemaining).mockResolvedValue(0);
+
+    expect((await BillingService.getSummary(USER)).hasBillingAccount).toBe(false);
+  });
+
+  it("S-387 says a paused subscription is paused, apart from a failed payment", async () => {
+    const { CreditService } = await import("#services/creditService");
+    prismaMock.user.findUnique.mockResolvedValue({ id: USER, billingCustomerId: "cus_1" });
+    prismaMock.entitlementGrant.findMany.mockResolvedValue([]);
+    vi.mocked(CreditService.getWallet).mockResolvedValue({ available: 0 } as never);
+    vi.mocked(CreditService.paidCreditsRemaining).mockResolvedValue(0);
+    const dunning = (rawStatus: string) => [
+      {
+        productKey: "portfolio_pro",
+        status: "PAST_DUE",
+        rawStatus,
+        providerCustomerId: "cus_1",
+        currentPeriodEnd: new Date(Date.now() - 86_400_000),
+        graceEndsAt: new Date(Date.now() + 6 * 86_400_000),
+        updatedAt: new Date(),
+      },
+    ];
+
+    prismaMock.subscription.findMany.mockResolvedValue(dunning("paused"));
+    expect(await BillingService.getSummary(USER)).toMatchObject({
+      subscriptionPaused: true,
+      access: { paymentIssue: false },
+    });
+
+    prismaMock.subscription.findMany.mockResolvedValue(dunning("on_hold"));
+    expect(await BillingService.getSummary(USER)).toMatchObject({
+      subscriptionPaused: false,
+      access: { paymentIssue: true },
+    });
   });
 });

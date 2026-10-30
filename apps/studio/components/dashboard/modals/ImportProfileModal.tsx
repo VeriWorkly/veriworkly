@@ -96,6 +96,24 @@ export function importAllowanceLabel(tab: "linkedin" | "github", quota: QuotaDet
   return `${quota.remaining} / ${quota.limit} left · rolling ${tab === "linkedin" ? "30 days" : "24 hours"}`;
 }
 
+/**
+ * What a used-up allowance says. A payer has hit the paid daily cap, which only resets, so plans
+ * are offered to a free account alone (S-389).
+ */
+export function importLimitNote(tab: "linkedin" | "github", quota: QuotaDetails) {
+  if (quota.isPaid) {
+    return {
+      message: `You've reached today's ${tab === "linkedin" ? "LinkedIn" : "GitHub"} import limit.`,
+      offerPlans: false,
+    };
+  }
+
+  return {
+    message: `Without a subscription or pass, ${tab === "linkedin" ? "LinkedIn imports are limited to one every 30 days" : "GitHub imports are limited to one every 24 hours"}. A subscription or pass lifts this limit.`,
+    offerPlans: true,
+  };
+}
+
 interface QuotaResponse {
   github: QuotaDetails;
   linkedin: QuotaDetails;
@@ -231,6 +249,7 @@ export function ImportProfileModal({
   // Paid GitHub has a real daily cap too, so the block follows the quota, not the plan.
   const isTabBlocked =
     currentTabQuota !== null && !currentTabQuota.unlimited && (currentTabQuota.remaining ?? 1) <= 0;
+  const limitNote = currentTabQuota ? importLimitNote(activeTab, currentTabQuota) : null;
   const atDocumentLimit = quota !== null && !isPaidUser && resumeCount >= FREE_DOCUMENTS_PER_TYPE;
   const linkedinCost = linkedinImportCostNote(importCost, creditsAvailable);
   const accessBadge = isPaidUser
@@ -513,10 +532,7 @@ export function ImportProfileModal({
                     <div>
                       <h4 className="text-sm font-bold">Limit reached</h4>
                       <p className="text-muted-foreground mt-1 text-xs leading-5">
-                        {activeTab === "linkedin"
-                          ? "Without a subscription or pass, LinkedIn imports are limited to one every 30 days."
-                          : "Without a subscription or pass, GitHub imports are limited to one every 24 hours."}{" "}
-                        A subscription or pass lifts this limit.
+                        {limitNote?.message}
                       </p>
                     </div>
                   </div>
@@ -528,11 +544,13 @@ export function ImportProfileModal({
                       </span>
                     </p>
                   )}
-                  <div className="pt-2">
-                    <Button size="sm" variant="primary" onClick={() => router.push("/billing")}>
-                      See plans
-                    </Button>
-                  </div>
+                  {limitNote?.offerPlans ? (
+                    <div className="pt-2">
+                      <Button size="sm" variant="primary" onClick={() => router.push("/billing")}>
+                        See plans
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 /* Main Forms */

@@ -439,7 +439,7 @@ export interface AdminReferralRow {
   status: string;
   convertedAt: string | null;
   createdAt: string;
-  affiliate: AdminUserRef & { affiliateCode: string | null };
+  affiliate: AdminUserRef & { affiliateCode: string | null; affiliateStatus: AffiliateStatus };
   referredUser: AdminUserRef & { createdAt: string };
 }
 

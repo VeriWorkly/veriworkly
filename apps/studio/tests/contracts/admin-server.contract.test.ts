@@ -2102,3 +2102,123 @@ describe("affiliate and ambassador copy says what the server does", () => {
     ).toHaveLength(2);
   });
 });
+
+describe("admin money forms say what they do", () => {
+  const source = (file: string) => readFile(path.join(process.cwd(), file), "utf8");
+
+  it("SV-22 a credit adjustment sends what the credits are and the customer's note", async () => {
+    const calls = mockFetch(() => ({ status: 200, body: { data: {} } }));
+    const { adjustAdminCredits } = await import("@/features/admin/services/admin-actions");
+
+    await adjustAdminCredits("u1", 1000, "lost pack webhook", "key-1", {
+      kind: "pack",
+      customerNote: "Your lost credit pack was restored",
+    });
+
+    expect(JSON.parse(calls[0].init.body as string)).toEqual({
+      userId: "u1",
+      amount: 1000,
+      reason: "lost pack webhook",
+      idempotencyKey: "key-1",
+      kind: "pack",
+      customerNote: "Your lost credit pack was restored",
+    });
+  });
+
+  it("SV-22 the amount is judged by its kind, as the server's validator does", async () => {
+    const { parseCreditAmount } = await import("@/app/admin/billing/credit-amount");
+
+    expect(parseCreditAmount("-50", "goodwill")).toEqual({ ok: true, amount: -50 });
+    expect(parseCreditAmount("-50", "pack").ok).toBe(false);
+    expect(parseCreditAmount("-50", "subscription_month").ok).toBe(false);
+    expect(parseCreditAmount("1000", "subscription_month")).toEqual({ ok: true, amount: 1000 });
+    expect(parseCreditAmount("1001", "subscription_month")).toMatchObject({
+      ok: false,
+      message: expect.stringMatching(/1,000/),
+    });
+  });
+
+  it("SV-22 both credit forms ask what the credits are and send it", async () => {
+    for (const file of [
+      "app/admin/billing/BillingActions.tsx",
+      "app/admin/users/[id]/UserAdminActions.tsx",
+    ]) {
+      const form = await source(file);
+
+      expect(form, file).toContain("<CreditKindFields");
+      expect(form, file).toMatch(/adjustAdminCredits\([^;]*\{\s*kind[^;]*customerNote/);
+    }
+  });
+
+  it("S-415 each grantable entitlement says what it unlocks; ai_credits says it adds no credits", async () => {
+    const { ADMIN_ENTITLEMENT_KEYS, ADMIN_ENTITLEMENT_LABELS } =
+      await import("@/features/admin/services/admin-actions");
+
+    for (const key of ADMIN_ENTITLEMENT_KEYS) expect(ADMIN_ENTITLEMENT_LABELS[key]).toBeTruthy();
+    expect(ADMIN_ENTITLEMENT_LABELS.ai_credits).toMatch(/adds no credits/);
+
+    for (const file of [
+      "app/admin/billing/BillingActions.tsx",
+      "app/admin/users/[id]/UserAdminActions.tsx",
+    ]) {
+      const form = await source(file);
+      expect(form, file).not.toContain('.replace(/_/g, " ")');
+      expect(form, file).toContain("ADMIN_ENTITLEMENT_LABELS[");
+    }
+    expect(await source("app/admin/billing/entitlements/page.tsx")).not.toContain(
+      '{ label: "AI credits", value: "ai_credits" }',
+    );
+  });
+
+  it("S-414 the referrer of a pasted user id is found by that account, not by a near match", async () => {
+    mockFetch(() => ({
+      status: 200,
+      body: {
+        data: {
+          items: [
+            { id: "r1", referredUser: { id: "other" }, affiliate: { email: "x@example.com" } },
+            { id: "r2", referredUser: { id: "u1" }, affiliate: { email: "aff@example.com" } },
+          ],
+          total: 2,
+          limit: 100,
+          offset: 0,
+        },
+      },
+    }));
+    const { fetchAdminReferrer } = await import("@/features/admin/services/admin-actions");
+
+    await expect(fetchAdminReferrer("u1", "jane@example.com")).resolves.toMatchObject({
+      id: "r2",
+      affiliate: { email: "aff@example.com" },
+    });
+    await expect(fetchAdminReferrer("nobody", "jane@example.com")).resolves.toBeNull();
+  });
+
+  it("S-414 a manual commission names both accounts and holds the money unless released", async () => {
+    const form = await source("app/admin/affiliates/AffiliateActions.tsx");
+    const body = form.slice(form.indexOf("export function CommissionCreateForm"));
+
+    expect(body).toContain("useAdminAccount(referredUserId)");
+    expect(body).toContain("useReferrer(referredUserId");
+    expect(form).toContain("fetchAdminReferrer(id, referredEmail)");
+    expect(body).not.toContain('status: "AVAILABLE",');
+    expect(body).toContain('status: releaseNow ? "AVAILABLE" : "PENDING"');
+    expect(body).toMatch(/withdrawable immediately/);
+    // Nothing releases a pending commission on its own.
+    expect(body).toContain("held as pending until an admin releases it");
+    expect(body).not.toMatch(/through the refund window/);
+  });
+
+  it("S-414 a referral the server would refuse, or one that was rejected, cannot be paid", async () => {
+    const { commissionBlocker } = await import("@/app/admin/affiliates/AffiliateActions");
+    const referral = (status: string, affiliateStatus: string) => ({
+      status,
+      affiliate: { affiliateStatus },
+    });
+
+    expect(commissionBlocker(referral("SIGNED_UP", "ACTIVE"))).toBeNull();
+    expect(commissionBlocker(referral("CONVERTED", "ACTIVE"))).toBeNull();
+    expect(commissionBlocker(referral("SIGNED_UP", "SUSPENDED"))).toMatch(/affiliate not active/i);
+    expect(commissionBlocker(referral("REJECTED", "ACTIVE"))).toMatch(/rejected/i);
+  });
+});

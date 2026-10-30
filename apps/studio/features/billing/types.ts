@@ -22,11 +22,17 @@ export type BillingSummary = {
   access: {
     tier: "free" | "credits" | "pass" | "ai_credits" | "portfolio_pro" | "bundle";
     isPaying: boolean;
+    /** A subscription is in dunning because a payment failed; false for a pause, which owes nothing. */
+    paymentIssue: boolean;
     passEndsAt: string | null;
     portfolioAccessEndsAt: string | null;
     aiCreditsEndsAt: string | null;
     creditBalance: number;
   };
+  /** A billing customer exists, so the portal (receipts for every purchase) opens (S-330). */
+  hasBillingAccount: boolean;
+  /** The subscription in dunning is paused, which owes nothing, not failed (S-387). */
+  subscriptionPaused: boolean;
   credits: CreditWallet;
   catalog: CatalogProduct[];
   addOns: Array<{ key: string; name: string }>;

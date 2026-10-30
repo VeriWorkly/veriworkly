@@ -183,11 +183,11 @@ export function errorHandler(error: unknown, req: Request, res: Response, next: 
     recordAuditError(res, error.message);
 
     // A 429 or 503 that knows when to come back says so, like the limiter's own 429s (a 503 for
-    // a restart, V-313 review).
+    // a restart, V-313 review), and so does a 409 for a paid request still running (S-384).
     const retryAfter = (error.details as { retryAfterSeconds?: unknown } | undefined)
       ?.retryAfterSeconds;
     if (
-      (error.statusCode === 429 || error.statusCode === 503) &&
+      [409, 429, 503].includes(error.statusCode) &&
       typeof retryAfter === "number" &&
       retryAfter > 0
     )
