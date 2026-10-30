@@ -26,9 +26,11 @@ vi.mock("@/lib/backend", () => ({
   backendApiUrl: (path: string) => `https://api.test${path}`,
   firstPartyServerHeaders: () => ({}),
 }));
+vi.mock("next/cache", () => ({ revalidateTag: vi.fn(), revalidatePath: vi.fn() }));
 vi.mock("@/templates/runtime/registry", () => ({ renderTemplate: async () => null }));
 
 import { redirect } from "next/navigation";
+import { revalidateTag } from "next/cache";
 
 import Portfolio, {
   generateMetadata,
@@ -286,5 +288,26 @@ describe("reading a published site (P-007)", () => {
     expect(read).toMatchObject({ isPaid: true, isPremiumTemplate: true, subdomain: "jane" });
     expect(read!.snapshot.removeWatermark).toBe(true);
     expect(read!.snapshot.pages).toHaveLength(1);
+  });
+});
+
+describe("the revalidate hook", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("expires a site's tag immediately with the Next 16 signature", async () => {
+    vi.stubEnv("PORTFOLIO_REVALIDATE_SECRET", "s3cret");
+    const { POST } = await import("@/app/api/revalidate/route");
+
+    const response = await POST(
+      new Request("https://portfolio.test/api/revalidate", {
+        method: "POST",
+        body: JSON.stringify({ secret: "s3cret", tags: ["portfolio-jane"], paths: [] }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(revalidateTag).toHaveBeenCalledWith("portfolio-jane", { expire: 0 });
   });
 });
