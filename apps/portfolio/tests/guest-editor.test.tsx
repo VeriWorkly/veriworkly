@@ -103,4 +103,23 @@ describe("authenticatedFetch session handling", () => {
     );
     expect(replace).toHaveBeenCalledWith(expect.stringContaining("/login?callbackURL="));
   });
+
+  it("lets the workspace keep unsaved edits before it leaves for the login page", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("{}", { status: 401 })),
+    );
+    vi.stubGlobal("window", { location: { href: "http://p.local/editor", replace } });
+    // A fresh module: the sign-out above is still memoised in the one already loaded.
+    vi.resetModules();
+    const fresh = await import("@/lib/authenticated-fetch");
+    const order: string[] = [];
+    replace.mockImplementation(() => order.push("redirect"));
+    fresh.setBeforeSignOut(() => order.push("keep edits"));
+    fresh.setSignedIn(true);
+
+    await fresh.authenticatedFetch("/portfolios/draft");
+
+    expect(order).toEqual(["keep edits", "redirect"]);
+  });
 });

@@ -47,8 +47,11 @@ export function PortfolioEditorWorkspace() {
       ? selectedSectionId
       : "profile";
 
+  // A signed-in account without a draft gets its first one. Never a guest: that wrote the blank
+  // default to this browser, which was then offered over the account's draft after logging in.
   useEffect(() => {
-    if (!ready || storeApi.getState().draft) return;
+    const state = storeApi.getState();
+    if (!ready || state.draft || !state.user) return;
     void save().then((result) => {
       if (!result.ok) storeApi.getState().setMessage(result.message);
     });

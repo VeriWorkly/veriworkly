@@ -168,6 +168,34 @@ export function warnOnLeave(
   return true;
 }
 
+/** Content with section ids blanked: the default draft makes new random ones every time. */
+function withoutSectionIds(content: PortfolioContent) {
+  return JSON.stringify({
+    ...content,
+    sections: content.sections.map((section) => ({ ...section, id: "" })),
+  });
+}
+
+/** A guest draft nobody edited: the blank default, never worth offering to an account. */
+export function isUntouchedDefault(content: PortfolioContent) {
+  return (
+    withoutSectionIds(content) ===
+    withoutSectionIds(parsePortfolioContent(createDefaultPortfolio()))
+  );
+}
+
+/**
+ * The session ran out mid-edit and the tab is about to go to the login page. Unsaved edits are
+ * kept in this browser as a guest draft, so after logging in the owner is offered them back, and
+ * the leave-page warning no longer holds up the redirect.
+ */
+export function keepEditsForSignIn(store: StoreApi<PortfolioStoreState>) {
+  const state = store.getState();
+  if (!state.isDirty || state.workspaceState !== "ready") return;
+  savePortfolioCache({ slug: state.slug, content: state.content });
+  store.setState({ isDirty: false });
+}
+
 // Module-level (not store state) so concurrent `loadWorkspace()` calls can
 // share the in-flight promise without triggering extra re-renders.
 let loadWorkspaceInFlight: Promise<void> | null = null;
@@ -298,7 +326,9 @@ async function sendDraft(store: StoreApi<PortfolioStoreState>): Promise<SaveResu
   }
   set({ status: "Saving" });
   if (!current.user) {
-    savePortfolioCache({ slug: current.slug, content: current.content });
+    // Only a real edit reaches the cache: a blank default written here would later be offered
+    // to the account as "the draft you made before signing in".
+    if (current.isDirty) savePortfolioCache({ slug: current.slug, content: current.content });
     set({ status: "Saved", isDirty: false });
     return { ok: true, message: "Saved locally. Log in to sync to cloud." };
   }
@@ -579,10 +609,9 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
         if (loadWorkspaceInFlight) return loadWorkspaceInFlight;
 
         loadWorkspaceInFlight = (async () => {
+          // Read, never shown in place of the account's draft: a load that then failed left
+          // the guest's content on screen as if it were the account's.
           const cached = loadPortfolioCache();
-          if (cached) {
-            set({ content: cached.content, slug: cached.slug });
-          }
           set({ workspaceState: "loading" });
           try {
             // Standard check to see if user has a session without triggering redirect
@@ -638,12 +667,15 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
             // A guest draft in this browser may be someone else's (a shared computer), so it is
             // never carried into the account unasked: the owner chooses (`keepGuestDraft`,
             // `discardGuestDraft`). One that matches the cloud copy has nothing to offer.
-            const sameAsCloud =
-              !!cloudDraft &&
+            // An untouched default has nothing in it either, and bringing it in would blank the
+            // account's draft.
+            const nothingToOffer =
               !!cached &&
-              cached.slug === cloudDraft.slug &&
-              JSON.stringify(cached.content) === JSON.stringify(cloudDraft.content);
-            if (sameAsCloud) clearPortfolioCache();
+              (isUntouchedDefault(cached.content) ||
+                (!!cloudDraft &&
+                  cached.slug === cloudDraft.slug &&
+                  JSON.stringify(cached.content) === JSON.stringify(cloudDraft.content)));
+            if (nothingToOffer) clearPortfolioCache();
 
             set({
               user,
@@ -651,7 +683,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
               content: contentToSet,
               slug: slugToSet,
               guestDraft:
-                cached && !sameAsCloud
+                cached && !nothingToOffer
                   ? { content: cached.content, slug: cached.slug, replacesCloud: !!cloudDraft }
                   : null,
               publication: portfolioPayload?.data?.publication ?? null,
@@ -826,8 +858,12 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
         if (!guest) return { ok: true, message: "" };
         set((state) => ({
           content: guest.content,
-          // A guest default like "portfolio" is reserved; keep the account's own then.
-          slug: isAllowedSubdomain(guest.slug) ? guest.slug : state.slug,
+          // Every guest starts on "my-portfolio", so bringing that in would collide, and a
+          // reserved one like "portfolio" is refused: keep the account's own then.
+          slug:
+            isAllowedSubdomain(guest.slug) && guest.slug !== defaultSubdomain(null)
+              ? guest.slug
+              : state.slug,
           guestDraft: null,
           ...touched(state),
         }));

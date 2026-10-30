@@ -7,6 +7,7 @@ import type { PortfolioAnalyticsData, PortfolioWorkspaceBootstrap } from "@/stor
 import {
   buildHydratedState,
   createPortfolioStore,
+  keepEditsForSignIn,
   PortfolioStoreProvider,
   shouldAutosave,
   usePortfolioStore,
@@ -14,7 +15,7 @@ import {
   usePortfolioStoreApi,
 } from "@/store/portfolio-store";
 import { loadPortfolioCache } from "@/lib/portfolio-storage";
-import { setSignedIn } from "@/lib/authenticated-fetch";
+import { setBeforeSignOut, setSignedIn } from "@/lib/authenticated-fetch";
 import { WorkspaceNotice } from "@/components/WorkspaceNotice";
 
 interface WorkspaceContextType {
@@ -118,6 +119,13 @@ function WorkspaceBridge({
 
   // Only a signed-in tab may be signed out by a 401; a guest just gets an inline "Log in" prompt.
   useEffect(() => setSignedIn(!!user), [user]);
+
+  // An expired session mid-edit goes to the login page with its edits kept in this browser.
+  const store = usePortfolioStoreApi();
+  useEffect(() => {
+    setBeforeSignOut(() => keepEditsForSignIn(store));
+    return () => setBeforeSignOut(null);
+  }, [store]);
 
   // `ready` is already true on the first render whenever the server supplied a workspace,
   // so this normally reads from the store immediately. The fallback still matters for
