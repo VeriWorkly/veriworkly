@@ -2,14 +2,15 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { useState, useSyncExternalStore } from "react";
+import { LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 import { Button } from "@veriworkly/ui";
 
 import type { CloudPortfolioDraft } from "@/lib/portfolio";
 
-import { portfolioWorkspaceUrl } from "@/config/site";
+import { portfolioWorkspaceUrl, siteConfig } from "@/config/site";
+import { backendApiUrl } from "@/lib/backend";
 import { isPortfolioPubliclyVisible } from "@/lib/portfolio-status";
 import { useWorkspace } from "@/components/WorkspaceProvider";
 
@@ -17,6 +18,18 @@ import { Header } from "./Header";
 import { ProfileControl } from "./ProfileControl";
 import { WorkspaceNavigation } from "./WorkspaceNavigation";
 import { WorkspaceThemeControl } from "./WorkspaceThemeControl";
+
+const SIDEBAR_KEY = "portfolio-sidebar-collapsed";
+
+const noopSubscribe = () => () => {};
+
+function readCollapsed() {
+  try {
+    return window.localStorage.getItem(SIDEBAR_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
 
 export function PortfolioAppShell({ children }: { children: React.ReactNode }) {
   const { user, workspace } = useWorkspace();
@@ -28,17 +41,36 @@ export function PortfolioAppShell({ children }: { children: React.ReactNode }) {
       ? portfolioWorkspaceUrl(slug).href
       : undefined;
 
-  const [collapsed, setCollapsed] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      window.localStorage.getItem("portfolio-sidebar-collapsed") === "true",
-  );
+  // Expanded in the server render and while hydrating, then the saved choice. Reading
+  // localStorage in a useState initialiser made those two renders differ (P-038).
+  const stored = useSyncExternalStore(noopSubscribe, readCollapsed, () => false);
+  const [choice, setChoice] = useState<boolean | null>(null);
+  const collapsed = choice ?? stored;
 
   const toggleSidebar = () => {
-    setCollapsed((current) => {
-      window.localStorage.setItem("portfolio-sidebar-collapsed", String(!current));
-      return !current;
-    });
+    try {
+      window.localStorage.setItem(SIDEBAR_KEY, String(!collapsed));
+    } catch {
+      // Storage blocked: the choice lasts for this page only.
+    }
+    setChoice(!collapsed);
+  };
+
+  const [signingOut, setSigningOut] = useState(false);
+  const signOut = async () => {
+    setSigningOut(true);
+    try {
+      await fetch(backendApiUrl("/auth/sign-out"), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+    } finally {
+      // The platform home is another origin. The local cache holds only a guest draft, so
+      // nothing of this account stays behind for the next person on the browser.
+      window.location.href = siteConfig.links.main;
+    }
   };
 
   return (
@@ -98,6 +130,21 @@ export function PortfolioAppShell({ children }: { children: React.ReactNode }) {
         <div className="border-line space-y-1 border-t p-3">
           <WorkspaceThemeControl collapsed={collapsed} />
           <ProfileControl user={user} collapsed={collapsed} />
+          {user ? (
+            <button
+              className={`text-muted hover:bg-paper hover:text-ink flex w-full items-center rounded-xl text-xs font-extrabold transition disabled:opacity-60 ${
+                collapsed ? "justify-center p-2.5" : "gap-3 p-2.5"
+              }`}
+              disabled={signingOut}
+              onClick={() => void signOut()}
+              title="Sign out"
+              aria-label={collapsed ? "Sign out" : undefined}
+              type="button"
+            >
+              <LogOut size={15} aria-hidden="true" />
+              {!collapsed ? (signingOut ? "Signing out..." : "Sign out") : null}
+            </button>
+          ) : null}
         </div>
       </aside>
 

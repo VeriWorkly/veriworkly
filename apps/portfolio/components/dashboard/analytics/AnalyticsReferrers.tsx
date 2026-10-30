@@ -10,7 +10,7 @@ export function AnalyticsReferrers({ referrers = [] }: AnalyticsReferrersProps) 
       <p className="text-muted text-xs font-extrabold">Discovery</p>
       <h2 className="mt-1 text-xl font-bold tracking-[-.04em]">Referring sites</h2>
       <p className="text-muted mt-2 text-xs leading-5">
-        We store only the referring website hostname with an aggregated daily view count.
+        The 10 websites that sent the most views. We store only the hostname and a daily count.
       </p>
       <div className="mt-5 space-y-2">
         {referrers.length ? (

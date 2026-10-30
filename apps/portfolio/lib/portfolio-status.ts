@@ -46,6 +46,8 @@ const IDENTITY_FIELDS = ["name", "headline", "bio", "email"] as const;
 export function getPortfolioReadiness(
   content: PortfolioContent | null,
   publicationStatus?: string | null,
+  /** SEO controls are a paid feature; a free user's checklist must be completable (P-035). */
+  hasAccess = false,
 ): PortfolioReadiness {
   const completedIdentity = content
     ? IDENTITY_FIELDS.filter((field) => content.identity[field]?.trim()).length
@@ -69,17 +71,23 @@ export function getPortfolioReadiness(
       complete: visibleSections >= 2,
       href: "/editor",
     },
-    {
-      id: "seo",
-      label: "Search metadata",
-      complete: Boolean(content?.seo.title && content?.seo.description),
-      href: "/settings",
-    },
+    // Only users who can edit the meta description in Settings are asked to fill it.
+    ...(hasAccess
+      ? [
+          {
+            id: "seo" as const,
+            label: "Search metadata",
+            complete: Boolean(content?.seo.title && content?.seo.description),
+            href: "/settings",
+          },
+        ]
+      : []),
     {
       id: "publishing",
       label: "Public publishing",
       complete: isPortfolioPubliclyVisible(publicationStatus),
-      href: "/settings",
+      // Publish lives on the site status card; Settings has no publish control.
+      href: "/dashboard#site-status",
     },
   ];
 
@@ -230,5 +238,29 @@ export function publicationNotice(
     label: "Offline",
     detail: "Your site is offline.",
     action: "republish",
+  });
+}
+
+/**
+ * The 30 calendar days ending on `asOf` (a UTC "YYYY-MM-DD"), oldest first, with a zero for each
+ * day without views. The server sends the last 30 days that HAD views, which can reach back
+ * months, so summing it was not "last 30 days" (P-044). Without `asOf` the newest day is used.
+ */
+export function lastCalendarDays(
+  daily: Array<{ date: string; count: number }>,
+  asOf?: string,
+  days = 30,
+) {
+  const counts = new Map<string, number>();
+  for (const item of daily) {
+    const day = String(item.date).slice(0, 10);
+    counts.set(day, (counts.get(day) ?? 0) + item.count);
+  }
+  const end = asOf ?? [...counts.keys()].sort().at(-1);
+  if (!end) return [];
+  const endMs = Date.parse(`${end}T00:00:00.000Z`);
+  return Array.from({ length: days }, (_, index) => {
+    const date = new Date(endMs - (days - 1 - index) * 86_400_000).toISOString().slice(0, 10);
+    return { date, count: counts.get(date) ?? 0 };
   });
 }

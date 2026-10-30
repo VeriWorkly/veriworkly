@@ -6,12 +6,15 @@ import SignalTemplate from "@/template-library/signal/SignalTemplate";
 import { itemLabel, itemProse } from "@/template-library/types";
 import {
   createDefaultPortfolio,
+  parsePortfolioContent,
+  readMasterProfileResponse,
   mergeMasterProfileIntoPortfolio,
   projectToPortfolio,
   type PortfolioContent,
 } from "@/lib/portfolio";
 import {
   assertProjectionIsPure,
+  createEmptyMasterProfile,
   CURRENT_SCHEMA_VERSION,
   DEFAULT_CUSTOMIZATION,
   type MasterProfileData,
@@ -410,5 +413,104 @@ describe("mergeMasterProfileIntoPortfolio contract", () => {
 
     const projectSec = merged.sections.find((s) => s.type === "projects")!;
     expect(projectSec.items[0].name).toBe("FastKV Storage Engine");
+  });
+});
+
+describe("master profile import (P-001, P-028, P-029)", () => {
+  // The real GET /profiles/master body (profileController -> ProfileService.getMasterProfile).
+  const serverBody = (content: unknown) => ({
+    success: true,
+    message: "Master profile fetched successfully",
+    data: {
+      profile: {
+        id: "mp_1",
+        userId: "u_1",
+        content,
+        createdAt: "2026-08-19T00:00:00.000Z",
+        updatedAt: "2026-08-19T00:00:00.000Z",
+      },
+      summary: { id: "u_1", name: "Alex", email: "alex@example.com", shareResumeCount: 0 },
+    },
+  });
+
+  it("reads the profile from data.profile.content", () => {
+    const master = readMasterProfileResponse(serverBody(fullMasterFixture));
+    expect(master?.basics.fullName).toBe("Alex Rivera");
+    expect(master?.projects).toHaveLength(fullMasterFixture.projects.length);
+  });
+
+  it("calls a blank profile empty from its content, not from a status code", () => {
+    expect(readMasterProfileResponse(serverBody({}))).toBeNull();
+    expect(readMasterProfileResponse(serverBody(createEmptyMasterProfile()))).toBeNull();
+    expect(readMasterProfileResponse({ data: null })).toBeNull();
+  });
+
+  it("smart import keeps the user's order, titles and hidden sections and appends the rest", () => {
+    const existing = createDefaultPortfolio({ name: "Existing Alex" });
+    existing.sections = [
+      { id: "s-skills", type: "skills", title: "Toolbox", visible: false, items: [] },
+      {
+        id: "s-proj",
+        type: "projects",
+        title: "Mine",
+        visible: true,
+        items: [{ id: "p1", title: "Hand-made", summary: "Kept." }],
+      },
+      { id: "s-contact", type: "contact", title: "Contact", visible: true, items: [] },
+    ];
+    const projected = projectToPortfolio(fullMasterFixture, { templateId: "signal" });
+    const merged = mergeMasterProfileIntoPortfolio(existing, projected, "fill-empty");
+
+    // The user's sections stay first, in their order, with their ids, titles and visibility.
+    expect(merged.sections.slice(0, 2).map((s) => [s.id, s.title, s.visible])).toEqual([
+      ["s-skills", "Toolbox", false],
+      ["s-proj", "Mine", true],
+    ]);
+    expect(merged.sections[0].items.length).toBeGreaterThan(0);
+    expect(merged.sections[1].items).toEqual([{ id: "p1", title: "Hand-made", summary: "Kept." }]);
+    // Missing types are appended in projection order, before the trailing contact section.
+    expect(merged.sections.slice(2).map((s) => s.type)).toEqual([
+      "experience",
+      "education",
+      "certifications",
+      "awards",
+      "publications",
+      "volunteer",
+      "achievements",
+      "languages",
+      "interests",
+      "contact",
+    ]);
+  });
+
+  it("imports body text under summary only, so editing it changes the page", () => {
+    const projected = projectToPortfolio(fullMasterFixture, { templateId: "signal" });
+    const merged = mergeMasterProfileIntoPortfolio(
+      createDefaultPortfolio(),
+      projected,
+      "fill-empty",
+    );
+    for (const section of merged.sections) {
+      for (const item of section.items) expect(item).not.toHaveProperty("description");
+    }
+    const project = merged.sections.find((s) => s.type === "projects")!.items[0];
+    expect(project.summary).toBe("An embedded LSM-tree key-value store in Rust.");
+
+    // An owner who clears the text sees it gone on the page, not the imported copy.
+    project.summary = "Rewritten by the owner.";
+    expect(itemProse(project)).toBe("Rewritten by the owner.");
+  });
+
+  it("folds a stored description into summary when a draft is loaded", () => {
+    const draft = createDefaultPortfolio();
+    draft.sections[0].items = [
+      { id: "a", title: "Old", description: "Legacy body" },
+      { id: "b", title: "Edited", summary: "New body", description: "Stale import" },
+    ];
+    const parsed = parsePortfolioContent(JSON.parse(JSON.stringify(draft)));
+    expect(parsed.sections[0].items).toEqual([
+      { id: "a", title: "Old", summary: "Legacy body" },
+      { id: "b", title: "Edited", summary: "New body" },
+    ]);
   });
 });

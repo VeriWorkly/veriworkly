@@ -167,7 +167,15 @@ export const sectionFields: Record<PortfolioSectionType, SectionField[]> = {
   publications: credentialFields("Published in", "Journal or publisher"),
   patents: credentialFields("Patent office", "e.g. USPTO"),
   achievements: credentialFields("Recognized by", "Organization"),
-  volunteer: credentialFields("Organization", "Where you volunteered"),
+  // The import puts the organization in `title` and the role in `issuer`, and the templates show
+  // `title` as the heading, so the labels follow that rather than the credential shape.
+  volunteer: [
+    { key: "title", label: "Organization", type: "text", placeholder: "Where you volunteered" },
+    { key: "issuer", label: "Your role", type: "text", placeholder: "Mentor", half: true },
+    { key: "date", label: "Date", type: "date", placeholder: "2025", half: true },
+    PROSE,
+    LINK,
+  ],
 
   languages: [
     { key: "title", label: "Language", type: "text", placeholder: "Spanish" },

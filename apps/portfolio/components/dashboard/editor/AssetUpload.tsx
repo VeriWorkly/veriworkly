@@ -3,6 +3,9 @@ import Image from "next/image";
 import { Upload } from "lucide-react";
 import { toast } from "sonner";
 import { uploadPortfolioAsset } from "@/lib/portfolio-assets";
+import { usePortfolioStore } from "@/store/portfolio-store";
+
+import { LogInPrompt } from "./LogInPrompt";
 
 export interface AssetUploadProps {
   kind: "AVATAR" | "PROJECT_COVER";
@@ -13,6 +16,8 @@ export interface AssetUploadProps {
 
 export function AssetUpload({ kind, label, value, onUploaded }: AssetUploadProps) {
   const [loading, setLoading] = useState(false);
+  // Uploads are stored against an account; a guest gets a login link, not a sign-out (P-034).
+  const signedIn = usePortfolioStore((state) => !!state.user);
   const upload = async (file?: File) => {
     if (!file) return;
     setLoading(true);
@@ -22,6 +27,14 @@ export function AssetUpload({ kind, label, value, onUploaded }: AssetUploadProps
     if (result.ok) onUploaded(result.asset);
     else toast.error(result.message);
   };
+
+  if (!signedIn) {
+    return (
+      <div className="rounded-sm border border-dashed border-[var(--color-line)] px-3 py-1.5">
+        <LogInPrompt>Log in to upload images</LogInPrompt>
+      </div>
+    );
+  }
 
   return (
     <label className="flex cursor-pointer items-center gap-3 rounded-sm border border-dashed border-[var(--color-line)] p-3 text-xs font-bold text-[var(--color-muted)] hover:border-[var(--color-accent)]">

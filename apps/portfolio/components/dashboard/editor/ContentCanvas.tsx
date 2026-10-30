@@ -8,6 +8,7 @@ import { AssetUpload } from "./AssetUpload";
 import { SectionEditor } from "./SectionEditor";
 import { inputClass as input } from "./constants";
 import { PortfolioAiAssist } from "./PortfolioAiAssist";
+import { SocialLinksEditor } from "./SocialLinksEditor";
 
 export interface ContentCanvasProps {
   selectedSectionId: string;
@@ -117,7 +118,8 @@ export function ContentCanvas({ selectedSectionId, onClose }: ContentCanvasProps
             value={content.identity.avatar?.url}
             onUploaded={(avatar) => updateIdentity({ avatar })}
           />
-          <div className="mt-4 border-t border-white/5 pt-4">
+          <SocialLinksEditor />
+          <div className="border-line mt-4 border-t pt-4">
             <Field label="Remove the 'Built with VeriWorkly' badge">
               <label className="mt-1 flex cursor-pointer items-center gap-3">
                 <div className="relative inline-flex items-center">
@@ -131,9 +133,9 @@ export function ContentCanvas({ selectedSectionId, onClose }: ContentCanvasProps
                       updateContent({ removeWatermark: e.target.checked });
                     }}
                   />
-                  <div className="peer peer-checked:bg-accent h-5 w-9 rounded-full bg-white/10 peer-focus:outline-none after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white disabled:opacity-50"></div>
+                  <div className="peer peer-checked:bg-accent bg-line-strong after:border-line peer-focus-visible:ring-accent-soft h-5 w-9 rounded-full peer-focus-visible:ring-4 peer-disabled:opacity-50 after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:border after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full"></div>
                 </div>
-                <span className="text-xs text-white/70">
+                <span className="text-ink-soft text-xs">
                   Hide the badge from your portfolio
                   {!isPremiumUser && (
                     <span className="bg-accent ml-2 rounded-full px-2 py-0.5 text-[9px] font-bold tracking-widest text-white uppercase">

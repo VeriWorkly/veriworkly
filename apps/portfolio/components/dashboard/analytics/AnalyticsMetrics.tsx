@@ -30,7 +30,7 @@ export function AnalyticsMetrics({
       />
       <Metric
         icon={<Globe2 size={16} />}
-        label="Referring sites"
+        label="Referring sites (top 10)"
         value={referrersCount}
         detail="Hostnames only, no visitor profiles"
       />

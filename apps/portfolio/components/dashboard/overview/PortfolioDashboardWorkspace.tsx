@@ -17,7 +17,7 @@ import { DashboardProductLinks } from "./DashboardProductLinks";
 
 export function PortfolioDashboardWorkspace() {
   const data = useWorkspace();
-  const analytics = useAnalytics();
+  const { analytics, unavailable } = useAnalytics();
   const draft = data.workspace?.draft as CloudPortfolioDraft | undefined;
 
   const publicationStatus = data.workspace?.publication?.status;
@@ -31,8 +31,8 @@ export function PortfolioDashboardWorkspace() {
   const readiness = useMemo(() => {
     const content = draft ? parsePortfolioContent(draft.content) : null;
 
-    return { ...getPortfolioReadiness(content, publicationStatus), content };
-  }, [draft, publicationStatus]);
+    return { ...getPortfolioReadiness(content, publicationStatus, canPublish), content };
+  }, [draft, publicationStatus, canPublish]);
 
   const content = readiness.content;
 
@@ -44,6 +44,7 @@ export function PortfolioDashboardWorkspace() {
         <DashboardMetrics
           totalViews={analytics?.totalViews ?? 0}
           analyticsLocked={analytics?.locked ?? !canPublish}
+          analyticsUnavailable={unavailable && !(analytics?.locked ?? !canPublish)}
           visibleSections={readiness.visibleSections}
           projectCount={readiness.projectCount}
           readiness={readiness.percent}

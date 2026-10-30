@@ -11,6 +11,7 @@ import {
   usePortfolioStore,
 } from "@/store/portfolio-store";
 import { loadPortfolioCache } from "@/lib/portfolio-storage";
+import { setSignedIn } from "@/lib/authenticated-fetch";
 import { WorkspaceNotice } from "@/components/WorkspaceNotice";
 
 interface WorkspaceContextType {
@@ -111,6 +112,9 @@ function WorkspaceBridge({
   const billing = usePortfolioStore((state) => state.billing);
   const publication = usePortfolioStore((state) => state.publication);
 
+  // Only a signed-in tab may be signed out by a 401; a guest just gets an inline "Log in" prompt.
+  useEffect(() => setSignedIn(!!user), [user]);
+
   // `ready` is already true on the first render whenever the server supplied a workspace,
   // so this normally reads from the store immediately. The fallback still matters for
   // guests, whose draft lives in localStorage and cannot be known until after mount.
@@ -147,17 +151,32 @@ export function useWorkspace() {
  * Analytics is provided separately from the workspace because only the dashboard routes
  * render it. Keeping it out of the shared provider is what lets `/editor` skip that
  * query entirely rather than blocking its first byte on a number it never displays.
+ *
+ * `unavailable` means the request failed, which is not the same as `locked`: a paying user
+ * must be told to try again, not offered Creator Pro. `asOf` is the server's UTC day, so the
+ * "last 30 days" window is the same in the server render and on the client.
  */
-const AnalyticsContext = createContext<PortfolioAnalyticsData | null>(null);
+type AnalyticsState = {
+  analytics: PortfolioAnalyticsData | null;
+  unavailable: boolean;
+  asOf?: string;
+};
+
+const AnalyticsContext = createContext<AnalyticsState>({ analytics: null, unavailable: false });
 
 export function AnalyticsProvider({
   children,
   analytics,
+  unavailable = false,
+  asOf,
 }: {
   children: React.ReactNode;
   analytics: PortfolioAnalyticsData | null;
+  unavailable?: boolean;
+  asOf?: string;
 }) {
-  return <AnalyticsContext.Provider value={analytics}>{children}</AnalyticsContext.Provider>;
+  const value = useMemo(() => ({ analytics, unavailable, asOf }), [analytics, unavailable, asOf]);
+  return <AnalyticsContext.Provider value={value}>{children}</AnalyticsContext.Provider>;
 }
 
 export function useAnalytics() {

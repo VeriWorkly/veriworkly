@@ -6,6 +6,8 @@ export interface DashboardMetricsProps {
   totalViews: number;
   /** Server withheld the figures — show that, rather than a "0" the user would read as real. */
   analyticsLocked: boolean;
+  /** The analytics request failed for an account that has analytics: say so, no upsell. */
+  analyticsUnavailable?: boolean;
   visibleSections: number;
   projectCount: number;
   readiness: number;
@@ -16,6 +18,7 @@ export interface DashboardMetricsProps {
 export function DashboardMetrics({
   totalViews,
   analyticsLocked,
+  analyticsUnavailable = false,
   visibleSections,
   projectCount,
   readiness,
@@ -26,9 +29,13 @@ export function DashboardMetrics({
     <section className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <Metric
         label="Portfolio views"
-        value={analyticsLocked ? "—" : String(totalViews)}
+        value={analyticsLocked || analyticsUnavailable ? "—" : String(totalViews)}
         detail={
-          analyticsLocked ? "With Creator Pro, the Bundle or a pass" : "All-time public views"
+          analyticsUnavailable
+            ? "Unavailable right now"
+            : analyticsLocked
+              ? "With Creator Pro, the Bundle or a pass"
+              : "All-time public views"
         }
         icon={<Eye size={16} />}
       />

@@ -15,3 +15,11 @@ describe("RestrictedAccess component", () => {
     expect(html).not.toContain('href="https://veriworkly.com"');
   });
 });
+
+describe("RestrictedAccess copy", () => {
+  it("does not claim the builder is admin-only", () => {
+    const html = renderToStaticMarkup(<RestrictedAccess />);
+    expect(html).not.toContain("active development");
+    expect(html).toContain("Admins only");
+  });
+});
