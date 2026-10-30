@@ -515,6 +515,35 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/**
+ * What a visitor may see of a published snapshot. The stored snapshot is the owner's whole draft,
+ * and the public read is unauthenticated, so it used to hand out hidden sections, sub-pages an
+ * unpaid site does not serve, and the owner's email (pre-filled with their sign-in address) with
+ * the Contact section hidden. Only visible sections go out, pages only while paid, and the email
+ * only when a visible Contact section shows it.
+ */
+export function publicSnapshot(snapshot: unknown, isPaid: boolean) {
+  const body = isRecord(snapshot) ? snapshot : {};
+  const visible = (sections: unknown) =>
+    Array.isArray(sections) ? sections.filter((s) => isRecord(s) && s.visible !== false) : [];
+  const sections = visible(body.sections);
+  const pages =
+    isPaid && Array.isArray(body.pages)
+      ? body.pages.filter(isRecord).map((page) => ({ ...page, sections: visible(page.sections) }))
+      : [];
+  const showsContact = [sections, ...pages.map((page) => page.sections)].some((list) =>
+    list.some((section) => isRecord(section) && section.type === "contact"),
+  );
+  const identity = isRecord(body.identity) ? body.identity : {};
+
+  return {
+    ...body,
+    identity: showsContact ? identity : { ...identity, email: "" },
+    sections,
+    pages,
+  };
+}
+
 /** A published body moved to the free tier: free template, badge back, no paid SEO block. */
 function freeTierSnapshot(
   snapshot: unknown,
@@ -640,7 +669,7 @@ export class PortfolioService {
       id: publication.id,
       subdomain: publication.subdomain,
       templateId: publication.templateId,
-      snapshot: publication.snapshot,
+      snapshot: publicSnapshot(publication.snapshot, isPaid),
       updatedAt: publication.updatedAt.toISOString(),
       isPaid,
       isPremiumTemplate,
