@@ -3,7 +3,7 @@ import { ArrowRight } from "lucide-react";
 
 import type { TemplateSummary } from "@/templates/catalog/templates";
 
-import { templatesShell } from "../constants";
+import { templateEditorHref, templatesShell } from "../constants";
 
 const TemplateCta = ({ template }: { template: TemplateSummary }) => {
   return (
@@ -21,7 +21,7 @@ const TemplateCta = ({ template }: { template: TemplateSummary }) => {
 
         <Link
           className="bg-accent inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-sm font-bold text-white transition duration-300 hover:-translate-y-1"
-          href="/dashboard"
+          href={templateEditorHref(template.id)}
         >
           Create my portfolio <ArrowRight size={15} />
         </Link>

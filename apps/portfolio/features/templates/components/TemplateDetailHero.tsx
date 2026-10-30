@@ -3,7 +3,7 @@ import { LayoutTemplate } from "lucide-react";
 import type { TemplateDetails } from "../data/template-details";
 import type { TemplateSummary } from "@/templates/catalog/templates";
 
-import { templatesShell } from "../constants";
+import { premiumBadge, templatesShell } from "../constants";
 
 const TemplateDetailHero = ({
   template,
@@ -20,6 +20,9 @@ const TemplateDetailHero = ({
         <p className="bg-accent inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold text-white">
           <LayoutTemplate size={13} /> Live portfolio template
         </p>
+        {template.isPremium ? (
+          <p className={`${premiumBadge} ml-2`}>Included with Creator Pro</p>
+        ) : null}
 
         <h1 className="mt-7 max-w-6xl text-[clamp(3.8rem,8vw,7.5rem)] leading-none font-bold tracking-tighter wrap-normal">
           <span className="sr-only">{template.name} Portfolio Template: </span>

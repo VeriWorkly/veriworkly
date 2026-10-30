@@ -6,7 +6,7 @@ import type { TemplateSummary } from "@/templates/catalog/templates";
 
 import { PortfolioTemplatePreviewFrame } from "@/components/PortfolioTemplatePreviewFrame";
 
-import { templatesShell } from "../constants";
+import { templateEditorHref, templatesShell } from "../constants";
 
 const TemplatePreviewSection = ({
   template,
@@ -46,7 +46,7 @@ const TemplatePreviewSection = ({
         </Link>
 
         <Link
-          href="/dashboard"
+          href={templateEditorHref(template.id)}
           className="bg-accent inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-6 text-sm font-bold text-white transition duration-300 hover:-translate-y-1"
         >
           Use this template <ArrowRight size={15} />
