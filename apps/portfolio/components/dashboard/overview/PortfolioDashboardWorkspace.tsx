@@ -54,7 +54,6 @@ export function PortfolioDashboardWorkspace() {
         <section className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(19rem,.55fr)]">
           <DashboardStatus
             portfolioName={content?.identity.name || "Build your portfolio"}
-            isLive={isLive}
             headline={
               content?.identity.headline ||
               "Add your professional headline and strongest work to create a clear public profile."

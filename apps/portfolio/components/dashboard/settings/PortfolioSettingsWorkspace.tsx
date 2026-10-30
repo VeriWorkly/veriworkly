@@ -8,6 +8,7 @@ import { hasPortfolioAccess, isPortfolioPubliclyVisible } from "@/lib/portfolio-
 import { portfolioWorkspaceUrl } from "@/config/site";
 import { usePortfolioStore, type ActionResult } from "@/store/portfolio-store";
 import { useWorkspace } from "@/components/WorkspaceProvider";
+import { PublicationStatusCard } from "@/components/dashboard/PublicationStatusCard";
 import { SettingsHeader } from "./SettingsHeader";
 import { SettingsForm } from "./SettingsForm";
 import { SettingsPreviews } from "./SettingsPreviews";
@@ -98,6 +99,10 @@ export function PortfolioSettingsWorkspace() {
   return (
     <main className="mx-auto max-w-[1500px] px-4 py-7 sm:px-6 sm:py-9 xl:px-10">
       <SettingsHeader status={status} onSave={() => void handleSave()} />
+
+      <div className="mt-6">
+        <PublicationStatusCard />
+      </div>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,.85fr)_minmax(24rem,1.15fr)]">
         <SettingsForm

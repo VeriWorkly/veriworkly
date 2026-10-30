@@ -293,6 +293,7 @@ describe("paid portfolio features follow canPublish (P-010)", () => {
     expect(canvas).not.toContain("/pricing?from=badge");
     expect(/<input[^>]*type="checkbox"[^>]*>/.exec(canvas)?.[0]).not.toMatch(/\sdisabled/);
     expect(settings).not.toContain("Premium Feature");
+    expect(settings).toContain("Plan: Job Hunter pass");
   });
 
   it("keeps an AI Credits subscriber on the free rules, with a way to unlock each control", () => {
@@ -317,6 +318,64 @@ describe("paid portfolio features follow canPublish (P-010)", () => {
     expect(canvas).toContain("/pricing?from=badge");
     expect(settings).toContain("Premium Feature");
     expect(settings).toContain("/pricing?from=seo");
+    // A paying customer is never labelled free.
+    expect(settings).toContain("Plan: AI Credits");
+  });
+});
+
+describe("site status card (P-014, P-033)", () => {
+  const site = { subdomain: "gautam" };
+
+  it("says a site was never published and offers Publish", () => {
+    const markup = renderWith({ publication: null }, <PortfolioDashboardWorkspace />);
+
+    expect(markup).toContain("Not published yet");
+    expect(markup).toContain(">Publish<");
+    expect(markup).not.toContain("Private draft");
+  });
+
+  it("links a live site", () => {
+    const markup = renderWith(
+      { publication: { ...site, status: "LIVE", offlineReason: null } },
+      <PortfolioSettingsWorkspace />,
+    );
+
+    expect(markup).toContain("Live");
+    expect(markup).toContain('href="https://gautam.veriworkly.com"');
+    expect(markup).not.toContain("Republish");
+  });
+
+  it("explains grace with its end date and a renew link", () => {
+    const markup = renderWith(
+      {
+        publication: { ...site, status: "GRACE", offlineReason: null },
+        billing: { canPublish: false, status: "PAST_DUE", graceEndsAt: "2026-11-06T00:00:00.000Z" },
+      },
+      <PortfolioDashboardWorkspace />,
+    );
+
+    expect(markup).toContain("Your site keeps its paid features until 2026-11-06");
+    expect(markup).toContain("/billing");
+  });
+
+  it("offers Republish after the owner unpublished", () => {
+    const markup = renderWith(
+      { publication: { ...site, status: "SUSPENDED", offlineReason: "owner" } },
+      <PortfolioDashboardWorkspace />,
+    );
+
+    expect(markup).toContain("Offline. You unpublished it.");
+    expect(markup).toContain("Republish");
+  });
+
+  it("never offers Republish for a moderation takedown", () => {
+    const markup = renderWith(
+      { publication: { ...site, status: "SUSPENDED", offlineReason: "moderation" } },
+      <PortfolioDashboardWorkspace />,
+    );
+
+    expect(markup).toContain("Taken down by a moderator. Contact support.");
+    expect(markup).not.toContain("Republish");
   });
 });
 

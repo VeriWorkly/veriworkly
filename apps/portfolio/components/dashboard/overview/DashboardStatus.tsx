@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, Settings } from "lucide-react";
 import type { PortfolioReadinessCheck } from "@/lib/portfolio-status";
 import { UnpublishButton } from "@/components/dashboard/UnpublishButton";
+import { PublicationStatusCard } from "@/components/dashboard/PublicationStatusCard";
 import { HealthRow } from "./HealthRow";
 
 const primaryAction =
@@ -11,7 +12,6 @@ const secondaryAction =
 
 export interface DashboardStatusProps {
   portfolioName: string;
-  isLive: boolean;
   headline: string;
   readiness: number;
   checks: PortfolioReadinessCheck[];
@@ -19,7 +19,6 @@ export interface DashboardStatusProps {
 
 export function DashboardStatus({
   portfolioName,
-  isLive,
   headline,
   readiness,
   checks,
@@ -30,16 +29,12 @@ export function DashboardStatus({
     <article className="border-line bg-panel overflow-hidden rounded-[2rem] border shadow-[0_30px_90px_-50px_rgba(0,0,0,0.45)]">
       <div className="grid min-h-[22rem] md:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="flex flex-col p-6 sm:p-8">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-muted text-xs font-extrabold">Current portfolio</p>
-              <h2 className="mt-2 text-3xl font-bold tracking-[-.04em]">{portfolioName}</h2>
-            </div>
-            <span
-              className={`px-2.5 py-1 text-[10px] font-extrabold ${isLive ? "bg-success-soft text-success" : "bg-warning-soft text-warning"}`}
-            >
-              {isLive ? "Published" : "Private draft"}
-            </span>
+          <div>
+            <p className="text-muted text-xs font-extrabold">Current portfolio</p>
+            <h2 className="mt-2 text-3xl font-bold tracking-[-.04em]">{portfolioName}</h2>
+          </div>
+          <div className="mt-5">
+            <PublicationStatusCard />
           </div>
           <p className="text-muted mt-5 max-w-xl text-sm leading-6">{headline}</p>
           <div className="mt-auto flex flex-wrap gap-2 pt-8">

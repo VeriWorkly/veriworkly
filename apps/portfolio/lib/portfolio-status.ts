@@ -114,3 +114,121 @@ export function hasPortfolioAccess(billing: BillingLike | undefined) {
 export function upgradeHref(from: string) {
   return `/pricing?from=${encodeURIComponent(from)}`;
 }
+
+const TIER_LABELS: Record<string, string> = {
+  bundle: "Job Hunter Bundle",
+  portfolio_pro: "Creator Pro",
+  ai_credits: "AI Credits",
+  pass: "Job Hunter pass",
+  credits: "Credits customer",
+};
+
+const PLAN_LABELS: Record<string, string> = {
+  BUNDLE: "Job Hunter Bundle",
+  PORTFOLIO_PRO: "Creator Pro",
+  AI_CREDITS: "AI Credits",
+};
+
+/**
+ * The user's plan in a few words, the same names Studio's billing page uses. `access.tier` tells
+ * a pass and a credit pack apart from a subscription; `plan` covers a summary without it. Anyone
+ * who has paid for anything is never shown "Free" (owner rule).
+ */
+export function planLabel(billing: BillingLike | undefined) {
+  const tier = billing?.access?.tier;
+  if (tier && TIER_LABELS[tier]) return TIER_LABELS[tier];
+  if (billing?.plan && PLAN_LABELS[billing.plan]) return PLAN_LABELS[billing.plan];
+
+  return billing?.access?.isPaying ? "Credits customer" : "Free";
+}
+
+export type PublicationNotice = {
+  tone: "live" | "warning" | "offline" | "draft";
+  label: string;
+  detail: string;
+  /** The button the status card offers. Never "republish" for a moderation takedown: it would 403. */
+  action: "publish" | "republish" | "renew" | "support" | null;
+  /** A cancelled plan that has not ended yet. */
+  planEnds: string | null;
+};
+
+/**
+ * What the dashboard and Settings say about the site (P-014, P-033), from the publication, the
+ * server's `offlineReason` and the billing dates. `formatDate` turns an ISO date into the
+ * user's own format.
+ */
+export function publicationNotice(
+  publication:
+    | { status: string; offlineReason?: "moderation" | "owner" | "billing" | null }
+    | null
+    | undefined,
+  billing:
+    | {
+        graceEndsAt?: string | null;
+        cancelAtPeriodEnd?: boolean;
+        accessEndsAt?: string | null;
+        currentPeriodEnd?: string | null;
+      }
+    | null
+    | undefined,
+  formatDate: (iso: string) => string,
+): PublicationNotice {
+  const endsOn = billing?.accessEndsAt ?? billing?.currentPeriodEnd;
+  const planEnds =
+    billing?.cancelAtPeriodEnd && endsOn && publication?.status !== "GRACE"
+      ? `Your plan ends on ${formatDate(endsOn)}.`
+      : null;
+  const notice = (rest: Omit<PublicationNotice, "planEnds">) => ({ ...rest, planEnds });
+
+  if (!publication) {
+    return notice({
+      tone: "draft",
+      label: "Not published yet",
+      detail: "Publish your portfolio to put it online at your own address.",
+      action: "publish",
+    });
+  }
+  if (publication.status === "LIVE") {
+    return notice({ tone: "live", label: "Live", detail: "Your site is online.", action: null });
+  }
+  if (publication.status === "GRACE") {
+    const until = billing?.graceEndsAt ? `until ${formatDate(billing.graceEndsAt)}` : "for now";
+    return notice({
+      tone: "warning",
+      label: "Plan ended",
+      detail: `Your plan ended. Your site keeps its paid features ${until}, then moves to the free tier (Signal or Atelier with the badge). Renew to keep them.`,
+      action: "renew",
+    });
+  }
+  if (publication.offlineReason === "moderation") {
+    return notice({
+      tone: "offline",
+      label: "Taken down",
+      detail: "Taken down by a moderator. Contact support.",
+      action: "support",
+    });
+  }
+  if (publication.offlineReason === "owner") {
+    return notice({
+      tone: "offline",
+      label: "Offline",
+      detail: "Offline. You unpublished it.",
+      action: "republish",
+    });
+  }
+  if (publication.offlineReason === "billing") {
+    return notice({
+      tone: "offline",
+      label: "Offline",
+      detail:
+        "Offline after a billing change. Republish to bring it back on the free tier. Nimbus and Cipher need an active plan.",
+      action: "republish",
+    });
+  }
+  return notice({
+    tone: "offline",
+    label: "Offline",
+    detail: "Your site is offline.",
+    action: "republish",
+  });
+}

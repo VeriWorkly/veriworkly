@@ -9,6 +9,8 @@ import {
   getPortfolioReadiness,
   hasPortfolioAccess,
   isPortfolioPubliclyVisible,
+  planLabel,
+  publicationNotice,
 } from "@/lib/portfolio-status";
 import {
   checkSubdomain,
@@ -145,6 +147,63 @@ describe("portfolioWorkspaceUrl", () => {
   });
 });
 
+describe("paid portfolio access (P-010)", () => {
+  it("follows canPublish, not the subscription status", () => {
+    // A pass has no subscription row; an AI Credits plan is ACTIVE but buys no portfolio access.
+    expect(hasPortfolioAccess({ canPublish: true, plan: "BUNDLE" })).toBe(true);
+    expect(hasPortfolioAccess({ canPublish: false, plan: "AI_CREDITS" })).toBe(false);
+    expect(hasPortfolioAccess(null)).toBe(false);
+  });
+});
+
+describe("planLabel", () => {
+  it("names every paid state and never calls a payer free", () => {
+    expect(planLabel({ access: { tier: "pass", isPaying: true } })).toBe("Job Hunter pass");
+    expect(planLabel({ access: { tier: "ai_credits", isPaying: true } })).toBe("AI Credits");
+    expect(planLabel({ access: { tier: "credits", isPaying: true } })).toBe("Credits customer");
+    expect(planLabel({ plan: "PORTFOLIO_PRO" })).toBe("Creator Pro");
+    expect(planLabel({ plan: "FREE", access: { tier: "free", isPaying: true } })).toBe(
+      "Credits customer",
+    );
+    expect(planLabel({ plan: "FREE", access: { tier: "free", isPaying: false } })).toBe("Free");
+  });
+});
+
+describe("publicationNotice (P-014, P-033)", () => {
+  const day = (iso: string) => iso.slice(0, 10);
+
+  it("maps each state to its copy and action", () => {
+    const cases = [
+      [null, "Not published yet", "publish"],
+      [{ status: "LIVE", offlineReason: null }, "Live", null],
+      [{ status: "GRACE", offlineReason: null }, "Plan ended", "renew"],
+      [{ status: "SUSPENDED", offlineReason: "owner" }, "Offline", "republish"],
+      [{ status: "SUSPENDED", offlineReason: "billing" }, "Offline", "republish"],
+      [{ status: "SUSPENDED", offlineReason: "moderation" }, "Taken down", "support"],
+    ] as const;
+
+    for (const [publication, label, action] of cases) {
+      const notice = publicationNotice(publication, null, day);
+      expect([notice.label, notice.action]).toEqual([label, action]);
+    }
+  });
+
+  it("dates grace and a cancelled plan", () => {
+    expect(
+      publicationNotice({ status: "GRACE" }, { graceEndsAt: "2026-11-06T00:00:00Z" }, day).detail,
+    ).toBe(
+      "Your plan ended. Your site keeps its paid features until 2026-11-06, then moves to the free tier (Signal or Atelier with the badge). Renew to keep them.",
+    );
+    expect(
+      publicationNotice(
+        { status: "LIVE" },
+        { cancelAtPeriodEnd: true, accessEndsAt: "2026-12-01T00:00:00Z" },
+        day,
+      ).planEnds,
+    ).toBe("Your plan ends on 2026-12-01.");
+  });
+});
+
 describe("subdomains (P-023, P-019)", () => {
   it("never starts a portfolio on a reserved or empty subdomain", () => {
     expect(defaultSubdomain({ name: "Gautam Raj" })).toBe("gautam-raj");
@@ -177,14 +236,5 @@ describe("subdomains (P-023, P-019)", () => {
     expect(subdomainCheckMessage(invalid)).toBe(
       '"gautam" is reserved or not allowed. Choose another name.',
     );
-  });
-});
-
-describe("paid portfolio access (P-010)", () => {
-  it("follows canPublish, not the subscription status", () => {
-    // A pass has no subscription row; an AI Credits plan is ACTIVE but buys no portfolio access.
-    expect(hasPortfolioAccess({ canPublish: true, plan: "BUNDLE" })).toBe(true);
-    expect(hasPortfolioAccess({ canPublish: false, plan: "AI_CREDITS" })).toBe(false);
-    expect(hasPortfolioAccess(null)).toBe(false);
   });
 });

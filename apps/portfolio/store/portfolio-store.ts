@@ -28,8 +28,28 @@ import {
 export type SaveStatus =
   "Saving" | "Saved" | "Offline" | "Conflict" | "Publish pending" | "Unsaved changes";
 export type WorkspaceState = "loading" | "ready" | "error";
-export type Publication = { subdomain: string; status: "LIVE" | "GRACE" | "SUSPENDED" } | null;
-export type Billing = { canPublish: boolean; status: string; graceEndsAt?: string | null };
+/** Why a SUSPENDED site is offline (`GET /portfolios/me`); null while it is online. */
+export type OfflineReason = "moderation" | "owner" | "billing" | null;
+export type Publication = {
+  subdomain: string;
+  status: "LIVE" | "GRACE" | "SUSPENDED";
+  offlineReason?: OfflineReason;
+} | null;
+/** The slice of the server's billing summary the workspace reads. */
+export type Billing = {
+  /** The portfolio_publish grant is in effect: Creator Pro, the Bundle or an active pass. */
+  canPublish: boolean;
+  status: string;
+  plan?: "FREE" | "PORTFOLIO_PRO" | "AI_CREDITS" | "BUNDLE";
+  graceEndsAt?: string | null;
+  cancelAtPeriodEnd?: boolean;
+  currentPeriodEnd?: string | null;
+  accessEndsAt?: string | null;
+  access?: {
+    tier: "bundle" | "portfolio_pro" | "ai_credits" | "pass" | "credits" | "free";
+    isPaying: boolean;
+  };
+};
 export type EditorPanel = "profile" | "sections" | "style" | "sharing";
 export type PortfolioAnalyticsData = {
   // Set by the server when the account lacks the Creator Pro entitlement. The payload
@@ -737,7 +757,9 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
               message: serverMessage(payload, "Your portfolio could not be published."),
             };
           }
-          set({ publication: { subdomain: payload.data.subdomain, status: "LIVE" } });
+          set({
+            publication: { subdomain: payload.data.subdomain, status: "LIVE", offlineReason: null },
+          });
           return { ok: true, message: `Published at ${payload.data.publicUrl}` };
         } catch {
           return {
@@ -751,7 +773,9 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
         if (!get().user) return { ok: false, message: "Please log in to manage your site." };
         const offline = () => {
           const pub = get().publication;
-          set({ publication: pub ? { ...pub, status: "SUSPENDED" } : null });
+          set({
+            publication: pub ? { ...pub, status: "SUSPENDED", offlineReason: "owner" } : null,
+          });
         };
         try {
           const response = await authenticatedFetch("/portfolios/unpublish", { method: "POST" });
