@@ -49,8 +49,9 @@ import { File, Folder, Files } from "fumadocs-ui/components/files";
 <Callout type="warn" title="The portfolio templates submodule">
   `apps/portfolio/template-library` is a git submodule pointing at a **private** repository
   (`VeriWorkly/portfolio-templates`). If you do not have access to it, you can run `node
-  scripts/mock-template-library.mjs` to generate mock templates and build `apps/portfolio` locally.
-  See [Portfolio: Templates](/docs/product/portfolio/templates).
+  scripts/mock-template-library.mjs` to generate mock templates and run `apps/portfolio` locally. A
+  production build refuses the mock unless `CI` is set. See [Portfolio:
+  Templates](/docs/product/portfolio/templates).
 </Callout>
 
 ---

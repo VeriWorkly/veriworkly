@@ -10,14 +10,16 @@ description: Subdomain publishing, the premium gates, the readiness score, and a
 | **Every portfolio** | `{your-slug}.veriworkly.com` |
 
 A premium portfolio is a premium template (Nimbus or Cipher) published by an account with the
-`portfolio_publish` entitlement (Creator Pro, the Job Hunter Bundle, or a pass).
+`portfolio_publish` entitlement (Creator Pro, the Job Hunter Bundle, or a pass). That same paid
+access, not the template, decides the badge and extra pages.
 
 The portfolio app's `proxy.ts` middleware rewrites the subdomain host onto an internal route; the
 `/portfolio/{your-slug}` and `/user/{your-slug}` alias paths on `portfolio.veriworkly.com` also resolve
 to it.
 
-- **Multi-page access is enforced at the routing layer**, not just in the UI. Multi-page slug
-  routes return `404` on a free portfolio.
+- **Multi-page access is enforced at the routing layer**, not just in the UI. Sub-page routes are
+  served on any template while the owner has paid portfolio access (grace included), and return
+  `404` otherwise.
 - **Premium templates gate at publish time.** Publishing (or re-publishing after an edit) with
   Nimbus or Cipher is refused without the `portfolio_publish` entitlement.
 - **Unpublishing** takes the site down while leaving the draft intact.
@@ -43,36 +45,54 @@ period, or when a pass ends), the hourly portfolio access job moves a premium po
 closest free template (Nimbus to Atelier, Cipher to Signal). It stays `LIVE` with the badge.
 
 Publishing stores a **content snapshot** and the published revision number, so continuing to edit the
-draft does not change the live site until you publish again.
+draft does not change the live site until you publish again. Visitors get only the visible part of
+that snapshot: hidden sections are left out, extra pages only while the owner has paid access, and
+the email only when a visible Contact section shows it.
+
+Published pages are cached for up to an hour. The API refreshes a site's page as soon as it is
+published, unpublished, taken down, deleted, or changed by billing, through the portfolio app's
+`/api/revalidate` hook (`PORTFOLIO_REVALIDATE_SECRET`). If the API cannot be reached, the last good
+page keeps being served.
 
 ---
 
 ## Dashboard
 
-Shows all-time views, published section and project counts, and a **readiness percentage**.
+Shows all-time views, visible section and project counts, and a **readiness percentage**.
 
-Readiness is the share of a four-item checklist that is complete:
+A **status card** (also on Settings) says where the site stands: not published yet, live, in grace
+until a date, offline because you unpublished it or after a billing change (with Republish), or
+taken down by a moderator (with a support link and no Republish). It also shows the date a
+cancelled plan ends. The reason comes from `offlineReason` on `GET /portfolios/me`. A live site can
+be unpublished from the card, after a confirmation.
+
+Readiness is the share of a checklist that is complete:
 
 1. Profile details: name, headline, bio and email all filled in.
 2. Portfolio sections: at least two visible sections.
-3. Search metadata: SEO title **and** description both set.
+3. Search metadata: SEO title **and** description both set. Counted only with paid portfolio
+   access, since free accounts cannot edit it.
 4. Public publishing: the portfolio is publicly visible.
 
-Each item is worth 25%. The score and the checklist come from the same calculation
-(`apps/portfolio/lib/portfolio-status.ts`), so they always agree.
+Each item is an equal share (25% each with paid access, a third each without). The score and the
+checklist come from the same calculation (`apps/portfolio/lib/portfolio-status.ts`), so they always
+agree.
 
 ---
 
 ## Analytics
 
-Total views, a recent-window trend, active days, and a referrer breakdown, aggregated daily per
-publication and referrer host.
+Total views, a last-30-calendar-days trend, active days, and the top 10 referrers, aggregated daily
+per publication and referrer host.
 
 **Premium-gated** (the `analytics` entitlement), with two distinct locked states:
 
 - A **logged-out** visitor sees a "Log In" prompt.
-- A **logged-in free** user sees an "Upgrade to Pro" overlay. The server sends no view data to an
-  account without the entitlement.
+- A **logged-in free** user sees a "Visitor analytics is a premium feature" overlay with a link to
+  the plans. The server sends no view data to an account without the entitlement.
+
+If the analytics request fails for an account that has access, the page says analytics are
+unavailable right now instead of showing the upgrade prompt.
 
 <Callout type="info" title="View counting is deduplicated">
   Repeat views from the same IP within a 30-minute window are ignored before any counter increments,
@@ -85,13 +105,18 @@ publication and referrer host.
 ## Settings
 
 The subdomain/slug editor (with an inline format hint), SEO meta title and description, and social
-share image upload.
+share image upload. For a signed-in user the subdomain field checks availability when you leave it
+(available, taken, or not allowed) and offers a suggestion when the name cannot be used.
 
 The SEO fields and the image upload are **disabled for free users**, with a banner naming the
 locked fields, and editable for accounts with the `portfolio_publish` entitlement. The subdomain
 editor is open on every plan. The server re-checks at publish time: without
 the `seo_controls` entitlement the published SEO block is replaced with defaults, whatever the draft
 says.
+
+**Save settings** saves only the draft; it never publishes. On a live site it then says "Saved.
+Publish to update your live site." with a Publish action (left out while publishing is admin-only
+in production). The header shows the same save state as the editor.
 
 ### Image uploads
 
@@ -103,9 +128,9 @@ and ETag against what was declared. Only JPG, PNG, and WebP are accepted, capped
 
 ## Watermark
 
-A floating "Built with VeriWorkly" badge appears on every free published portfolio. On a premium
-portfolio, an account with the `watermark_removal` entitlement gets a per-portfolio toggle to remove
-it. Document exports (PDF, DOCX and the rest) never carry a watermark on any plan.
+A "Built with VeriWorkly" badge appears on every free published portfolio. An account with paid
+portfolio access (the `watermark_removal` entitlement) gets a per-portfolio toggle to remove it, on
+any template, free or premium. Document exports (PDF, DOCX and the rest) never carry a watermark on any plan.
 
 ---
 

@@ -22,7 +22,8 @@ Signal and Atelier are free. Once publishing opens at launch, anyone can publish
 
 Nimbus and Cipher are premium. Premium gating is enforced at publish time, not just in the picker:
 
-- Any account can **select and preview** Nimbus or Cipher freely.
+- Anyone can **preview** Nimbus or Cipher with demo content in the template gallery. In the editor's
+  template picker they are locked without paid portfolio access and link to the plans instead.
 - **Publishing** (or re-publishing after an edit) with a premium template is refused without the
   `portfolio_publish` entitlement, which comes with Creator Pro, the Job Hunter Bundle, or a pass.
   See [Billing & Credits](/docs/product/billing-and-credits).
@@ -37,8 +38,8 @@ Publishing opens to everyone at launch. Today it is admin-only in production.
 ## No custom domains
 
 <Callout type="warn" title="Only VeriWorkly-issued addresses are supported">
-  Custom domains are not supported. Every published portfolio, free or paid, is served on its own `
-  {your - slug}.veriworkly.com` subdomain.
+  Custom domains are not supported. Every published portfolio, free or paid, is served on its own
+  `<your-slug>.veriworkly.com` subdomain.
 </Callout>
 
 ---
@@ -81,13 +82,18 @@ Because templates live in a private submodule, this is not an open contribution 
 maintainers, the steps are:
 
 1. Add a folder in `template-library/` with its React component, a `design.ts` detail file, and an
-   optional scoped stylesheet.
+   optional scoped stylesheet. In `apps/portfolio`, add its gallery image at
+   `public/templates/<id>-template-preview.png` and its share-card route at
+   `app/api/template/<id>/og/route.tsx`, which published pages on that template link to.
 2. Register it in `template-library/registry.ts` with its metadata, `isPremium` flag, and loader.
 3. Add the template id to `PORTFOLIO_TEMPLATE_IDS` in
    `apps/server/src/validators/portfolioValidator.ts`, and to `PREMIUM_PORTFOLIO_TEMPLATE_IDS` there
    if it is premium. A premium template also needs a free fallback in `FREE_TEMPLATE_FOR_PREMIUM`
    (`apps/server/src/services/portfolioService.ts`).
-4. Advance the submodule pointer in the main repository.
+4. Advance the submodule pointer in the main repository. Production builds use the pinned commit:
+   the server checkout needs `git submodule update --init`, and a production build stops with an
+   error while the template library is the mock (see
+   [the private template submodule](/docs/architecture/monorepo#the-private-template-submodule)).
 
 ---
 

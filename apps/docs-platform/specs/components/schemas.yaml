@@ -3351,6 +3351,10 @@ PortfolioPublication:
       enum: [signal, atelier, nimbus, cipher]
     snapshot:
       $ref: "#/PortfolioDraftContent"
+      description: |
+        The published content as a visitor may see it: visible sections only, `pages` only while
+        `isPaid` (otherwise empty), and `identity.email` blank unless a visible Contact section
+        shows it.
     updatedAt:
       type: string
       format: date-time
@@ -3358,9 +3362,9 @@ PortfolioPublication:
       type: boolean
       description: |
         The owner's paid portfolio access (Creator Pro, the Job Hunter Bundle, a pass) is in
-        effect, or its short grace period after a lapse is still running. It decides the badge,
-        the custom subdomain and the extra pages on any template. An AI Credits plan alone does not
-        count.
+        effect, or its short grace period after a lapse is still running. It decides the badge
+        and the extra pages on any template. Every site, free or paid, is served on its own
+        subdomain. An AI Credits plan alone does not count.
     isPremiumTemplate:
       type: boolean
       description: The template is a premium one (`nimbus` or `cipher`). About the template only.
@@ -3568,6 +3572,14 @@ PortfolioMe:
         status:
           type: string
           enum: [LIVE, GRACE, SUSPENDED]
+        offlineReason:
+          type: [string, "null"]
+          enum: [moderation, owner, billing, null]
+          description: |
+            Why the site is offline, `null` while it is `LIVE` or `GRACE`. `moderation`: a
+            moderator took it down (a suspended site with no recorded reason reads the same, since
+            it cannot be republished either). `owner`: the owner unpublished it. `billing`: billing
+            suspended it. The moderator's note itself is not returned.
         publishedRevision:
           type: integer
         publishedAt:

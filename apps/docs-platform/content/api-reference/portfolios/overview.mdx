@@ -18,7 +18,8 @@ that access lapses, a premium portfolio stays online on the closest free templat
   everything except putting a portfolio live. This does not apply in development.
 </Callout>
 
-The `/portfolios/public*` routes serve published content and need no user session. View tracking is
+The `/portfolios/public*` routes serve published content, only the part a visitor may see, and need
+no user session. View tracking is
 buffered in Redis, deduplicated per viewer IP for 30 minutes, and flushed to Postgres by a
 scheduled job — so `POST /public/{subdomain}/view` returns `202` and does not reflect a persisted
 count.

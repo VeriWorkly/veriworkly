@@ -137,16 +137,20 @@ template submodule](/docs/architecture/monorepo#the-private-template-submodule),
 contributions are not accepted. For maintainers with access, the steps are:
 
 1. Add a folder in `template-library/` with its React component, a `design.ts` detail file, and an
-   optional scoped stylesheet.
+   optional scoped stylesheet. In `apps/portfolio`, add its gallery image at
+   `public/templates/<id>-template-preview.png` and its share-card route at
+   `app/api/template/<id>/og/route.tsx`, which published pages on that template link to.
 2. Register it in `template-library/registry.ts`: an entry in `templatesRegistry` with its metadata,
-   `isPremium` flag and `design` details, and a lazy loader in `templateLoaders`.
+   `isPremium` flag, `design` details and a lazy `loader` (`templateLoaders` is built from those).
    `apps/portfolio/templates/catalog/templates.ts` derives the public gallery from that
    registry, so the gallery and the renderer cannot drift apart.
 3. Add the template id to `PORTFOLIO_TEMPLATE_IDS` in
    `apps/server/src/validators/portfolioValidator.ts`, and to `PREMIUM_PORTFOLIO_TEMPLATE_IDS` there
    if it is premium. The server rejects any id outside that list. A premium template also needs a
    free fallback in `FREE_TEMPLATE_FOR_PREMIUM` (`apps/server/src/services/portfolioService.ts`).
-4. Advance the submodule pointer in the main repository.
+4. Advance the submodule pointer in the main repository. Production builds use the pinned commit:
+   the server checkout needs `git submodule update --init`, and a production build stops with an
+   error while the template library is the mock.
 
 The registry entry looks like this:
 
@@ -160,6 +164,7 @@ export const templatesRegistry = {
     strengths: ["…"],
     image: "/templates/signal-template-preview.png",
     isPremium: false,
+    loader: () => import("./signal/SignalTemplate"),
     design: signalDesign,
   },
   // atelier, nimbus, cipher …

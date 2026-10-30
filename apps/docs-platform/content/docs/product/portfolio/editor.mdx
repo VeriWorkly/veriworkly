@@ -3,7 +3,11 @@ title: "Portfolio: Editor"
 description: The three-pane portfolio editor, its section types, multi-page portfolios, and draft storage.
 ---
 
-A three-pane workspace: section structure, content, and a live preview rendered via a real `<iframe>` kept in sync over `postMessage`, with a mobile/tablet/desktop viewport-width toggle. The editor autosaves every 12 seconds while dirty, and warns via the browser's `beforeunload` event if you try to navigate away with unsaved changes.
+A three-pane workspace: section structure, content, and a live preview rendered via a real `<iframe>` kept in sync over `postMessage`, with a mobile/tablet/desktop viewport-width toggle. Below the `lg` breakpoint the three panes become **Structure / Content / Preview** tabs (arrow keys move between them).
+
+Autosave and the leave-page warning run for the whole workspace, so the dashboard and Settings are covered too: unsaved changes are saved every 12 seconds, leaving the editor saves what is pending at once, and closing the tab with unsaved changes asks first (a guest is never asked; the draft is kept in the browser). The save state is always visible: **Saved**, **Saving...**, **Unsaved changes**, **Not saved** (with the reason), or **Conflict** when another tab or device saved first. A conflict pauses autosave until you choose **Load cloud copy** or **Keep mine**. A refused save waits for your next edit instead of being resent.
+
+The editor mirrors the server's limits, with a counter as a field nears its cap, checks the email when you leave the field, and stops the add buttons at 24 sections, 24 items and 10 pages with the reason shown. Deleting a section, item or page asks for confirmation. Before publishing, missing required details are listed with **Go there** links, and a server `400` with `details` is listed the same way.
 
 ## Section types
 
@@ -24,20 +28,32 @@ with at most 24 items.
 
 On a paid portfolio plan the editor's **Pages** panel adds extra pages (up to 10): predefined
 pages such as Work, Writing, About and Contact, plus a detail page for any item in the Projects
-section. Each page has its own independent section list. Sub-page URLs are served only for a
-premium template on a paid portfolio plan; on any other portfolio they return `404`.
+section. Each page has its own independent section list. Sub-page URLs are served on any template
+while the owner has paid portfolio access (grace included); otherwise they return `404`.
 
 ## The separate preview route
 
 The editor's preview pane is a private route, `/preview/[documentId]` (`/preview/guest` before you
 save), loaded in a frame. The editor sends your unsaved content to it as you type, and the browser
 renders it with your chosen template. Preview pages are not indexed and are not the published site.
+The **Preview** button, which opens the preview in a new tab, saves the draft first and says so if
+that save failed.
+
+Opening `/editor?template=<id>` (the gallery's "Use this template") applies a free template. A
+premium template without paid access opens the template picker on it, showing what unlocks it. The
+parameter is then removed from the address.
 
 ## Draft storage and merging
 
-The editor implements its own local-first layer, independent of Studio's document sync engine. A
-guest draft is kept in the browser; on login, the local draft and the cloud draft are merged by
-comparing `updatedAt` timestamps, so neither side clobbers the newer data.
+The editor keeps its own draft layer, independent of Studio's document sync engine. Only a guest
+draft is kept in the browser; a signed-in draft lives in the account and is never cached locally, so
+a shared browser cannot hand one user's draft to the next. On login, a guest draft is carried into
+the account when it is newer than the cloud draft (compared by `updatedAt`), then cleared from the
+browser.
+
+If the API cannot be reached for a signed-in user, the workspace says it cannot reach your
+workspace and offers Retry. It does not fall back to guest mode, and it does not save until your
+draft has loaded.
 
 Content is validated server-side on save against a Zod schema that also caps field lengths: for
 example a 120-character name, a 240-character headline, a 1,600-character bio, at most 12 social

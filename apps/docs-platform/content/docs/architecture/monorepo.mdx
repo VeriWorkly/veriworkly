@@ -157,7 +157,10 @@ their sources, so a spec or validator change must ship with its regenerated page
 Atelier, Nimbus, Cipher) and their registry.
 
 Without access to that repository, run `node scripts/mock-template-library.mjs` to create
-stand-in templates, which is what CI does. Every other workspace builds and runs without it.
+stand-in templates, which is what CI does. Every other workspace builds and runs without it. The
+mock is for development and CI only: a production build of `apps/portfolio` stops with an error
+while the template library is the mock, unless `CI` is set. A server that builds the portfolio app
+runs `git submodule update --init` first, so it builds the pinned commit.
 
 ---
 
@@ -182,8 +185,11 @@ import { File, Folder, Files } from "fumadocs-ui/components/files";
       <File name="store/" description="Global Zustand stores" />
     </Folder>
     <Folder name="portfolio">
-      <File name="app/" description="Gallery, workspace, and published-site routes" />
-      <File name="proxy.ts" description="Subdomain and shared-path routing" />
+      <File
+        name="app/"
+        description="(platform): gallery and workspace routes; (published): the published sites, with their own root layout"
+      />
+      <File name="proxy.ts" description="Subdomain and alias-path routing" />
       <File name="template-library/" description="Private git submodule: the portfolio templates" />
     </Folder>
     <Folder name="server" defaultOpen>
