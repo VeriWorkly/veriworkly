@@ -15,6 +15,9 @@ export type {
 export { portfolioSectionTypes, projectToPortfolio } from "@veriworkly/profile-core";
 
 import {
+  normalizeMasterProfile,
+  projectToPortfolio,
+  type MasterProfileData,
   portfolioSectionTypes,
   type PortfolioSectionType,
   type PortfolioContent as CorePortfolioContent,
@@ -71,18 +74,59 @@ export function createDefaultPortfolio(user?: {
 }
 
 /**
+ * Reads GET /profiles/master, which answers `data: { profile: { content, ... }, summary }`
+ * (P-001: this read `data.basics`, which never exists, so every import said "empty"). Returns
+ * null for a profile with nothing to import; the server answers 200 with blank content as
+ * often as 404, so emptiness is judged from the content.
+ */
+export function readMasterProfileResponse(body: unknown): MasterProfileData | null {
+  const content = (body as { data?: { profile?: { content?: unknown } } } | null)?.data?.profile
+    ?.content;
+  if (!content || typeof content !== "object" || Object.keys(content).length === 0) return null;
+  const profile = normalizeMasterProfile(content);
+  const projected = projectToPortfolio(profile, { templateId: "signal" });
+  const { name, headline, bio } = projected.identity;
+  const hasContent =
+    !!(name || headline || bio) ||
+    projected.socialLinks.length > 0 ||
+    projected.sections.some((section) => section.items.length > 0);
+  return hasContent ? profile : null;
+}
+
+/**
+ * Body text has one key in the editor and the templates: `summary` (P-028). The profile-core
+ * projection, and drafts imported before this, also carry `description`; the templates fall back
+ * to it, so a body the owner cleared in the editor kept showing the stale imported text. Folding
+ * it into `summary` renders what rendered before and lets the editor edit that same text.
+ */
+function canonicalItem(item: Record<string, unknown>): Record<string, unknown> {
+  if (!("description" in item)) return item;
+  const { description, ...rest } = item;
+  const summary = typeof rest.summary === "string" && rest.summary.trim() ? rest.summary : "";
+  return { ...rest, summary: summary || (typeof description === "string" ? description : "") };
+}
+
+function canonicalSections(sections: PortfolioSection[]): PortfolioSection[] {
+  return sections.map((section) => ({ ...section, items: section.items.map(canonicalItem) }));
+}
+
+/**
  * Merges a projected Master Profile into an existing Portfolio draft.
- * In "fill-empty" mode, any section with existing filled items is skipped (preserved),
- * while missing or empty sections are populated from Master Profile.
+ * "fill-empty" (smart import) never moves, hides, shows or overwrites what the user has: their
+ * sections keep their order, title and visibility, an empty one gets the projected items, and a
+ * section type they do not have is added at the end, before a trailing Contact (P-029).
  */
 export function mergeMasterProfileIntoPortfolio(
   existing: PortfolioContent,
   projected: PortfolioContent,
   mode: "fill-empty" | "replace" = "fill-empty",
 ): PortfolioContent {
+  const projectedSections = canonicalSections(projected.sections);
+
   if (mode === "replace") {
     return {
       ...projected,
+      sections: projectedSections,
       templateId: existing.templateId,
       identity: {
         ...projected.identity,
@@ -117,46 +161,25 @@ export function mergeMasterProfileIntoPortfolio(
   const socialLinks =
     existing.socialLinks.length > 0 ? existing.socialLinks : projected.socialLinks;
 
-  // Sections: if a user already has filled items in a section, skip that section from master.
-  const existingSectionsMap = new Map<string, PortfolioSection>();
-  for (const s of existing.sections) {
-    existingSectionsMap.set(s.type, s);
-  }
-
-  const finalSections: PortfolioSection[] = [];
-
-  for (const projSec of projected.sections) {
-    if (projSec.type === "contact") continue;
-    const existSec = existingSectionsMap.get(projSec.type);
-    if (existSec && existSec.items.length > 0) {
-      // User has already filled items in this section: skip master, keep user's filled section
-      finalSections.push(existSec);
-      existingSectionsMap.delete(projSec.type);
-    } else {
-      // Existing section is missing or empty: import from master projection
-      finalSections.push(projSec);
-      if (existSec) existingSectionsMap.delete(projSec.type);
+  const projectedByType = new Map<string, PortfolioSection>();
+  for (const section of projectedSections) {
+    if (section.type !== "contact" && section.items.length > 0) {
+      projectedByType.set(section.type, section);
     }
   }
 
-  // Any remaining sections in existing (e.g. custom or unprojected sections)
-  for (const [type, existSec] of existingSectionsMap.entries()) {
-    if (type !== "contact") {
-      finalSections.push(existSec);
-    }
-  }
+  const sections = existing.sections.map((section) => {
+    const source = projectedByType.get(section.type);
+    if (!source) return section;
+    // A projected section fills at most one of the user's sections of its type.
+    projectedByType.delete(section.type);
+    return section.items.length > 0 ? section : { ...section, items: source.items };
+  });
 
-  // Always keep contact section last
-  const existContact = existing.sections.find((s) => s.type === "contact");
-  finalSections.push(
-    existContact || {
-      id: "section-contact",
-      type: "contact",
-      title: "Contact",
-      visible: true,
-      items: [],
-    },
-  );
+  const missing = [...projectedByType.values()];
+  const last = sections.length - 1;
+  if (last >= 0 && sections[last].type === "contact") sections.splice(last, 0, ...missing);
+  else sections.push(...missing);
 
   return {
     schemaVersion: 1,
@@ -164,7 +187,7 @@ export function mergeMasterProfileIntoPortfolio(
     identity,
     seo,
     socialLinks,
-    sections: finalSections,
+    sections,
     pages: existing.pages,
     removeWatermark: existing.removeWatermark,
   };
@@ -877,6 +900,7 @@ function parseSections(input: unknown[]): PortfolioSection[] {
         ? (section.items as unknown[])
             .filter((item): item is Record<string, unknown> => !!item && typeof item === "object")
             .slice(0, 24)
+            .map(canonicalItem)
         : [],
       settings:
         section.settings && typeof section.settings === "object"
