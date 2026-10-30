@@ -11,10 +11,11 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   NEXT_PUBLIC_BACKEND_URL: "http://localhost:8080/api/v1"
   BACKEND_INTERNAL_URL: "http://localhost:8080/api/v1"
-  SITE_URL: "http://localhost:3000"
-  AUTH_SECRET: "dummy-secret-for-build-purposes-only"
   AUTH_BASE_URL: "http://localhost:8080"
   DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
+
+# SITE_URL and AUTH_SECRET are set only on the jobs whose apps read them: the server reads both;
+# the blog, docs and portfolio read SITE_URL. The studio, site and UI package read neither.
 
 # @veriworkly/ats-engine is tested in its own repository (VeriWorkly/ats-engine) and installed here
 # from npm, already built.
@@ -22,6 +23,9 @@ jobs:
   test-server:
     name: Test Server
     runs-on: ubuntu-latest
+    env:
+      SITE_URL: "http://localhost:3000"
+      AUTH_SECRET: "dummy-secret-for-build-purposes-only"
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -71,6 +75,8 @@ jobs:
   test-blog:
     name: Test Blog
     runs-on: ubuntu-latest
+    env:
+      SITE_URL: "http://localhost:3000"
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -114,6 +120,10 @@ jobs:
   test-docs:
     name: Test Docs
     runs-on: ubuntu-latest
+    # The docs read SITE_URL; the API reference step loads the server's config.
+    env:
+      SITE_URL: "http://localhost:3000"
+      AUTH_SECRET: "dummy-secret-for-build-purposes-only"
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -205,6 +215,8 @@ jobs:
   test-portfolio:
     name: Test Portfolio
     runs-on: ubuntu-latest
+    env:
+      SITE_URL: "http://localhost:3000"
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -261,6 +273,8 @@ jobs:
       DATABASE_URL: postgresql://veriworkly:veriworkly@localhost:5432/veriworkly_test
       SHADOW_DATABASE_URL: postgresql://veriworkly:veriworkly@localhost:5432/veriworkly_shadow
       INTEGRATION_REDIS_URL: redis://localhost:6379/1
+      SITE_URL: "http://localhost:3000"
+      AUTH_SECRET: "dummy-secret-for-build-purposes-only"
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
