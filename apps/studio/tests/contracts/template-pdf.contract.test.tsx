@@ -112,3 +112,50 @@ describe("cover letter pdf export contract", () => {
     }, 30_000);
   }
 });
+
+describe("S-366 the PDF's text layer and language", () => {
+  const NAME = "Zoë O'Brien-Łukasz 李华";
+
+  it("S-366 characters the PDF cannot draw are left out of the text layer, not written as junk", async () => {
+    const TemplatePdf = await loadTemplatePdfComponentById(pdfTemplateIds[0]);
+    const resume = {
+      ...defaultResume,
+      templateId: pdfTemplateIds[0],
+      basics: { ...defaultResume.basics, fullName: NAME },
+    };
+    const { text } = await extractResume(
+      await renderToBuffer(pdfElement(TemplatePdf, { resume })),
+      "pdf",
+    );
+    // The warning before the download calls these blank; an ATS must not read anything there.
+    const nameLine = text.split("\n").find((line) => line.includes("Zoë")) ?? "";
+
+    expect(nameLine).toContain("Zoë O'Brien-Łukasz");
+    expect(nameLine.slice(nameLine.indexOf("Łukasz") + "Łukasz".length).trim()).toBe("");
+  }, 30_000);
+
+  it("S-366 a document with a language declares it; one without declares none", async () => {
+    const TemplatePdf = await loadTemplatePdfComponentById(pdfTemplateIds[0]);
+    const render = async (language?: string) =>
+      (
+        await renderToBuffer(
+          pdfElement(TemplatePdf, {
+            resume: { ...defaultResume, templateId: pdfTemplateIds[0], language },
+          }),
+        )
+      ).toString("latin1");
+
+    expect((await render("de-CH")).includes("/Lang (de-CH)")).toBe(true);
+    expect((await render(undefined)).includes("/Lang")).toBe(false);
+
+    const CoverLetterPdf = await coverLetterTemplateRegistry.loadPdf(
+      coverLetterTemplateRegistry.ids[0],
+    );
+    const content = { ...createDefaultCoverLetter("s-366").content, language: "fr" };
+    const letter = (await renderToBuffer(pdfElement(CoverLetterPdf, { content }))).toString(
+      "latin1",
+    );
+
+    expect(letter.includes("/Lang (fr)")).toBe(true);
+  }, 30_000);
+});

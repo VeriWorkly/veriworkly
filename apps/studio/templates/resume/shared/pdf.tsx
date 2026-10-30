@@ -583,7 +583,7 @@ export function createResumePdfTemplate(skin: ResumePdfSkin): React.FC<PdfTempla
     };
 
     return (
-      <Document {...getPdfMetadata(model.name, "Resume")}>
+      <Document {...getPdfMetadata(model.name, "Resume", resume.language)}>
         <Page size={[page.widthPt, page.heightPt]} style={styles.page}>
           {(model.showBasics || model.showLinks) && skin.renderHeader(ctx)}
 
