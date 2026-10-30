@@ -20,6 +20,7 @@ import {
   isModerationLocked,
   MODERATION_SUSPENSION_PREFIX,
   offlineReason,
+  publicSnapshot,
 } from "../../src/services/portfolioService.js";
 
 describe("normalizePortfolioSubdomain", () => {
@@ -107,5 +108,41 @@ describe("offlineReason", () => {
     expect(offlineReason({ status: "SUSPENDED", suspensionReason: "grace_expired" })).toBe(
       "billing",
     );
+  });
+});
+
+describe("publicSnapshot", () => {
+  const section = (type: string, visible: boolean) => ({
+    id: type,
+    type,
+    title: type,
+    visible,
+    items: [],
+  });
+  const stored = {
+    templateId: "signal",
+    identity: { name: "Alice", email: "alice@signin.example" },
+    sections: [section("projects", true), section("experience", false), section("contact", false)],
+    pages: [{ id: "p1", slug: "work", title: "Work", sections: [section("projects", true)] }],
+  };
+
+  it("hands a visitor only what the owner shows", () => {
+    const shown = publicSnapshot(stored, false);
+
+    expect(shown.sections.map((s) => (s as { type: string }).type)).toEqual(["projects"]);
+    expect(shown.pages).toEqual([]);
+    expect(shown.identity).toEqual({ name: "Alice", email: "" });
+  });
+
+  it("keeps pages for a paid site and the email when a visible Contact shows it", () => {
+    const withContact = {
+      ...stored,
+      pages: [{ ...stored.pages[0], sections: [section("contact", true), section("x", false)] }],
+    };
+    const shown = publicSnapshot(withContact, true);
+
+    expect(shown.pages).toHaveLength(1);
+    expect(shown.pages[0].sections).toHaveLength(1);
+    expect(shown.identity).toEqual({ name: "Alice", email: "alice@signin.example" });
   });
 });
