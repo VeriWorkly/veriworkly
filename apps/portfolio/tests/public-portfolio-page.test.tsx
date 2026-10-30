@@ -27,7 +27,7 @@ vi.mock("@/templates/runtime/registry", () => ({ renderTemplate: async () => nul
 
 import { redirect } from "next/navigation";
 
-import Portfolio, { generateMetadata } from "@/app/portfolios/[username]/[[...slug]]/page";
+import Portfolio, { generateMetadata } from "@/app/(published)/portfolios/[username]/[[...slug]]/page";
 import { createDefaultPortfolio } from "@/lib/portfolio";
 
 function published(isPremium: boolean) {
