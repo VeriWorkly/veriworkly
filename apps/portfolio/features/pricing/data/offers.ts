@@ -52,6 +52,7 @@ export const comparisonRows = [
   ["Publish a portfolio on a veriworkly.com subdomain (opens at launch)", true, true, true, true],
   ["Core portfolio templates (Signal, Atelier)", true, true, true, true],
   ["Premium portfolio templates (Nimbus, Cipher)", false, true, false, true],
+  ["Multi-page portfolios", false, true, false, true],
   ["Remove the portfolio “Built with VeriWorkly” badge", false, true, false, true],
   ["Portfolio SEO controls", false, true, false, true],
   ["Portfolio analytics", false, true, false, true],
