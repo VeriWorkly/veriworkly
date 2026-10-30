@@ -25,7 +25,11 @@ function formatProvider(provider: string): string {
   }
 }
 
-export function renderLoginAlertEmail(email: string, meta: LoginAlertMeta): string {
+export function renderLoginAlertEmail(
+  email: string,
+  meta: LoginAlertMeta,
+  sessionsUrl: string,
+): string {
   const sanitizedEmail = escapeHtml(email);
   const title = "New Login Alert";
   const preheader = `A new login was detected on your VeriWorkly account for ${sanitizedEmail}.`;
@@ -79,7 +83,7 @@ export function renderLoginAlertEmail(email: string, meta: LoginAlertMeta): stri
       <tr>
         <td valign="top" style="font-size:14px;line-height:1.5;color:#b91c1c;">
           <strong style="color:#7f1d1d;display:block;margin-bottom:4px;">Was this not you?</strong>
-          If you did not authorize this login, your account security could be compromised. Please reply to this alert immediately or reach out to grievance@veriworkly.com.
+          If you did not authorize this login, or you left a session open on a shared computer, <a href="${escapeHtml(sessionsUrl)}" style="color:#b91c1c;font-weight:700;">Sign out of all other devices</a> from your profile. Then reply to this alert or reach out to grievance@veriworkly.com.
         </td>
       </tr>
     </table>

@@ -280,6 +280,30 @@ describe("sign-in from anywhere (Phase 9 Part D)", () => {
 describe("account pages after a redirect (Phase 9 Part D)", () => {
   const read = (file: string) => readFileSync(join(__dirname, "..", "..", file), "utf8");
 
+  it("S-376 the profile page signs out every other device, and says when it could not", async () => {
+    const revokeOtherSessions = vi
+      .fn()
+      .mockResolvedValueOnce({ data: { status: true }, error: null })
+      .mockResolvedValueOnce({ data: null, error: { message: "Session expired" } });
+    vi.doMock("@/lib/auth-client", () => ({ authClient: { revokeOtherSessions } }));
+    vi.resetModules();
+    const { signOutOtherDevices } = await import("@/features/profile/services/sessions");
+
+    await expect(signOutOtherDevices()).resolves.toBeUndefined();
+    await expect(signOutOtherDevices()).rejects.toThrow("Session expired");
+    expect(revokeOtherSessions).toHaveBeenCalledTimes(2);
+    vi.doUnmock("@/lib/auth-client");
+
+    const page = read("app/(main)/(dashboard)/profile/page.tsx");
+    expect(page).toContain("<SignOutOtherDevicesCard />");
+    // The login alert email links to /profile?focus=sessions: a query, unlike a #fragment,
+    // survives the sign-in redirect, and the card scrolls itself into view for it.
+    expect(getSafeAuthCallback("/profile?focus=sessions")).toBe("/profile?focus=sessions");
+    const card = read("features/profile/components/SignOutOtherDevicesCard.tsx");
+    expect(card).toContain('.get("focus") === "sessions"');
+    expect(card).toContain("scrollIntoView");
+  });
+
   it("S-352 a refused GitHub link is explained on the profile page it lands on", () => {
     expect(read("app/(main)/(dashboard)/profile/page.tsx")).toContain("<LinkErrorNotice />");
     expect(read("features/profile/components/LinkErrorNotice.tsx")).toContain(

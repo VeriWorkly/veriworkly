@@ -268,6 +268,21 @@ describe("mail service", () => {
       expect(html).not.toContain("localhost:8080");
     });
 
+    it("S-376 the login alert links to signing out every other device", async () => {
+      mockConfig.auth.emailProvider = "smtp";
+
+      await sendLoginAlertEmail("alert@example.com", {
+        ip: "127.0.0.1",
+        device: "Chrome",
+        timestamp: "2026-06-26T12:00:00Z",
+      });
+
+      const { html, text } = mockSendMail.mock.calls[0]![0];
+      expect(html).toContain('href="https://app.example.com/profile?focus=sessions"');
+      expect(html).toMatch(/Sign out of all other devices/);
+      expect(text).toContain("https://app.example.com/profile?focus=sessions");
+    });
+
     it("does not promise custom domains or instant publishing", async () => {
       mockConfig.auth.emailProvider = "smtp";
 

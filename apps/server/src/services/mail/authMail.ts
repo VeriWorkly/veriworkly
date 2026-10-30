@@ -65,8 +65,12 @@ export async function sendWelcomeEmail(email: string, name: string): Promise<voi
  */
 export async function sendLoginAlertEmail(email: string, meta: LoginAlertMeta): Promise<void> {
   const subject = "Security Alert: New Sign-in Detected";
-  const text = `A new login was detected on your VeriWorkly account. IP: ${meta.ip}, Device: ${meta.device}, Time: ${meta.timestamp}`;
-  const html = renderLoginAlertEmail(email, meta);
+  // The studio profile page signs out every other session (S-376): the one thing to do about a
+  // sign-in that was not you, or a session left open on a shared computer. A query, not a
+  // #fragment, so it survives the sign-in redirect of a reader who is signed out.
+  const sessionsUrl = `${config.auth.studioUrl.replace(/\/+$/, "")}/profile?focus=sessions`;
+  const text = `A new login was detected on your VeriWorkly account. IP: ${meta.ip}, Device: ${meta.device}, Time: ${meta.timestamp}. Not you, or signed in on a shared computer? Sign out of all other devices: ${sessionsUrl}`;
+  const html = renderLoginAlertEmail(email, meta, sessionsUrl);
 
   await sendMail({ to: email, subject, text, html, replyTo: SUPPORT_REPLY_TO });
 }

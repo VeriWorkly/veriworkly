@@ -43,6 +43,49 @@ export function readReferralCode(now = new Date()): string | null {
   return null;
 }
 
+const SOCIAL_SIGN_IN_KEY = "veriworkly:social-sign-in";
+
+/** Long enough for a slow provider consent screen; a callback opened later is not that sign-in. */
+const SOCIAL_SIGN_IN_TTL_MS = 30 * 60 * 1000;
+
+/**
+ * Noted when a social sign-in button is pressed. The provider sends the browser back to
+ * `/login/callback` in the same tab, so the note is there for that sign-in alone: an account
+ * already signed in that merely opens a callback link (`?ref=CODE`) never gets one (S-373).
+ */
+export function markSocialSignInStarted(now = new Date()) {
+  try {
+    sessionStorage.setItem(SOCIAL_SIGN_IN_KEY, String(now.getTime()));
+  } catch {
+    // Storage blocked: the sign-in still works, it only finishes without a referral.
+  }
+}
+
+/**
+ * Drops the note: the social sign-in did not start, or another sign-in finished first (an email
+ * code), so a callback link opened later is not that sign-in.
+ */
+export function clearSocialSignInStarted() {
+  try {
+    sessionStorage.removeItem(SOCIAL_SIGN_IN_KEY);
+  } catch {
+    // Storage blocked: there is no note to drop.
+  }
+}
+
+/** Whether this tab started the sign-in now finishing; the note is spent either way. */
+export function takeSocialSignInStarted(now = new Date()) {
+  try {
+    const startedAt = Number(sessionStorage.getItem(SOCIAL_SIGN_IN_KEY));
+    sessionStorage.removeItem(SOCIAL_SIGN_IN_KEY);
+    const age = now.getTime() - startedAt;
+
+    return startedAt > 0 && age >= 0 && age <= SOCIAL_SIGN_IN_TTL_MS;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * The work every sign-in path (email code, social callback) does once the session exists.
  *
@@ -53,8 +96,11 @@ export function readReferralCode(now = new Date()): string | null {
  * A remembered referral is applied once. The server's refusal (too old, already purchased) is
  * returned for the caller to show and the code is dropped; a network or server failure keeps it
  * for the next sign-in.
+ *
+ * Any social sign-in note left in the tab is dropped: this sign-in is the one that finished.
  */
 export async function finishSignIn(now = new Date()): Promise<{ referralError?: string }> {
+  clearSocialSignInStarted();
   const code = readReferralCode(now);
   if (!code) return {};
 
