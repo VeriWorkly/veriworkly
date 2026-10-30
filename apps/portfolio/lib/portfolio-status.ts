@@ -46,6 +46,8 @@ const IDENTITY_FIELDS = ["name", "headline", "bio", "email"] as const;
 export function getPortfolioReadiness(
   content: PortfolioContent | null,
   publicationStatus?: string | null,
+  /** SEO controls are a paid feature; a free user's checklist must be completable (P-035). */
+  hasAccess = false,
 ): PortfolioReadiness {
   const completedIdentity = content
     ? IDENTITY_FIELDS.filter((field) => content.identity[field]?.trim()).length
@@ -69,17 +71,23 @@ export function getPortfolioReadiness(
       complete: visibleSections >= 2,
       href: "/editor",
     },
-    {
-      id: "seo",
-      label: "Search metadata",
-      complete: Boolean(content?.seo.title && content?.seo.description),
-      href: "/settings",
-    },
+    // Only users who can edit the meta description in Settings are asked to fill it.
+    ...(hasAccess
+      ? [
+          {
+            id: "seo" as const,
+            label: "Search metadata",
+            complete: Boolean(content?.seo.title && content?.seo.description),
+            href: "/settings",
+          },
+        ]
+      : []),
     {
       id: "publishing",
       label: "Public publishing",
       complete: isPortfolioPubliclyVisible(publicationStatus),
-      href: "/settings",
+      // Publish lives on the site status card; Settings has no publish control.
+      href: "/dashboard#site-status",
     },
   ];
 

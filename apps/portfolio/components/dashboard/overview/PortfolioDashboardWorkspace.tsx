@@ -31,8 +31,8 @@ export function PortfolioDashboardWorkspace() {
   const readiness = useMemo(() => {
     const content = draft ? parsePortfolioContent(draft.content) : null;
 
-    return { ...getPortfolioReadiness(content, publicationStatus), content };
-  }, [draft, publicationStatus]);
+    return { ...getPortfolioReadiness(content, publicationStatus, canPublish), content };
+  }, [draft, publicationStatus, canPublish]);
 
   const content = readiness.content;
 

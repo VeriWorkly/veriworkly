@@ -16,11 +16,11 @@ export function RestrictedAccess() {
           <Lock className="text-accent h-7 w-7" />
         </div>
 
-        <h1 className="text-ink mt-8 text-3xl font-bold tracking-tight">Private Preview Mode</h1>
+        <h1 className="text-ink mt-8 text-3xl font-bold tracking-tight">Admins only</h1>
 
         <p className="text-muted mt-4 text-sm leading-relaxed">
-          The VeriWorkly Portfolio Builder is currently in active development. To guarantee platform
-          stability and design refinement, production access is restricted to administrators.
+          This internal tool is for VeriWorkly administrators. You can still build your portfolio in
+          the editor.
         </p>
 
         <div className="border-line bg-paper/50 mt-8 rounded-2xl border p-5 text-left">

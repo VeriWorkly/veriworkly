@@ -57,6 +57,7 @@ export function PublicationStatusCard() {
   return (
     <section
       aria-label="Site status"
+      id="site-status"
       className="border-line bg-panel flex flex-wrap items-start justify-between gap-3 rounded-xl border p-4"
     >
       <div className="min-w-0 flex-1 space-y-1.5">

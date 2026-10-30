@@ -55,6 +55,7 @@ describe("getPortfolioReadiness", () => {
         seo: { title: "", description: "", socialImage: null },
       }),
       undefined,
+      true,
     );
 
     const completed = readiness.checks.filter((check) => check.complete).length;
@@ -105,6 +106,45 @@ describe("getPortfolioReadiness", () => {
     expect(readiness.completedIdentity).toBe(0);
     expect(readiness.visibleSections).toBe(0);
     expect(readiness.projectCount).toBe(0);
+  });
+
+  it("lets a free user reach 100% without the SEO controls they cannot use (P-035)", () => {
+    const content = contentWith({
+      identity: {
+        name: "Gautam Raj",
+        headline: "Engineer",
+        bio: "Bio",
+        email: "a@b.com",
+        location: "",
+        availability: "",
+        avatar: null,
+      },
+      seo: { title: "Portfolio", description: "", socialImage: null },
+      sections: [
+        { id: "a", type: "projects", title: "Projects", subtitle: "", visible: true, items: [] },
+        {
+          id: "b",
+          type: "experience",
+          title: "Experience",
+          subtitle: "",
+          visible: true,
+          items: [],
+        },
+      ],
+    });
+
+    const free = getPortfolioReadiness(content, "LIVE", false);
+    expect(free.checks.map((check) => check.id)).not.toContain("seo");
+    expect(free.percent).toBe(100);
+
+    const paid = getPortfolioReadiness(content, "LIVE", true);
+    expect(paid.checks.find((check) => check.id === "seo")?.complete).toBe(false);
+    expect(paid.percent).toBeLessThan(100);
+
+    // Publishing is done from the site status card, not Settings.
+    expect(free.checks.find((check) => check.id === "publishing")?.href).toBe(
+      "/dashboard#site-status",
+    );
   });
 
   it("ignores hidden sections and counts project items", () => {
