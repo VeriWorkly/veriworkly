@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { unstable_rethrow } from "next/navigation";
 
-import { backendApiUrl, WORKSPACE_SETTINGS_STORAGE_KEY } from "@/lib/constants";
+import { accountName, backendApiUrl, WORKSPACE_SETTINGS_STORAGE_KEY } from "@/lib/constants";
 
 import type {
   BaseDocument,
@@ -58,7 +58,7 @@ function toSessionUser(user: AccountProfileSummary | null | undefined): SessionU
   return {
     id: user.id,
     email: user.email,
-    name: user.name ?? undefined,
+    name: accountName(user.name),
     username: user.username ?? undefined,
     createdAt: user.createdAt,
     emailVerified: user.emailVerified,

@@ -14,3 +14,21 @@ describe("email code sign-in", () => {
     expect(source).toContain("if (!signedIn) setIsLoading(false);");
   });
 });
+
+describe("the email sign-up placeholder name", () => {
+  it("O LOW the placeholder the code sign-in sends is never shown as the person's name", async () => {
+    const { OTP_SIGN_UP_PLACEHOLDER_NAME, accountName } = await import("@/lib/constants");
+
+    expect(source).toContain("name: OTP_SIGN_UP_PLACEHOLDER_NAME");
+    expect(accountName(OTP_SIGN_UP_PLACEHOLDER_NAME)).toBeUndefined();
+    expect(accountName("  ")).toBeUndefined();
+    expect(accountName(null)).toBeUndefined();
+    expect(accountName("Ada Lovelace")).toBe("Ada Lovelace");
+
+    const currentUser = readFileSync(
+      join(__dirname, "..", "..", "features/auth/services/current-user.ts"),
+      "utf8",
+    );
+    expect(currentUser).toContain("name: accountName(user.name)");
+  });
+});

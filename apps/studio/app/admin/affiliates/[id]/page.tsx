@@ -16,6 +16,7 @@ import {
   formatDateTime,
   formatNumber,
 } from "@/features/admin/utils/admin-format";
+import { accountName } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Admin · Affiliate",
@@ -69,7 +70,7 @@ export default async function AdminAffiliateDetailPage({
     <div className="space-y-5">
       <AdminPageHeader
         eyebrow="Affiliate"
-        title={affiliate.name || affiliate.email}
+        title={accountName(affiliate.name) ?? affiliate.email}
         description={`${affiliate.email} · code ${affiliate.affiliateCode || "none"} · enrolled ${formatDate(affiliate.affiliateEnrolledAt)}`}
         actions={
           <AffiliateStandingActions

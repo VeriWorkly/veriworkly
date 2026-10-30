@@ -12,6 +12,7 @@ import AuthCard from "./AuthCard";
 import { authClient } from "@/lib/auth-client";
 import { finishSignIn } from "@/lib/sign-in";
 import { getSafeAuthCallback } from "@/lib/auth-redirect";
+import { OTP_SIGN_UP_PLACEHOLDER_NAME } from "@/lib/constants";
 
 const OtpForm = ({
   sentTo,
@@ -45,7 +46,7 @@ const OtpForm = ({
       const { error: authError } = await authClient.signIn.emailOtp({
         email: sentTo,
         otp: code,
-        name: "Veriworkly User",
+        name: OTP_SIGN_UP_PLACEHOLDER_NAME,
       });
 
       if (authError) {

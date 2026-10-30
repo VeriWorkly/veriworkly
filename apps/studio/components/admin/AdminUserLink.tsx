@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 
 import type { AdminUserRef } from "@/features/admin/types/admin-types";
+import { accountName } from "@/lib/constants";
 
 /**
  * Billing and affiliate rows outlive the account they belonged to. The server sends such a row's
@@ -35,7 +36,7 @@ const AdminUserLink = ({
         href={href ?? `/admin/users/${encodeURIComponent(user.id)}`}
         className="text-foreground font-medium hover:underline"
       >
-        {user.name || user.email}
+        {accountName(user.name) ?? user.email}
       </Link>
       <p className="text-muted truncate text-xs">{detail ?? user.email}</p>
     </div>

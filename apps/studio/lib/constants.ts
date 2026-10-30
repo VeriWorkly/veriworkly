@@ -28,3 +28,15 @@ export function backendApiUrl(path: string) {
 
   return `${BACKEND_BASE_URL}${normalizedPath}`;
 }
+
+/**
+ * The name an email-code sign-up is created with: better-auth needs one, and the person has not
+ * given theirs yet. The server's welcome mail treats it as "no name" too (authMail.ts).
+ */
+export const OTP_SIGN_UP_PLACEHOLDER_NAME = "Veriworkly User";
+
+/** The account's own name, or undefined while it is blank or still the sign-up placeholder. */
+export function accountName(name: string | null | undefined) {
+  const trimmed = name?.trim();
+  return trimmed && trimmed !== OTP_SIGN_UP_PLACEHOLDER_NAME ? trimmed : undefined;
+}

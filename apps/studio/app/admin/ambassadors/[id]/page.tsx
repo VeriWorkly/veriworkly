@@ -13,6 +13,7 @@ import {
   loadAdminDetail,
 } from "@/features/admin/services/admin-server";
 import { formatDateTime } from "@/features/admin/utils/admin-format";
+import { accountName } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Admin · Ambassador application",
@@ -46,7 +47,7 @@ export default async function AdminAmbassadorDetailPage({
     <div className="space-y-5">
       <AdminPageHeader
         eyebrow="Ambassador application"
-        title={application.user.name || application.user.email}
+        title={accountName(application.user.name) ?? application.user.email}
         description={`${application.collegeName} · Class of ${application.graduationYear} · submitted ${formatDateTime(application.createdAt)}`}
         actions={
           <div className="flex flex-wrap items-center gap-2">

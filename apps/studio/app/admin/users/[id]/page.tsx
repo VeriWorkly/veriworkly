@@ -23,6 +23,7 @@ import {
   truncate,
 } from "@/features/admin/utils/admin-format";
 import { pluralize } from "@/lib/pluralize";
+import { accountName } from "@/lib/constants";
 
 /** "Latest 10 of 34" under a list the server cut short; nothing when it holds everything. */
 function ListCount({ shown, total, noun }: { shown: number; total?: number; noun: string }) {
@@ -108,7 +109,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
     <div className="space-y-5">
       <AdminPageHeader
         eyebrow="User"
-        title={user.name || user.email}
+        title={accountName(user.name) ?? user.email}
         description={`${user.email} · joined ${formatDate(user.createdAt)} · id ${user.id}`}
         actions={
           <div className="flex flex-wrap items-center gap-2">

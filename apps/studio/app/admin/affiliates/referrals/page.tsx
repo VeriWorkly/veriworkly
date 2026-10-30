@@ -12,6 +12,7 @@ import {
   toSingleValueParams,
   type AdminSearchParams,
 } from "@/features/admin/utils/admin-search-params";
+import { accountName } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Admin · Referrals",
@@ -41,7 +42,7 @@ const columns: Array<AdminTableColumn<AdminReferralRow>> = [
           href={`/admin/affiliates/${encodeURIComponent(row.affiliate.id)}`}
           className="text-foreground font-medium hover:underline"
         >
-          {row.affiliate.name || row.affiliate.email}
+          {accountName(row.affiliate.name) ?? row.affiliate.email}
         </Link>
         <p className="text-muted truncate text-xs">{row.code}</p>
       </div>
@@ -56,7 +57,7 @@ const columns: Array<AdminTableColumn<AdminReferralRow>> = [
           href={`/admin/users/${encodeURIComponent(row.referredUser.id)}`}
           className="text-foreground text-sm hover:underline"
         >
-          {row.referredUser.name || row.referredUser.email}
+          {accountName(row.referredUser.name) ?? row.referredUser.email}
         </Link>
         <p className="text-muted truncate text-xs">
           joined {formatRelativeTime(row.referredUser.createdAt)}

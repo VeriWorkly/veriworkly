@@ -31,6 +31,7 @@ import {
   formatRelativeTime,
   humanizeKey,
 } from "@/features/admin/utils/admin-format";
+import { accountName } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Admin · Dashboard",
@@ -661,7 +662,7 @@ export default async function AdminPage({
                   >
                     <span className="min-w-0">
                       <span className="text-foreground block truncate text-sm font-medium">
-                        {signup.name || signup.email}
+                        {accountName(signup.name) ?? signup.email}
                       </span>
                       <span className="text-muted block truncate text-xs">{signup.email}</span>
                     </span>
@@ -706,7 +707,7 @@ export default async function AdminPage({
                         {publication.subdomain}
                       </span>
                       <span className="text-muted block truncate text-xs">
-                        {publication.user.name || publication.user.email}
+                        {accountName(publication.user.name) ?? publication.user.email}
                       </span>
                     </span>
 
