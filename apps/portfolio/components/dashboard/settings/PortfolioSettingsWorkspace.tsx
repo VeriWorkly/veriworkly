@@ -3,11 +3,16 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { uploadPortfolioAsset } from "@/lib/portfolio-assets";
-import { hasPortfolioAccess, isPortfolioPubliclyVisible } from "@/lib/portfolio-status";
+import {
+  hasPortfolioAccess,
+  isPortfolioPubliclyVisible,
+  publishEndsGrace,
+} from "@/lib/portfolio-status";
 import { portfolioWorkspaceUrl } from "@/config/site";
 import { usePortfolioStore, type ActionResult } from "@/store/portfolio-store";
 import { usePublishingClosed } from "@/components/WorkspaceProvider";
 import { PublicationStatusCard } from "@/components/dashboard/PublicationStatusCard";
+import { GracePublishDialog } from "@/components/dashboard/GracePublishDialog";
 import { SettingsHeader } from "./SettingsHeader";
 import { SettingsForm } from "./SettingsForm";
 import { SettingsPreviews } from "./SettingsPreviews";
@@ -27,6 +32,7 @@ export function PortfolioSettingsWorkspace() {
   const saveDraft = usePortfolioStore((state) => state.saveDraft);
   const publish = usePortfolioStore((state) => state.publish);
   const [uploading, setUploading] = useState(false);
+  const [graceOpen, setGraceOpen] = useState(false);
   // A save or publish refused over the subdomain (taken, reserved) is shown by the field.
   const [subdomainIssue, setSubdomainIssue] = useState<string>();
   const report = (result: ActionResult, success: string) => {
@@ -34,6 +40,9 @@ export function PortfolioSettingsWorkspace() {
     if (result.ok) toast.success(success);
     else toast.error(result.message);
   };
+
+  const runPublish = () =>
+    void publish().then((published) => report(published, "Your live site is updated."));
 
   const isPremium = hasPortfolioAccess(billing);
   // Mirrors EditorCommandBar's publish gate (enforced server-side either way).
@@ -53,8 +62,8 @@ export function PortfolioSettingsWorkspace() {
         ? undefined
         : {
             label: "Publish",
-            onClick: () =>
-              void publish().then((published) => report(published, "Your live site is updated.")),
+            // In GRACE a publish drops the paid features; the owner chooses first.
+            onClick: () => (publishEndsGrace(publication) ? setGraceOpen(true) : runPublish()),
           },
     });
   };
@@ -120,6 +129,11 @@ export function PortfolioSettingsWorkspace() {
           socialImage={content.seo.socialImage}
         />
       </div>
+      <GracePublishDialog
+        open={graceOpen}
+        onClose={() => setGraceOpen(false)}
+        onPublish={runPublish}
+      />
     </main>
   );
 }

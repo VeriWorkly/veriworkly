@@ -116,6 +116,15 @@ export function hasPortfolioAccess(billing: BillingLike | undefined) {
   return Boolean(billing?.canPublish);
 }
 
+/**
+ * Publishing in GRACE applies the plan in effect now: the server computes the badge, SEO and
+ * pages from the live entitlement, so a republish drops the paid features the grace period was
+ * keeping. The owner is asked first (`GracePublishDialog`).
+ */
+export function publishEndsGrace(publication: { status: string } | null | undefined) {
+  return publication?.status === "GRACE";
+}
+
 /** Where a locked control sends the user, telling pricing what they wanted. */
 export function upgradeHref(from: string) {
   return `/pricing?from=${encodeURIComponent(from)}`;

@@ -10,12 +10,14 @@ import { issuesFromDetails, publishIssues, type PublishIssue } from "@/lib/portf
 import {
   hasPortfolioAccess,
   isPortfolioPubliclyVisible,
+  publishEndsGrace,
   upgradeHref,
 } from "@/lib/portfolio-status";
 import { saveStatusLabel, usePortfolioStore } from "@/store/portfolio-store";
 import { usePublishingClosed } from "@/components/WorkspaceProvider";
 import { actionClass as action } from "./constants";
 import { ImportMasterProfileModal } from "./ImportMasterProfileModal";
+import { GracePublishDialog } from "../GracePublishDialog";
 
 export interface EditorCommandBarProps {
   /** Opens the page, section and field a publish checklist entry points at. */
@@ -25,6 +27,7 @@ export interface EditorCommandBarProps {
 export function EditorCommandBar({ onJump }: EditorCommandBarProps) {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [issues, setIssues] = useState<PublishIssue[]>([]);
+  const [graceOpen, setGraceOpen] = useState(false);
 
   // Selected field by field: a bare `usePortfolioStore()` subscribes to the whole store,
   // so the command bar re-rendered on every keystroke anywhere in the editor.
@@ -85,7 +88,17 @@ export function EditorCommandBar({ onJump }: EditorCommandBarProps) {
       return;
     }
 
-    // `publish` saves first and reports whichever step failed.
+    // A publish now drops what the grace period keeps; the owner chooses.
+    if (publishEndsGrace(publication)) {
+      setGraceOpen(true);
+      return;
+    }
+
+    await runPublish();
+  };
+
+  // `publish` saves first and reports whichever step failed.
+  const runPublish = async () => {
     const result = await publish();
     if (result.ok) toast.success("Portfolio published.");
     else if (result.status === 400 && result.details?.length)
@@ -205,6 +218,11 @@ export function EditorCommandBar({ onJump }: EditorCommandBarProps) {
         </div>
       </header>
       <ImportMasterProfileModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
+      <GracePublishDialog
+        open={graceOpen}
+        onClose={() => setGraceOpen(false)}
+        onPublish={() => void runPublish()}
+      />
       <Modal open={issues.length > 0} onClose={() => setIssues([])}>
         <Modal.Content className="workspace-theme bg-panel border-line text-ink">
           <Modal.Header>
