@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { clampOgText } from "@/lib/og-text";
+import { OG_CACHE_HEADERS, clampOgText } from "@/lib/og-text";
 
 export const runtime = "nodejs";
 
@@ -7,7 +7,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
 
-    const name = clampOgText(searchParams.get("name") ?? "Gautam Raj", 60);
+    const name = clampOgText(searchParams.get("name") ?? "Your Name", 60);
     const headline = clampOgText(
       searchParams.get("headline") ?? "Designer & Builder crafting elegant workspaces.",
       100,
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
       180,
     );
     const location = clampOgText(searchParams.get("location") ?? "New York City", 60);
-    const subdomain = clampOgText(searchParams.get("subdomain") ?? "gautam", 63);
+    const subdomain = clampOgText(searchParams.get("subdomain") ?? "yourname", 63);
 
     return new ImageResponse(
       <div
@@ -208,6 +208,7 @@ export async function GET(request: Request) {
       {
         width: 1200,
         height: 630,
+        headers: OG_CACHE_HEADERS,
       },
     );
   } catch {
