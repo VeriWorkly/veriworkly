@@ -10,6 +10,7 @@ import {
   describePricingAccount,
 } from "@/features/pricing/components/PricingAccount";
 import type { PlanKey } from "@/features/pricing/data/offers";
+import FaqAccordionItem from "@/features/faq/components/FaqAccordionItem";
 
 const checkoutHref = "https://app.example/checkout?productKey=bundle&interval=annual";
 
@@ -92,5 +93,36 @@ describe("the pricing page's view of the visitor's plan (P-065, P-071)", () => {
     const page = readFileSync(join(__dirname, "..", "app", "pricing", "page.tsx"), "utf8");
 
     expect(page).not.toMatch(/server-api|fetchServerApiData|cookies\(|isAdminUser/);
+  });
+});
+
+describe("FAQ answers (P-075)", () => {
+  const render = (isOpen: boolean) =>
+    renderToStaticMarkup(
+      <FaqAccordionItem
+        id="x"
+        question="Question?"
+        answer={"A long answer. ".repeat(60)}
+        isOpen={isOpen}
+        onToggle={() => {}}
+      />,
+    );
+
+  it("never caps an open answer's height", () => {
+    const open = render(true);
+
+    expect(open).not.toMatch(/max-h-/);
+    expect(open).not.toContain("inert");
+  });
+
+  it("keeps a closed answer away from assistive tech", () => {
+    expect(render(false)).toMatch(/<div[^>]*id="faq-content-x"[^>]*inert/);
+  });
+
+  it("puts the button inside the heading, not a heading inside the button", () => {
+    const html = render(true);
+
+    expect(html).toMatch(/<h3[^>]*><button/);
+    expect(html).not.toMatch(/<button[^>]*>[^]*<h[1-6]/);
   });
 });

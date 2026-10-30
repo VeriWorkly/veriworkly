@@ -1,5 +1,16 @@
 import { Globe, Layout, Settings, DollarSign, HelpCircle } from "lucide-react";
 
+import {
+  CREDIT_PACKS,
+  CREDIT_PACK_VALID_DAYS,
+  PASS_NAMES,
+  PASS_PRICES,
+  PLAN_NAMES,
+  PLAN_PRICES,
+  annualPerMonth,
+  usd,
+} from "@/features/pricing/data/offers";
+
 export const categories = [
   { id: "all", name: "All Questions", icon: HelpCircle },
   { id: "general", name: "General & Product", icon: Layout },
@@ -8,45 +19,54 @@ export const categories = [
   { id: "billing", name: "Billing & Subscriptions", icon: DollarSign },
 ] as const;
 
+const { portfolio_pro: pro, ai_credits: ai, bundle } = PLAN_NAMES;
+
+/** "$9.99 a month or $95.88 a year ($7.99 a month)" from the shared price table. */
+const planPrice = (plan: keyof typeof PLAN_PRICES) =>
+  `${usd(PLAN_PRICES[plan].monthly)} a month or ${usd(PLAN_PRICES[plan].annual)} a year (${usd(annualPerMonth(plan))} a month)`;
+
+const packList = CREDIT_PACKS.map(
+  (pack) => `${pack.credits.toLocaleString("en-US")} credits for ${usd(pack.price)}`,
+).join(", ");
+
+const paidPortfolio = `${pro}, the ${bundle} or a pass`;
+
 export const faqs = [
   {
     id: "diff",
     category: "general",
     question: "How does the portfolio builder differ from the resume builder?",
     answer:
-      "The resume builder is optimized for structured, print-ready documents (PDFs, ATS trackers). The portfolio builder takes your resume data and transforms it into a public, fully styled website hosted on a custom subdomain, designed for online discovery and showcase.",
+      "The resume builder makes print-ready documents such as PDF and DOCX. The portfolio builder turns the same profile into a public website on your own yourname.veriworkly.com subdomain, made to be found and shared online.",
   },
 
   {
     id: "build-before-paying",
     category: "general",
-    question: "Can I build my portfolio before paying?",
-    answer:
-      "Yes. You can create a private draft, fill your content, and preview live templates before upgrading to Creator Pro.",
+    question: "Can I build and publish a portfolio for free?",
+    answer: `Yes. You can build a draft, preview every template and publish on your own subdomain for free with Signal or Atelier. Free sites show a small "Built with VeriWorkly" badge. You only need ${paidPortfolio} for Nimbus, Cipher, badge removal, analytics and SEO controls. Publishing opens to everyone at launch.`,
   },
 
   {
     id: "export",
     category: "general",
-    question: "Can I export my portfolio content at any time?",
+    question: "Can I export my portfolio?",
     answer:
-      "Yes. Since your portfolio is built on top of your unified VeriWorkly profile, you can export your entire data schema as a structured JSON file or render it into an ATS-friendly PDF resume at any time.",
+      "Not yet. The portfolio builder has no export. Your resumes and cover letters export from the VeriWorkly editor as PDF, DOCX, HTML, Markdown, plain text or JSON on every plan, with no watermark.",
   },
 
   {
     id: "pro-for",
     category: "general",
-    question: "Who is Creator Pro meant for?",
-    answer:
-      "Creator Pro is for builders, developers, designers, and founders who want premium templates, better sharing controls, CDN media hosting, watermark removal, and low checkout fees.",
+    question: `Who is ${pro} meant for?`,
+    answer: `${pro} is for anyone who wants more than the free site: the Nimbus and Cipher templates, no "Built with VeriWorkly" badge, visitor analytics, SEO controls and multi-page portfolios. It has no AI credits; the ${bundle} adds those.`,
   },
 
   {
     id: "templates",
     category: "templates",
     question: "How do page templates work?",
-    answer:
-      "You can switch templates at any time with a single click. Your profile data, project details, testimonials, and SEO tags remain intact. Only the presentation layer morphs, letting you redesign your portfolio instantly.",
+    answer: `You can switch templates at any time. Your profile, projects, testimonials and SEO settings stay as they are; only the design changes. Signal and Atelier are free. Nimbus and Cipher need ${paidPortfolio}.`,
   },
 
   {
@@ -54,15 +74,15 @@ export const faqs = [
     category: "templates",
     question: "What changes when I switch visual templates?",
     answer:
-      "Only the visual styling and layout logic change. Your underlying resume data, uploaded media files, subdomain settings, custom scripts, and SEO metadata stay perfectly preserved and reusable.",
+      "Only the design and layout. Your content, uploaded images, subdomain and SEO settings stay the same.",
   },
 
   {
     id: "images",
     category: "templates",
-    question: "Is there a limit on image and media hosting?",
+    question: "Is there a limit on images and projects?",
     answer:
-      "Pro portfolios include high-speed CDN image hosting for all your project media, screenshots, custom icons, and avatar photos. There are no hard limits on the number of projects you can showcase.",
+      "You can upload project images, screenshots and a profile photo on every plan, free included. There is no set limit on the number of projects you can show.",
   },
 
   {
@@ -70,63 +90,56 @@ export const faqs = [
     category: "domains",
     question: "How do subdomains work?",
     answer:
-      "Every portfolio, free or paid, is published on its own VeriWorkly subdomain (like yourname.veriworkly.com) that you choose. All subdomains include automatic, secure SSL certificates.",
+      "Every portfolio, free or paid, is published on its own VeriWorkly subdomain (like yourname.veriworkly.com) that you choose. Every subdomain is served over HTTPS.",
   },
 
   {
     id: "analytics",
     category: "domains",
-    question: "How are page views and outbound clicks tracked?",
-    answer:
-      "We provide built-in, privacy-first page view and outbound click analytics. It tracks which templates perform best and where visitors click. No cookie consent banners are required on your public site.",
+    question: "What does portfolio analytics track?",
+    answer: `Analytics comes with ${paidPortfolio}. It counts page views, shows the trend over time and lists the sites that sent visitors to you. It does not track clicks.`,
   },
 
   {
     id: "pricing",
     category: "billing",
     question: "What plans are available and how do AI writing credits work?",
-    answer:
-      "We offer flexible options: 3-Day Sprint ($2.99, 150 AI credits) and 7-Day Hunt ($5.99, 400 AI credits) where credits expire when the pass ends. For long-term use, the Job Hunter Bundle subscription is $14.99/mo (or $11.99/mo annual) with 1,000 monthly AI credits that reset each billing cycle. You can also purchase Creator Pro only ($9.99/mo or $7.99/mo annual) for subdomain hosting, or AI Credits Standalone only ($5.99/mo) if you prefer a single service. Unused subscription credits do not roll over.",
+    answer: `The portfolio is free on Signal or Atelier. The ${PASS_NAMES.one_day} (${usd(PASS_PRICES.one_day)}, 150 AI credits) and the ${PASS_NAMES.seven_day} (${usd(PASS_PRICES.seven_day)}, 400 AI credits) are one-time purchases that give ${pro} features until they end. ${pro} is ${planPrice("portfolio_pro")}. ${ai} is ${planPrice("ai_credits")} for 1,000 AI credits a month. The ${bundle} is ${planPrice("bundle")} and combines both. Subscription credits reset every month and do not roll over.`,
   },
 
   {
     id: "credits",
     category: "billing",
     question: "How do AI writing credits work and when do they reset?",
-    answer:
-      "AI credits are consumed when generating or tailoring resumes, cover letters, and portfolio bios. If you choose the Job Hunter Bundle (either $14.99/mo monthly or $11.99/mo annual) or the standalone AI Credits plan ($5.99/mo), your allowance of 1,000 credits resets at the start of each billing cycle. Unused subscription credits do not roll over. Single-purchase 3-Day Sprint ($2.99) and 7-Day Hunt ($5.99) passes provide fixed credit amounts (150 and 400 credits) that expire when the plan term ends.",
+    answer: `AI credits are spent when you generate or tailor resumes, cover letters and portfolio bios. ${ai} and the ${bundle} give 1,000 credits every month, on monthly and annual billing alike. They reset each month and do not roll over. The ${PASS_NAMES.one_day} gives 150 credits and the ${PASS_NAMES.seven_day} gives 400, which end with the pass. You have one credit balance across every VeriWorkly app.`,
   },
 
   {
     id: "rollover",
     category: "billing",
     question: "Do unused AI credits roll over to the next month?",
-    answer:
-      "No, unused subscription credits do not roll over; they reset at the start of each billing cycle. However, one-time add-on credit packs (250 credits for $2.99, 500 credits for $4.99) expire exactly 90 days from purchase, whether or not you keep a subscription. For 3-day and 7-day passes, all credits expire when the pass duration ends.",
+    answer: `No. Subscription credits reset each month, on annual plans too. Credit packs (${packList}) last ${CREDIT_PACK_VALID_DAYS} days from purchase, with or without a subscription. Pass credits end when the pass ends.`,
   },
 
   {
     id: "standalone",
     category: "billing",
-    question: "Can I buy Creator Pro or AI Credits separately?",
-    answer:
-      "Yes, if you do not need the full bundle, you can buy single add-on plans. Creator Pro is available standalone for $9.99/month (or $7.99/month annual), which adds the premium templates, visitor analytics, and no watermark to your subdomain site. Standalone AI Credits are available for $5.99/month, providing 1,000 monthly credits for resume and writing tools without website hosting.",
+    question: `Can I buy ${pro} or ${ai} separately?`,
+    answer: `Yes. ${pro} is ${planPrice("portfolio_pro")} and adds Nimbus, Cipher, analytics, SEO controls and badge removal, with no AI credits. ${ai} is ${planPrice("ai_credits")} and gives 1,000 credits a month; your portfolio stays on the free plan.`,
   },
 
   {
     id: "subdomain-cost",
     category: "billing",
     question: "Do I have to pay for a subdomain?",
-    answer:
-      "No. Every portfolio gets its own VeriWorkly subdomain (e.g., yourname.veriworkly.com) with automatic SSL certificates, on the free plan too. Creator Pro ($9.99/mo or $7.99/mo annual) and the Job Hunter Bundle ($14.99/mo or $11.99/mo annual) add the premium templates, analytics, and badge removal.",
+    answer: `No. Every portfolio gets its own VeriWorkly subdomain (like yourname.veriworkly.com), on the free plan too. ${pro} and the ${bundle} add the premium templates, analytics and badge removal.`,
   },
 
   {
     id: "upgrade",
     category: "billing",
-    question: "Can I upgrade, downgrade, or change my plan later?",
-    answer:
-      "Absolutely. You can switch between passes, subscriptions, or standalone add-ons at any point. Your billing and credit allowances will be adjusted or extended based on the remaining value of your previous plan terms.",
+    question: "Can I change my plan later?",
+    answer: `A ${pro} or ${ai} subscriber can upgrade to the ${bundle} at any time from the billing page. The upgrade keeps your billing period (monthly stays monthly, annual stays annual) and you pay only the difference for the rest of that period. Any other change, such as moving to a smaller plan or between monthly and annual billing, works by cancelling in Manage billing and subscribing again when your current period ends. Passes and credit packs are one-time purchases that never renew.`,
   },
 
   {
@@ -134,7 +147,7 @@ export const faqs = [
     category: "billing",
     question: "What happens if I decide to cancel my subscription?",
     answer:
-      'If you cancel your active Creator Pro or Job Hunter Bundle subscription, your portfolio stays online on its subdomain: at the end of your billing cycle it moves to the closest free template and shows the "Built with VeriWorkly" badge. All of your saved resume documents, cover letters, and portfolio drafts remain securely stored in your account so you can reactivate them whenever you\'re ready.',
+      'Cancel any time in the billing portal. You keep your paid features until the end of the period you paid for. Your portfolio then gets 7 days of grace before it moves to the free plan: Nimbus becomes Atelier, Cipher becomes Signal, the "Built with VeriWorkly" badge comes back and paid SEO settings are dropped. Your site stays online on its subdomain, and your documents and drafts stay in your account.',
   },
 
   {
@@ -142,16 +155,16 @@ export const faqs = [
     category: "billing",
     question: "Is my payment information secure?",
     answer:
-      "Yes. All payment processing is managed securely by Dodo Payments, adhering to strict PCI-DSS standards. VeriWorkly never stores or handles your credit card credentials directly on our servers.",
+      "Payments are handled by Dodo Payments. VeriWorkly never sees or stores your card details.",
   },
 ];
 
 export const landingFaqs = [
   faqs.find((f) => f.id === "diff"),
+  faqs.find((f) => f.id === "build-before-paying"),
   faqs.find((f) => f.id === "pricing"),
   faqs.find((f) => f.id === "domain"),
   faqs.find((f) => f.id === "templates"),
-  faqs.find((f) => f.id === "build-before-paying"),
 ].filter((f): f is (typeof faqs)[number] => !!f);
 
 export const pricingFaqs = [

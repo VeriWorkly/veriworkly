@@ -46,7 +46,6 @@ const FaqInteractiveSection = ({ sidebar }: FaqInteractiveSectionProps) => {
           </p>
 
           <h1 className="text-ink mt-6 text-[clamp(2.8rem,7vw,5.5rem)] leading-none font-bold tracking-tighter">
-            <span className="sr-only">VeriWorkly Portfolio FAQ: </span>
             Common questions. <br />
             <span className="text-accent">Clear answers.</span>
           </h1>
@@ -59,10 +58,11 @@ const FaqInteractiveSection = ({ sidebar }: FaqInteractiveSectionProps) => {
 
         <div className="mt-10 max-w-xl">
           <div className="bg-panel/75 border-line focus-within:border-accent relative flex items-center rounded-2xl border px-4 py-3.5 backdrop-blur-sm transition-all duration-300 focus-within:shadow-[0_8px_30px_rgba(37,99,235,0.06)]">
-            <Search className="text-muted/60 mr-3 size-5 shrink-0" />
+            <Search className="text-muted/60 mr-3 size-5 shrink-0" aria-hidden="true" />
 
             <input
               type="text"
+              aria-label="Search the FAQ"
               value={searchQuery}
               placeholder="Search questions or answers..."
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -73,9 +73,10 @@ const FaqInteractiveSection = ({ sidebar }: FaqInteractiveSectionProps) => {
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
+                aria-label="Clear search"
                 className="cursor-pointer rounded-full p-1 transition hover:bg-black/5 dark:hover:bg-white/5"
               >
-                <X className="text-muted size-4" />
+                <X className="text-muted size-4" aria-hidden="true" />
               </button>
             )}
           </div>
@@ -89,6 +90,7 @@ const FaqInteractiveSection = ({ sidebar }: FaqInteractiveSectionProps) => {
             return (
               <button
                 key={cat.id}
+                aria-pressed={isActive}
                 type="button"
                 onClick={() => {
                   setSelectedCategory(cat.id);
@@ -100,7 +102,7 @@ const FaqInteractiveSection = ({ sidebar }: FaqInteractiveSectionProps) => {
                     : "bg-panel border-line hover:border-line-strong text-ink/80 hover:text-ink border shadow-sm"
                 }`}
               >
-                <CatIcon className="size-3.5" />
+                <CatIcon className="size-3.5" aria-hidden="true" />
                 <span>{cat.name}</span>
               </button>
             );
