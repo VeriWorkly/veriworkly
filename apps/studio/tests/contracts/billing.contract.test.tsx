@@ -1207,6 +1207,18 @@ describe("paid AI actions", () => {
     expect(renderToStaticMarkup(<ScansLeftMetric quota={null} />)).not.toContain("Resets");
   });
 
+  it("S-367: a guest's ATS tiles show a dash, not a load that never finishes", async () => {
+    const { ScansLeftMetric, walletLabel } = await import("@/features/ats/AtsWorkspace");
+
+    expect(renderToStaticMarkup(<ScansLeftMetric quota={null} signedIn={false} />)).toContain(
+      ">—<",
+    );
+    expect(renderToStaticMarkup(<ScansLeftMetric quota={null} signedIn />)).toContain(">...<");
+    expect(walletLabel(null, false)).toBe("—");
+    expect(walletLabel(null, true)).toBe("...");
+    expect(walletLabel("error", true)).toBe("Unavailable");
+  });
+
   it("S-197: AI parse repair is offered only when the server says this account can use it", async () => {
     const { canOfferRepair } = await import("@/features/ats/AtsWorkspace");
     const quota = (canRepair: boolean, parseRepairCredits?: number) =>
@@ -1346,7 +1358,7 @@ describe("accounts, ATS and programs (Phase 9 Part D)", () => {
       await import("@/components/dashboard/modals/ImportProfileModal");
     // The modal renders through a portal, so its wiring is read from the source.
     const source = readFileSync(
-      join(process.cwd(), "components/dashboard/modals/ImportProfileModal.tsx"),
+      join(`${__dirname}/../..`, "components/dashboard/modals/ImportProfileModal.tsx"),
       "utf8",
     );
 
@@ -1450,7 +1462,7 @@ describe("GitHub import copy (owner decision A)", () => {
     );
     expect(
       readFileSync(
-        join(process.cwd(), "components/dashboard/modals/ImportProfileModal.tsx"),
+        join(`${__dirname}/../..`, "components/dashboard/modals/ImportProfileModal.tsx"),
         "utf8",
       ),
     ).not.toMatch(/must match/);

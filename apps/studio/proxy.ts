@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   getSafeAuthCallback,
   isProtectedStudioPath,
+  REQUEST_PATH_HEADER,
   SESSION_COOKIE_NAMES,
 } from "@/lib/auth-redirect";
 import { buildContentSecurityPolicy, createCspNonce } from "@/lib/content-security-policy";
@@ -53,7 +54,9 @@ function isPublicStudioPath(pathname: string) {
 
 /**
  * Renders the page with a fresh CSP nonce. Next reads the nonce from the request's policy and
- * stamps it on its scripts; the root layout reads `x-nonce` for the theme script.
+ * stamps it on its scripts; the root layout reads `x-nonce` for the theme script. The page's
+ * path is passed on too, overwriting any sent by the browser, so a server render that sends a
+ * dead session to sign in again can bring the user back to it (S-378).
  */
 function nextWithNonce(request: NextRequest) {
   const nonce = createCspNonce();
@@ -62,6 +65,7 @@ function nextWithNonce(request: NextRequest) {
 
   headers.set("x-nonce", nonce);
   headers.set("content-security-policy", policy);
+  headers.set(REQUEST_PATH_HEADER, `${request.nextUrl.pathname}${request.nextUrl.search}`);
 
   const response = NextResponse.next({ request: { headers } });
   response.headers.set("Content-Security-Policy", policy);

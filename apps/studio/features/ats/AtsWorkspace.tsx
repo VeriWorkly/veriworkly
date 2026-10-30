@@ -354,11 +354,8 @@ export function AtsWorkspace({ initialDocumentId }: { initialDocumentId?: string
           </p>
         </div>
         <div className="flex gap-6 text-sm">
-          <ScansLeftMetric quota={quota} />
-          <Metric
-            label="Credits available"
-            value={wallet === "error" ? "Unavailable" : wallet ? String(wallet.available) : "..."}
-          />
+          <ScansLeftMetric quota={quota} signedIn={isLoggedIn} />
+          <Metric label="Credits available" value={walletLabel(wallet, isLoggedIn)} />
           {/* An AI result is stored for a day so a retry is answered from it, not charged (S-385). */}
           <Metric
             label="Resume data"
@@ -854,14 +851,29 @@ function Metric({ label, value, hint }: { label: string; value: string; hint?: s
 }
 
 /** The allowance and when it comes back (S-198), so running out is never a dead end. */
-export function ScansLeftMetric({ quota, now }: { quota: AtsQuota | null; now?: number }) {
+export function ScansLeftMetric({
+  quota,
+  now,
+  signedIn = true,
+}: {
+  quota: AtsQuota | null;
+  now?: number;
+  signedIn?: boolean;
+}) {
   return (
     <Metric
       label="Scans left"
-      value={quota ? `${quota.remaining}/${quota.limit}` : "..."}
+      // Quota and wallet are never loaded for a guest, so "..." would never resolve (S-367).
+      value={quota ? `${quota.remaining}/${quota.limit}` : signedIn ? "..." : "—"}
       hint={quota ? quotaResetLabel(quota, now) : undefined}
     />
   );
+}
+
+export function walletLabel(wallet: CreditWallet | "error" | null, signedIn: boolean) {
+  if (wallet === "error") return "Unavailable";
+  if (wallet) return String(wallet.available);
+  return signedIn ? "..." : "—";
 }
 
 /** AI parse repair is offered only when it has a price and the server lets this account use it. */

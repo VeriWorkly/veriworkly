@@ -23,12 +23,23 @@ describe("auth redirect contract", () => {
     expect(isProtectedStudioPath("/profile/advanced")).toBe(true);
   });
 
+  it("S-367: pages that only make sense for an account send a guest to sign in", () => {
+    for (const path of [
+      "/billing",
+      "/credits",
+      "/api-keys",
+      "/api-keys/create",
+      "/affiliate/payouts",
+    ]) {
+      expect(isProtectedStudioPath(path)).toBe(true);
+    }
+  });
+
   it("keeps local-first and future Studio routes guest-accessible by default", () => {
     expect(isProtectedStudioPath("/")).toBe(false);
     expect(isProtectedStudioPath("/documents")).toBe(false);
     expect(isProtectedStudioPath("/editor/resume/local-id")).toBe(false);
     expect(isProtectedStudioPath("/profile")).toBe(false);
-    expect(isProtectedStudioPath("/api-keys")).toBe(false);
     expect(isProtectedStudioPath("/future-local-first-page")).toBe(false);
   });
 
