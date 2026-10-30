@@ -147,10 +147,14 @@ retries, an auth failure prompts a re-login, a conflict prompts resolution.
 
 ## Portfolio state
 
-The portfolio builder implements the same idea independently. Its editor autosaves every **12
-seconds while dirty**, warns on `beforeunload` if there are unsaved changes, and merges a guest local
-draft against the cloud draft by comparing `updatedAt` timestamps so neither side clobbers newer
-data. It does not share Studio's sync engine.
+The portfolio builder implements the same idea independently. Its workspace provider autosaves
+every **12 seconds while dirty** on every workspace page (editor, dashboard, Settings), the editor
+saves what is pending when it unmounts, and `beforeunload` warns while changes are unsaved. A save
+that loses to another tab or device (`409`) becomes a **Conflict** that pauses autosave until the
+owner keeps the cloud copy or their own. Only a guest draft
+is cached in the browser; on login it is carried into the account when it is newer than the cloud
+draft (compared by `updatedAt`), then cleared. A signed-in draft is never cached locally. It does
+not share Studio's sync engine.
 
 ---
 
