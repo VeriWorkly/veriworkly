@@ -144,6 +144,21 @@ export function isModerationLocked(publication: {
 }
 
 /**
+ * Why a site is offline, for the owner's dashboard (P-033): a moderator took it down, the owner
+ * unpublished it, or billing suspended it. The moderator's note itself stays internal.
+ */
+export function offlineReason(publication: {
+  status: string;
+  suspensionReason: string | null;
+}): "moderation" | "owner" | "billing" | null {
+  if (publication.status !== "SUSPENDED") return null;
+  // A reasonless row is refused by `NOT_MODERATION_LOCKED` too, so for the owner it is a takedown.
+  if (publication.suspensionReason === null || isModerationLocked(publication)) return "moderation";
+
+  return publication.suspensionReason === USER_UNPUBLISHED_REASON ? "owner" : "billing";
+}
+
+/**
  * The `reasonBeforeModeration` a moderation lock records as it goes on (V-285): the owner's or
  * billing's own suspension reason it covers, or null when the site was online. A row already
  * under a lock keeps what its first lock recorded, so this returns `{}` for it.
@@ -668,6 +683,7 @@ export class PortfolioService {
         select: {
           subdomain: true,
           status: true,
+          suspensionReason: true,
           publishedRevision: true,
           publishedAt: true,
           updatedAt: true,
@@ -676,7 +692,18 @@ export class PortfolioService {
       BillingService.getSummary(userId),
     ]);
 
-    return { draft, publication, billing };
+    return {
+      draft,
+      publication: publication && {
+        subdomain: publication.subdomain,
+        status: publication.status,
+        offlineReason: offlineReason(publication),
+        publishedRevision: publication.publishedRevision,
+        publishedAt: publication.publishedAt,
+        updatedAt: publication.updatedAt,
+      },
+      billing,
+    };
   }
 
   static async getPreview(userId: string, documentId: string) {

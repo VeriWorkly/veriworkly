@@ -19,6 +19,7 @@ import {
 import {
   isModerationLocked,
   MODERATION_SUSPENSION_PREFIX,
+  offlineReason,
 } from "../../src/services/portfolioService.js";
 
 describe("normalizePortfolioSubdomain", () => {
@@ -86,5 +87,25 @@ describe("isModerationLocked", () => {
     );
     expect(isModerationLocked({ status: "SUSPENDED", suspensionReason: null })).toBe(false);
     expect(isModerationLocked({ status: "LIVE", suspensionReason: "moderation:x" })).toBe(false);
+  });
+});
+
+describe("offlineReason", () => {
+  it("tells the owner who took the site down, never the moderator's note", () => {
+    expect(offlineReason({ status: "LIVE", suspensionReason: null })).toBeNull();
+    expect(offlineReason({ status: "GRACE", suspensionReason: null })).toBeNull();
+    expect(offlineReason({ status: "SUSPENDED", suspensionReason: "moderation:spam" })).toBe(
+      "moderation",
+    );
+    expect(offlineReason({ status: "SUSPENDED", suspensionReason: "legacy free text" })).toBe(
+      "moderation",
+    );
+    expect(offlineReason({ status: "SUSPENDED", suspensionReason: null })).toBe("moderation");
+    expect(offlineReason({ status: "SUSPENDED", suspensionReason: "user_unpublished" })).toBe(
+      "owner",
+    );
+    expect(offlineReason({ status: "SUSPENDED", suspensionReason: "grace_expired" })).toBe(
+      "billing",
+    );
   });
 });
