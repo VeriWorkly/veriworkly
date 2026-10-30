@@ -25,8 +25,23 @@ import {
   savePortfolioCache,
 } from "@/lib/portfolio-storage";
 
+/**
+ * Where the draft stands. "Not saved" carries its reason in `saveIssue`; "Conflict" means another
+ * tab or device saved first, and autosave waits until the owner picks a copy (`resolveConflict`).
+ */
 export type SaveStatus =
-  "Saving" | "Saved" | "Offline" | "Conflict" | "Publish pending" | "Unsaved changes";
+  "Saved" | "Saving" | "Unsaved changes" | "Not saved" | "Conflict" | "Publish pending";
+/** Why the last save failed, and whether trying the same content again could help. */
+export type SaveIssue = { reason: string; retry: boolean } | null;
+
+/** The save state in words, with the reason when a save failed. */
+export function saveStatusLabel(status: SaveStatus, issue: SaveIssue) {
+  if (status === "Not saved") return `Not saved: ${issue?.reason ?? "try again."}`;
+  if (status === "Conflict") return "Conflict: changed in another tab or device";
+  if (status === "Saving") return "Saving...";
+  if (status === "Publish pending") return "Publishing...";
+  return status;
+}
 export type WorkspaceState = "loading" | "ready" | "error";
 /** Why a SUSPENDED site is offline (`GET /portfolios/me`); null while it is online. */
 export type OfflineReason = "moderation" | "owner" | "billing" | null;
@@ -67,15 +82,64 @@ export type PortfolioWorkspaceBootstrap = {
 };
 
 /** What a save, publish or unpublish actually did. Every toast about one comes from this. */
-export type ActionResult = { ok: boolean; message: string; status?: number };
+export type ActionResult = {
+  ok: boolean;
+  message: string;
+  status?: number;
+  /** A 400's field messages, so the editor can point at each one. */
+  details?: Array<{ path: string; message: string }>;
+};
 export type SaveResult = ActionResult & { draft?: CloudPortfolioDraft };
+
+/** A 400's `details: [{ path, message }]`, or none. */
+function fieldDetails(payload: { details?: unknown }) {
+  return Array.isArray(payload.details)
+    ? (payload.details as Array<{ path?: unknown; message?: unknown }>)
+        .filter((detail) => typeof detail?.message === "string")
+        .map((detail) => ({ path: String(detail.path ?? ""), message: String(detail.message) }))
+    : [];
+}
+
+/** `details` on a result only when the server sent field messages. */
+function withDetails(payload: { details?: unknown }) {
+  const details = fieldDetails(payload);
+  return details.length ? { details } : {};
+}
 
 /** The server's own message, plus any field messages a 400 carries in `details`. */
 function serverMessage(payload: { message?: string; details?: unknown }, fallback: string) {
-  const details = Array.isArray(payload.details)
-    ? payload.details.map((detail: { message?: string }) => detail?.message).filter(Boolean)
-    : [];
-  return [payload.message || fallback, ...details].join(" ");
+  return [payload.message || fallback, ...fieldDetails(payload).map((d) => d.message)].join(" ");
+}
+
+/**
+ * A stale draft: the revision check (409 with `details.revision`) or the conditional write losing
+ * a race (409 "changed in another session", which carries no revision).
+ */
+function isStaleDraft(
+  status: number,
+  payload: { message?: string; details?: { revision?: unknown } },
+) {
+  return (
+    status === 409 &&
+    (payload.details?.revision !== undefined ||
+      /changed in another session/i.test(payload.message ?? ""))
+  );
+}
+
+/** Any edit: unsaved now, except that a conflict stays one until the owner resolves it. */
+function touched(state: PortfolioStoreState): Partial<PortfolioStoreState> {
+  if (!state.ready) return {};
+  if (state.status === "Conflict") return { isDirty: true };
+  return { isDirty: true, status: "Unsaved changes", saveIssue: null };
+}
+
+/** Autosave only content a save could still land: never a conflict, never a refused draft again. */
+export function shouldAutosave(
+  state: Pick<PortfolioStoreState, "isDirty" | "status" | "saveIssue">,
+) {
+  if (!state.isDirty) return false;
+  if (state.status === "Unsaved changes") return true;
+  return state.status === "Not saved" && state.saveIssue?.retry === true;
 }
 
 async function fetchPayload(path: string, fallbackMessage: string, init?: RequestInit) {
@@ -92,6 +156,21 @@ async function fetchPayload(path: string, fallbackMessage: string, init?: Reques
 /** A guest's subdomain carried into an account; a guest default like "portfolio" is reserved. */
 function accountSlug(slug: string, user: { name?: string | null; email?: string | null } | null) {
   return isAllowedSubdomain(slug) ? slug : defaultSubdomain(user);
+}
+
+/**
+ * Leaving the page (`beforeunload`): true when the browser should ask first. A guest's draft lives
+ * in this browser, so it is written now and the guest is never held up.
+ */
+export function warnOnLeave(
+  state: Pick<PortfolioStoreState, "isDirty" | "user" | "workspaceState" | "slug" | "content">,
+) {
+  if (!state.isDirty) return false;
+  if (!state.user && state.workspaceState === "ready") {
+    savePortfolioCache({ slug: state.slug, content: state.content });
+    return false;
+  }
+  return true;
 }
 
 // Module-level (not store state) so concurrent `loadWorkspace()` calls can
@@ -112,6 +191,7 @@ export type PortfolioHydratedState = Pick<
   | "previewIssue"
   | "workspaceState"
   | "status"
+  | "saveIssue"
   | "ready"
   | "isDirty"
 >;
@@ -147,7 +227,9 @@ export function buildHydratedState({
     message: isGuest ? "" : workspace ? "" : "Could not load your portfolio workspace.",
     previewIssue: "",
     workspaceState: "ready",
-    status: isGuest ? "Saved" : workspace ? "Saved" : "Offline",
+    status: isGuest || workspace ? "Saved" : "Not saved",
+    saveIssue:
+      isGuest || workspace ? null : { reason: "Your workspace did not load.", retry: false },
     ready: true,
     isDirty: false,
   };
@@ -162,6 +244,7 @@ interface PortfolioStoreState {
   user: { name?: string | null; email?: string | null } | null;
   analyticsData: PortfolioAnalyticsData | null;
   status: SaveStatus;
+  saveIssue: SaveIssue;
   message: string;
   ready: boolean;
   workspaceState: WorkspaceState;
@@ -206,6 +289,8 @@ interface PortfolioStoreState {
   saveDraft: () => Promise<SaveResult>;
   publish: () => Promise<ActionResult>;
   unpublish: () => Promise<ActionResult>;
+  /** After a conflict: take the cloud copy, or save this one over it. */
+  resolveConflict: (keep: "cloud" | "mine") => Promise<ActionResult>;
 }
 
 export type PortfolioStoreApi = ReturnType<typeof createPortfolioStore>;
@@ -250,22 +335,33 @@ async function sendDraft(store: StoreApi<PortfolioStoreState>): Promise<SaveResu
       }),
     });
     const payload = await response.json().catch(() => ({}));
-    // A stale revision says which one is current; any other 409 (a subdomain clash) carries
-    // its own message and is fixed in the form, not by a refresh.
-    if (response.status === 409 && payload.details?.revision !== undefined) {
-      set({ status: "Conflict" });
+    // An edit made while this save was on the wire is not in it, and stays unsaved.
+    const changed = () => get().content !== current.content || get().slug !== current.slug;
+    // Another tab or device saved first. Autosave stops here: saving again would either fail
+    // forever or, with a fresh revision, silently overwrite that copy. The owner picks one.
+    if (isStaleDraft(response.status, payload)) {
+      set({
+        status: "Conflict",
+        saveIssue: { reason: "Changed in another tab or device.", retry: false },
+      });
       return {
         ok: false,
         status: 409,
-        message: "This draft changed in another session. Refresh before continuing.",
+        message:
+          "This draft changed in another tab or device. Load the cloud copy, or keep yours and save it over that copy.",
       };
     }
     if (!response.ok) {
       const message = serverMessage(payload, "Draft sync failed.");
-      // A 4xx is the server refusing this draft, so retrying the same content will not help.
+      // A 4xx is the server refusing this draft, so retrying the same content will not help:
+      // autosave waits for the next edit instead of resending it every 12 s.
       if (response.status < 500 && response.status !== 429) {
-        set({ status: response.status === 409 ? "Conflict" : "Unsaved changes" });
-        return { ok: false, status: response.status, message };
+        set(
+          changed()
+            ? { status: "Unsaved changes", saveIssue: null }
+            : { status: "Not saved", saveIssue: { reason: message, retry: false } },
+        );
+        return { ok: false, status: response.status, message, ...withDetails(payload) };
       }
       throw Object.assign(new Error(message), { status: response.status });
     }
@@ -273,23 +369,25 @@ async function sendDraft(store: StoreApi<PortfolioStoreState>): Promise<SaveResu
       ...payload.data,
       content: parsePortfolioContent(payload.data.content),
     } as CloudPortfolioDraft;
-    // An edit made while this save was on the wire is not in it, and stays unsaved.
-    const changed = get().content !== current.content || get().slug !== current.slug;
+    const unsaved = changed();
     set({
       draft: saved,
-      status: changed ? "Unsaved changes" : "Saved",
-      isDirty: changed,
+      status: unsaved ? "Unsaved changes" : "Saved",
+      saveIssue: null,
+      isDirty: unsaved,
       message: "",
       previewIssue: "",
     });
     return { ok: true, message: "Draft saved.", draft: saved };
   } catch (error) {
-    set({
-      status: "Offline",
-      previewIssue: "Live preview is unavailable while your draft cannot sync.",
-    });
     const reason =
       error instanceof Error && error.name !== "AbortError" ? error.message : "Draft sync failed.";
+    const offline = !(error as { status?: number }).status;
+    set({
+      status: "Not saved",
+      saveIssue: { reason: offline ? "Could not reach VeriWorkly." : reason, retry: true },
+      previewIssue: "Live preview is unavailable while your draft cannot sync.",
+    });
     return {
       ok: false,
       status: (error as { status?: number }).status,
@@ -318,6 +416,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
       user: null,
       analyticsData: null,
       status: "Saved",
+      saveIssue: null,
       message: "",
       ready: false,
       workspaceState: "loading",
@@ -331,8 +430,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
       updateSlug: (slug) =>
         set((state) => ({
           slug: normalizeSlug(slug),
-          isDirty: state.ready ? true : state.isDirty,
-          status: state.ready ? "Unsaved changes" : state.status,
+          ...touched(state),
         })),
       setDraft: (draft) => set({ draft }),
       setPublication: (publication) => set({ publication }),
@@ -349,8 +447,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
       updateContent: (patch) =>
         set((state) => ({
           content: { ...state.content, ...patch },
-          isDirty: state.ready ? true : state.isDirty,
-          status: state.ready ? "Unsaved changes" : state.status,
+          ...touched(state),
         })),
 
       updateIdentity: (patch) =>
@@ -359,15 +456,13 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
             ...state.content,
             identity: { ...state.content.identity, ...patch },
           },
-          isDirty: state.ready ? true : state.isDirty,
-          status: state.ready ? "Unsaved changes" : state.status,
+          ...touched(state),
         })),
 
       applyMasterProfileImport: (nextContent) =>
         set((state) => ({
           content: nextContent,
-          isDirty: state.ready ? true : state.isDirty,
-          status: state.ready ? "Unsaved changes" : state.status,
+          ...touched(state),
         })),
 
       updateSection: (id, patch) =>
@@ -384,14 +479,12 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
                     : p,
                 ),
               },
-              isDirty: state.ready ? true : state.isDirty,
-              status: state.ready ? "Unsaved changes" : state.status,
+              ...touched(state),
             };
           }
           return {
             content: { ...state.content, sections: updateSections(state.content.sections) },
-            isDirty: state.ready ? true : state.isDirty,
-            status: state.ready ? "Unsaved changes" : state.status,
+            ...touched(state),
           };
         }),
 
@@ -415,14 +508,12 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
                     : p,
                 ),
               },
-              isDirty: state.ready ? true : state.isDirty,
-              status: state.ready ? "Unsaved changes" : state.status,
+              ...touched(state),
             };
           }
           return {
             content: { ...state.content, sections: mutateSections(state.content.sections) },
-            isDirty: state.ready ? true : state.isDirty,
-            status: state.ready ? "Unsaved changes" : state.status,
+            ...touched(state),
           };
         }),
 
@@ -449,14 +540,12 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
                     : p,
                 ),
               },
-              isDirty: state.ready ? true : state.isDirty,
-              status: state.ready ? "Unsaved changes" : state.status,
+              ...touched(state),
             };
           }
           return {
             content: { ...state.content, sections: [...state.content.sections, newSection] },
-            isDirty: state.ready ? true : state.isDirty,
-            status: state.ready ? "Unsaved changes" : state.status,
+            ...touched(state),
           };
         }),
 
@@ -472,8 +561,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
                     : p,
                 ),
               },
-              isDirty: state.ready ? true : state.isDirty,
-              status: state.ready ? "Unsaved changes" : state.status,
+              ...touched(state),
             };
           }
           return {
@@ -481,8 +569,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
               ...state.content,
               sections: state.content.sections.filter((item) => item.id !== id),
             },
-            isDirty: state.ready ? true : state.isDirty,
-            status: state.ready ? "Unsaved changes" : state.status,
+            ...touched(state),
           };
         }),
 
@@ -499,8 +586,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
               ...state.content,
               pages: [...(state.content.pages || []), newPage],
             },
-            isDirty: state.ready ? true : state.isDirty,
-            status: state.ready ? "Unsaved changes" : state.status,
+            ...touched(state),
           };
         }),
 
@@ -511,8 +597,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
             pages: (state.content.pages || []).filter((page) => page.id !== id),
           },
           selectedPageId: state.selectedPageId === id ? null : state.selectedPageId,
-          isDirty: state.ready ? true : state.isDirty,
-          status: state.ready ? "Unsaved changes" : state.status,
+          ...touched(state),
         })),
 
       updatePage: (id, patch) =>
@@ -523,8 +608,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
               page.id === id ? { ...page, ...patch } : page,
             ),
           },
-          isDirty: state.ready ? true : state.isDirty,
-          status: state.ready ? "Unsaved changes" : state.status,
+          ...touched(state),
         })),
 
       hydrateWorkspace: (bootstrap) => set(buildHydratedState(bootstrap)),
@@ -702,7 +786,8 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
             }
 
             set({
-              status: "Offline",
+              status: "Not saved",
+              saveIssue: { reason: "Your workspace did not load.", retry: false },
               workspaceState: "error",
               previewIssue: "Live preview is unavailable until the workspace reconnects.",
               message:
@@ -755,6 +840,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
               ok: false,
               status: response.status,
               message: serverMessage(payload, "Your portfolio could not be published."),
+              ...withDetails(payload),
             };
           }
           set({
@@ -800,6 +886,36 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
             message: "Could not reach VeriWorkly, so your site is still online. Try again.",
           };
         }
+      },
+
+      resolveConflict: async (keep) => {
+        let cloud: CloudPortfolioDraft | null;
+        try {
+          const payload = await fetchPayload("/portfolios/me", "Could not load the cloud copy.");
+          cloud = payload?.data?.draft
+            ? { ...payload.data.draft, content: parsePortfolioContent(payload.data.draft.content) }
+            : null;
+        } catch (error) {
+          return {
+            ok: false,
+            message: error instanceof Error ? error.message : "Could not load the cloud copy.",
+          };
+        }
+        if (keep === "cloud") {
+          if (!cloud) return { ok: false, message: "There is no cloud copy to load." };
+          set({
+            draft: cloud,
+            content: cloud.content,
+            slug: cloud.slug,
+            isDirty: false,
+            status: "Saved",
+            saveIssue: null,
+          });
+          return { ok: true, message: "Loaded the cloud copy." };
+        }
+        // Keep mine: this content, saved at the revision the cloud copy has now, overwriting it.
+        set({ draft: cloud, isDirty: true, status: "Unsaved changes", saveIssue: null });
+        return get().saveDraft();
       },
 
       ...preloaded,

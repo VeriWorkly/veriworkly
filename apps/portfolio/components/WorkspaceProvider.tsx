@@ -8,7 +8,10 @@ import {
   buildHydratedState,
   createPortfolioStore,
   PortfolioStoreProvider,
+  shouldAutosave,
   usePortfolioStore,
+  warnOnLeave,
+  usePortfolioStoreApi,
 } from "@/store/portfolio-store";
 import { loadPortfolioCache } from "@/lib/portfolio-storage";
 import { setSignedIn } from "@/lib/authenticated-fetch";
@@ -106,6 +109,8 @@ function WorkspaceBridge({
     }
   }, [hydrate, initialData, load]);
 
+  useDraftSafety();
+
   const user = usePortfolioStore((state) => state.user);
   const draft = usePortfolioStore((state) => state.draft);
   const ready = usePortfolioStore((state) => state.ready);
@@ -137,6 +142,41 @@ function WorkspaceBridge({
       <WorkspaceNotice />
     </WorkspaceContext.Provider>
   );
+}
+
+const AUTOSAVE_MS = 12000;
+
+/**
+ * Autosave and the leave-page warning live here, above every workspace page, so an edit made in
+ * the editor keeps saving after a client-side move to the dashboard or Settings, and closing the
+ * tab from any of them warns while something is unsaved (P-022).
+ */
+function useDraftSafety() {
+  const store = usePortfolioStoreApi();
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const state = store.getState();
+      if (!shouldAutosave(state)) return;
+      // Nobody clicked anything for this save, so a failure goes to the workspace notice.
+      void state.saveDraft().then((result) => {
+        if (!result.ok) store.getState().setMessage(result.message);
+      });
+    }, AUTOSAVE_MS);
+    return () => window.clearInterval(timer);
+  }, [store]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!warnOnLeave(store.getState())) return;
+      event.preventDefault();
+      // Legacy browsers ignore preventDefault() here and instead show the
+      // "leave site?" prompt only when returnValue is set to a truthy value.
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [store]);
 }
 
 export function useWorkspace() {

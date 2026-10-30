@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { isPremiumTemplate } from "@/lib/portfolio";
 import { uploadPortfolioAsset } from "@/lib/portfolio-assets";
 import { hasPortfolioAccess, isPortfolioPubliclyVisible } from "@/lib/portfolio-status";
 import { portfolioWorkspaceUrl } from "@/config/site";
@@ -21,6 +20,7 @@ export function PortfolioSettingsWorkspace() {
   const content = usePortfolioStore((state) => state.content);
   const slug = usePortfolioStore((state) => state.slug);
   const status = usePortfolioStore((state) => state.status);
+  const saveIssue = usePortfolioStore((state) => state.saveIssue);
   const billing = usePortfolioStore((state) => state.billing);
   const publication = usePortfolioStore((state) => state.publication);
   const user = usePortfolioStore((state) => state.user);
@@ -39,31 +39,27 @@ export function PortfolioSettingsWorkspace() {
   };
 
   const isPremium = hasPortfolioAccess(billing);
-  // Mirrors EditorCommandBar's publish gate — saving settings for an already-live portfolio
-  // re-publishes it, so it needs the same production block (enforced server-side either way).
+  // Mirrors EditorCommandBar's publish gate (enforced server-side either way).
   const publishingDisabledInProd = isProd && !isAdmin;
 
+  // Saves the draft only (P-037). Republishing from here sent the whole in-memory draft live,
+  // editor changes included, without the owner choosing to publish them.
   const handleSave = async () => {
-    if (isPortfolioPubliclyVisible(publication?.status) && user) {
-      if (publishingDisabledInProd) {
-        toast.error(
-          "Publishing is disabled in production right now, so live settings can't be updated. It's available in development.",
-        );
-        return;
-      }
-
-      if (isPremiumTemplate(content.templateId) && !isPremium) {
-        toast.error(
-          `"${content.templateId}" is a premium template. Creator Pro, the Job Hunter Bundle or a pass is needed to update your live site, or switch to Signal or Atelier.`,
-        );
-        return;
-      }
-      report(await publish(), "Settings saved and your live site updated.");
+    const result = await saveDraft();
+    if (!result.ok || !user || !isPortfolioPubliclyVisible(publication?.status)) {
+      report(result, user ? "Settings saved." : result.message);
       return;
     }
-
-    const result = await saveDraft();
-    report(result, user ? "Settings saved." : result.message);
+    setSubdomainIssue(undefined);
+    toast.success("Saved. Publish to update your live site.", {
+      action: publishingDisabledInProd
+        ? undefined
+        : {
+            label: "Publish",
+            onClick: () =>
+              void publish().then((published) => report(published, "Your live site is updated.")),
+          },
+    });
   };
 
   const updateSeo = (patch: Partial<typeof content.seo>) =>
@@ -98,7 +94,7 @@ export function PortfolioSettingsWorkspace() {
 
   return (
     <main className="mx-auto max-w-[1500px] px-4 py-7 sm:px-6 sm:py-9 xl:px-10">
-      <SettingsHeader status={status} onSave={() => void handleSave()} />
+      <SettingsHeader status={status} saveIssue={saveIssue} onSave={() => void handleSave()} />
 
       <div className="mt-6">
         <PublicationStatusCard />
