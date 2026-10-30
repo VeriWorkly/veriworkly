@@ -78,9 +78,8 @@ function WorkspaceBridge({
 
   useEffect(() => {
     if (initialData.user || initialData.workspace) {
-      // A guest draft left in this browser was made before signing in. `loadWorkspace` carries
-      // it into the account when it is newer than the cloud copy; the server seed knows nothing
-      // of it, and its blank default would otherwise be autosaved over the guest's work.
+      // A guest draft left in this browser was made before signing in. `loadWorkspace` finds it
+      // and asks whether to bring it into the account; the server seed knows nothing of it.
       if (initialData.user && loadPortfolioCache()) void load();
       else if (initialData.workspace)
         hydrate({ ...initialData, analytics: initialData.analytics ?? null });

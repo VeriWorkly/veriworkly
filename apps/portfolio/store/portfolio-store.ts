@@ -154,11 +154,6 @@ async function fetchPayload(path: string, fallbackMessage: string, init?: Reques
   return payload;
 }
 
-/** A guest's subdomain carried into an account; a guest default like "portfolio" is reserved. */
-function accountSlug(slug: string, user: { name?: string | null; email?: string | null } | null) {
-  return isAllowedSubdomain(slug) ? slug : defaultSubdomain(user);
-}
-
 /**
  * Leaving the page (`beforeunload`): true when the browser should ask first. A guest's draft lives
  * in this browser, so it is written now and the guest is never held up.
@@ -253,6 +248,8 @@ interface PortfolioStoreState {
   activePanel: EditorPanel;
   isDirty: boolean;
   selectedPageId: string | null;
+  /** A guest draft found in this browser after signing in, until the owner keeps or discards it. */
+  guestDraft: { content: PortfolioContent; slug: string; replacesCloud: boolean } | null;
 
   // Setters
   setContent: (content: PortfolioContent) => void;
@@ -292,6 +289,9 @@ interface PortfolioStoreState {
   unpublish: () => Promise<ActionResult>;
   /** After a conflict: take the cloud copy, or save this one over it. */
   resolveConflict: (keep: "cloud" | "mine") => Promise<ActionResult>;
+  /** Bring the guest draft into the account (replacing the current draft), or forget it. */
+  keepGuestDraft: () => Promise<ActionResult>;
+  discardGuestDraft: () => void;
 }
 
 export type PortfolioStoreApi = ReturnType<typeof createPortfolioStore>;
@@ -425,6 +425,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
       activePanel: "profile",
       isDirty: false,
       selectedPageId: null,
+      guestDraft: null,
 
       setContent: (content) => set({ content }),
       setSlug: (slug) => set({ slug }),
@@ -679,96 +680,49 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
             const analytics = analyticsPayload?.data ?? null;
             const cloud = portfolioPayload?.data?.draft;
 
-            let draftToSet: CloudPortfolioDraft | null = null;
-            let contentToSet = cached?.content ?? createDefaultPortfolio(user ?? undefined);
-            let slugToSet = cached ? accountSlug(cached.slug, user) : defaultSubdomain(user);
-            let shouldSyncLocalToCloud = false;
-            let mergeMessage = "";
+            const cloudDraft = cloud
+              ? ({
+                  ...cloud,
+                  content: parsePortfolioContent(cloud.content),
+                } as CloudPortfolioDraft)
+              : null;
+            const contentToSet = cloudDraft?.content ?? createDefaultPortfolio(user ?? undefined);
+            const slugToSet = cloudDraft?.slug ?? defaultSubdomain(user);
 
-            if (cloud) {
-              const restoredCloud = {
-                ...cloud,
-                content: parsePortfolioContent(cloud.content),
-              } as CloudPortfolioDraft;
-
-              draftToSet = restoredCloud;
-
-              if (cached) {
-                // Compare local cache with cloud content to see if there are local guest edits
-                const localSerialized = JSON.stringify(cached.content);
-                const cloudSerialized = JSON.stringify(restoredCloud.content);
-                const contentDiffers =
-                  localSerialized !== cloudSerialized || cached.slug !== restoredCloud.slug;
-
-                if (!contentDiffers) {
-                  contentToSet = restoredCloud.content;
-                  slugToSet = restoredCloud.slug;
-                } else {
-                  // Both a local guest draft and a cloud draft exist, and they
-                  // disagree. Only let the local copy win when it is *provably*
-                  // newer than the cloud draft — otherwise a stale local cache
-                  // (or one written before timestamps existed) would silently
-                  // clobber cloud content that may have been edited elsewhere,
-                  // e.g. from another device or after publishing.
-                  const localUpdatedAt = cached.updatedAt ? Date.parse(cached.updatedAt) : NaN;
-                  const cloudUpdatedAt = Date.parse(restoredCloud.updatedAt);
-                  const localIsNewer =
-                    !Number.isNaN(localUpdatedAt) &&
-                    !Number.isNaN(cloudUpdatedAt) &&
-                    localUpdatedAt > cloudUpdatedAt;
-
-                  if (localIsNewer) {
-                    contentToSet = cached.content;
-                    slugToSet = isAllowedSubdomain(cached.slug) ? cached.slug : restoredCloud.slug;
-                    shouldSyncLocalToCloud = true;
-                  } else {
-                    contentToSet = restoredCloud.content;
-                    slugToSet = restoredCloud.slug;
-                    if (Number.isNaN(localUpdatedAt)) {
-                      mergeMessage =
-                        "We found local draft changes made before you logged in that couldn't be dated, so your saved portfolio was kept. Re-apply those changes if you still need them.";
-                    }
-                  }
-                }
-              } else {
-                contentToSet = restoredCloud.content;
-                slugToSet = restoredCloud.slug;
-              }
-            } else {
-              // No cloud draft exists yet.
-              if (cached) {
-                shouldSyncLocalToCloud = true;
-              } else {
-                const seeded = createDefaultPortfolio(user ?? undefined);
-                contentToSet = seeded;
-                slugToSet = defaultSubdomain(user);
-                shouldSyncLocalToCloud = true;
-              }
-            }
+            // A guest draft in this browser may be someone else's (a shared computer), so it is
+            // never carried into the account unasked: the owner chooses (`keepGuestDraft`,
+            // `discardGuestDraft`). One that matches the cloud copy has nothing to offer.
+            const sameAsCloud =
+              !!cloudDraft &&
+              !!cached &&
+              cached.slug === cloudDraft.slug &&
+              JSON.stringify(cached.content) === JSON.stringify(cloudDraft.content);
+            if (sameAsCloud) clearPortfolioCache();
 
             set({
               user,
-              draft: draftToSet,
+              draft: cloudDraft,
               content: contentToSet,
               slug: slugToSet,
+              guestDraft:
+                cached && !sameAsCloud
+                  ? { content: cached.content, slug: cached.slug, replacesCloud: !!cloudDraft }
+                  : null,
               publication: portfolioPayload?.data?.publication ?? null,
               billing: portfolioPayload?.data?.billing ?? { canPublish: false, status: "INACTIVE" },
               analyticsData: analytics,
-              message: mergeMessage,
+              message: "",
               workspaceState: "ready",
               ready: true,
             });
 
-            // No caller is waiting on this save, so its failure goes to the notice. Once the
-            // guest draft is in the account (or lost to a newer cloud copy) it is not carried
-            // in again.
-            if (cached && !shouldSyncLocalToCloud) clearPortfolioCache();
-            if (shouldSyncLocalToCloud) {
+            // A new account gets its first draft now. No caller is waiting on this save, so its
+            // failure goes to the notice.
+            if (!cloudDraft) {
               void get()
                 .saveDraft()
                 .then((result) => {
-                  if (result.ok) clearPortfolioCache();
-                  else set({ message: result.message });
+                  if (!result.ok) set({ message: result.message });
                 });
             }
           } catch (error) {
@@ -922,6 +876,26 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
         // Keep mine: this content, saved at the revision the cloud copy has now, overwriting it.
         set({ draft: cloud, isDirty: true, status: "Unsaved changes", saveIssue: null });
         return get().saveDraft();
+      },
+
+      keepGuestDraft: async () => {
+        const guest = get().guestDraft;
+        if (!guest) return { ok: true, message: "" };
+        set((state) => ({
+          content: guest.content,
+          // A guest default like "portfolio" is reserved; keep the account's own then.
+          slug: isAllowedSubdomain(guest.slug) ? guest.slug : state.slug,
+          guestDraft: null,
+          ...touched(state),
+        }));
+        const result = await get().saveDraft();
+        if (result.ok) clearPortfolioCache();
+        return result;
+      },
+
+      discardGuestDraft: () => {
+        clearPortfolioCache();
+        set({ guestDraft: null });
       },
 
       ...preloaded,

@@ -11,7 +11,7 @@ import { createDefaultPortfolio, type PortfolioContent } from "@/lib/portfolio";
 import { StructureRail } from "@/components/dashboard/editor/StructureRail";
 import { ContentCanvas } from "@/components/dashboard/editor/ContentCanvas";
 import { PortfolioEditorWorkspace } from "@/components/dashboard/editor/PortfolioEditorWorkspace";
-import { previewProject, showsBadge } from "@/components/LivePortfolioPreview";
+import { isEditorMessage, previewProject, showsBadge } from "@/components/LivePortfolioPreview";
 
 /**
  * `renderToStaticMarkup` runs no effects, so it reproduces exactly what the server
@@ -398,6 +398,18 @@ describe("editor preview follows the live rules (P-059)", () => {
   it("previews the selected sub-page's sections", () => {
     expect(previewProject(content, "p1").sections).toEqual([completeContent.sections[1]]);
     expect(previewProject(content, null).sections).toBe(content.sections);
+  });
+  // S4: another same-origin tab or frame must not be able to drive the preview.
+  it("takes content only from the editor that framed it", () => {
+    const editor = {};
+    const self = { location: { origin: "https://portfolio.test" }, parent: editor };
+    const data = { type: "veriworkly:portfolio-preview", content };
+    const message = { origin: "https://portfolio.test", source: editor, data };
+
+    expect(isEditorMessage(message as never, self)).toBe(true);
+    expect(isEditorMessage({ ...message, source: {} } as never, self)).toBe(false);
+    expect(isEditorMessage({ ...message, origin: "https://evil.test" } as never, self)).toBe(false);
+    expect(isEditorMessage({ ...message, data: { type: "other" } } as never, self)).toBe(false);
   });
 });
 

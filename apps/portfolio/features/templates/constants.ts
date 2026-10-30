@@ -12,24 +12,17 @@ export function templateEditorHref(templateId: string) {
 }
 
 // Only these templates have a hand-made card in public/og/templates; the others use their
-// generated card from /api/template/<id>/og.
+// generated sample card from /api/template/<id>/og.
 const STATIC_OG_TEMPLATES = new Set(["signal", "atelier"]);
 
-export function templateOgImage(
-  template: { id: string; name: string; note: string },
-  kind: "page" | "preview",
-) {
+export function templateOgImage(template: { id: string }, kind: "page" | "preview") {
   if (STATIC_OG_TEMPLATES.has(template.id)) {
     return kind === "page"
       ? `/og/templates/${template.id}-template-page-og.png`
       : `/og/templates/preview/${template.id}-preview-page-og.png`;
   }
 
-  const params = new URLSearchParams({
-    name: `${template.name} template`,
-    headline: template.note,
-  });
-  return `/api/template/${template.id}/og?${params.toString()}`;
+  return `/api/template/${template.id}/og`;
 }
 
 export const premiumBadge =

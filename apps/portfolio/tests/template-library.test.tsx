@@ -437,7 +437,7 @@ describe("template gallery (P-061, P-079)", () => {
 
       expect(previewMeta.robots).toEqual({ index: false, follow: true });
       const image = JSON.stringify(detailMeta.openGraph?.images);
-      if (template.isPremium) expect(image).toContain(`/api/template/${template.id}/og?`);
+      if (template.isPremium) expect(image).toContain(`/api/template/${template.id}/og"`);
       else expect(image).toContain(`/og/templates/${template.id}-template-page-og.png`);
     }
 

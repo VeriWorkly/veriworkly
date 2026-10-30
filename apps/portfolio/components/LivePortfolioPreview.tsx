@@ -25,6 +25,21 @@ export function showsBadge(content: PortfolioContent, canPublish: boolean) {
   return !(canPublish && content.removeWatermark);
 }
 
+/**
+ * Only the editor that framed this preview may drive it: same origin, and sent by the parent
+ * window. Another same-origin tab or frame could otherwise post content into it (S4).
+ */
+export function isEditorMessage(
+  event: Pick<MessageEvent, "origin" | "source" | "data">,
+  self: { location: { origin: string }; parent: unknown },
+) {
+  return (
+    event.origin === self.location.origin &&
+    event.source === self.parent &&
+    event.data?.type === "veriworkly:portfolio-preview"
+  );
+}
+
 export function LivePortfolioPreview({
   initialContent,
   canPublish,
@@ -37,11 +52,7 @@ export function LivePortfolioPreview({
 
   useEffect(() => {
     const receive = (event: MessageEvent) => {
-      if (
-        event.origin !== window.location.origin ||
-        event.data?.type !== "veriworkly:portfolio-preview"
-      )
-        return;
+      if (!isEditorMessage(event, window)) return;
       setContent((current) => parsePortfolioContent(event.data.content, current));
       setPageId(typeof event.data.pageId === "string" ? event.data.pageId : null);
     };

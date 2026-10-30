@@ -15,6 +15,7 @@ export function WorkspaceNotice() {
   const message = usePortfolioStore((state) => state.message);
   const setMessage = usePortfolioStore((state) => state.setMessage);
   const conflict = usePortfolioStore((state) => state.status === "Conflict");
+  const guestDraft = usePortfolioStore((state) => state.guestDraft !== null);
 
   useEffect(() => {
     if (!message) return;
@@ -24,6 +25,7 @@ export function WorkspaceNotice() {
 
   // A conflict stays on screen until it is resolved: autosave is stopped until then.
   if (conflict) return <ConflictNotice />;
+  if (guestDraft) return <GuestDraftNotice />;
 
   return message ? (
     <div
@@ -81,6 +83,55 @@ function ConflictNotice() {
           type="button"
         >
           Keep mine
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A draft made in this browser before signing in. It may be another person's on a shared
+ * computer, so it only reaches the account when the owner asks for it.
+ */
+function GuestDraftNotice() {
+  const keepGuestDraft = usePortfolioStore((state) => state.keepGuestDraft);
+  const discardGuestDraft = usePortfolioStore((state) => state.discardGuestDraft);
+  const replacesCloud = usePortfolioStore((state) => state.guestDraft?.replacesCloud === true);
+  const [pending, setPending] = useState(false);
+
+  const bringIn = async () => {
+    setPending(true);
+    const result = await keepGuestDraft();
+    setPending(false);
+    if (result.ok) toast.success("Your earlier draft is now in your account.");
+    else toast.error(result.message);
+  };
+
+  return (
+    <div
+      className="fixed right-4 bottom-4 left-4 z-50 rounded-sm bg-[#171717] px-4 py-3 text-xs font-bold text-white shadow-xl sm:left-auto sm:max-w-sm"
+      role="alert"
+    >
+      <p>Bring in the draft you made before signing in?</p>
+      {replacesCloud ? (
+        <p className="mt-1 font-medium text-white/70">It replaces the draft in your account.</p>
+      ) : null}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          className={`${button} bg-white text-[#171717]`}
+          disabled={pending}
+          onClick={() => void bringIn()}
+          type="button"
+        >
+          Bring in
+        </button>
+        <button
+          className={`${button} border border-white/25 text-white`}
+          disabled={pending}
+          onClick={discardGuestDraft}
+          type="button"
+        >
+          Discard
         </button>
       </div>
     </div>
