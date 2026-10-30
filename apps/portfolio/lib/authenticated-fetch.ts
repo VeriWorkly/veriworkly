@@ -5,8 +5,23 @@ import { siteConfig } from "@/config/site";
 
 let cleanupPromise: Promise<void> | null = null;
 
-function isInvalidSessionResponse(path: string, status: number) {
+// Whether this tab is signed in, set from the workspace store. A guest has no session to lose:
+// a 401 on their request is the normal answer, not an expired login, so it must never sign them
+// out and throw them to the studio login mid-edit (P-034, P-005).
+let signedIn = false;
+
+export function setSignedIn(value: boolean) {
+  signedIn = value;
+}
+
+export function isInvalidSessionResponse(path: string, status: number, hadSession: boolean) {
+  if (!hadSession) return false;
   return status === 401 || (status === 404 && path.split("?")[0] === "/users/me");
+}
+
+/** The studio login, coming back to this page. Studio is another origin, so a full page load. */
+export function studioLoginUrl() {
+  return `${siteConfig.links.app}/login?callbackURL=${encodeURIComponent(window.location.href)}`;
 }
 
 async function clearInvalidSessionAndRedirect() {
@@ -21,10 +36,7 @@ async function clearInvalidSessionAndRedirect() {
         body: JSON.stringify({}),
       });
     } finally {
-      const loginUrl = `${siteConfig.links.app}/login`;
-      window.location.replace(
-        `${loginUrl}?callbackURL=${encodeURIComponent(window.location.href)}`,
-      );
+      window.location.replace(studioLoginUrl());
     }
   })();
 
@@ -47,7 +59,7 @@ export async function authenticatedFetch(path: string, init?: RequestInit) {
       signal: init?.signal ?? controller?.signal,
     });
 
-    if (isInvalidSessionResponse(path, response.status)) {
+    if (isInvalidSessionResponse(path, response.status, signedIn)) {
       await clearInvalidSessionAndRedirect();
     }
 

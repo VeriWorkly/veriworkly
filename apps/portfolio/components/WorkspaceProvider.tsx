@@ -11,6 +11,7 @@ import {
   usePortfolioStore,
 } from "@/store/portfolio-store";
 import { loadPortfolioCache } from "@/lib/portfolio-storage";
+import { setSignedIn } from "@/lib/authenticated-fetch";
 import { WorkspaceNotice } from "@/components/WorkspaceNotice";
 
 interface WorkspaceContextType {
@@ -110,6 +111,9 @@ function WorkspaceBridge({
   const ready = usePortfolioStore((state) => state.ready);
   const billing = usePortfolioStore((state) => state.billing);
   const publication = usePortfolioStore((state) => state.publication);
+
+  // Only a signed-in tab may be signed out by a 401; a guest just gets an inline "Log in" prompt.
+  useEffect(() => setSignedIn(!!user), [user]);
 
   // `ready` is already true on the first render whenever the server supplied a workspace,
   // so this normally reads from the store immediately. The fallback still matters for

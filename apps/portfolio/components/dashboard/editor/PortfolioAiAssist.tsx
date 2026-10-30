@@ -4,9 +4,17 @@ import { useEffect, useState } from "react";
 
 import { Sparkles, X } from "lucide-react";
 
-import { generateAiContent, getAiActions, type AiActionPolicy, type AiMode } from "@/lib/ai-client";
+import {
+  generateAiContent,
+  getAiActions,
+  getAvailableCredits,
+  type AiActionPolicy,
+  type AiMode,
+} from "@/lib/ai-client";
+import { usePortfolioStore } from "@/store/portfolio-store";
 
 import { actionClass, inputClass } from "./constants";
+import { LogInPrompt } from "./LogInPrompt";
 
 export function PortfolioAiAssist({
   text,
@@ -26,13 +34,17 @@ export function PortfolioAiAssist({
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [actions, setActions] = useState<AiActionPolicy | null>(null);
+  // AI needs an account: a guest gets a login link, and nothing is fetched for them (P-034).
+  const signedIn = usePortfolioStore((state) => !!state.user);
 
   useEffect(() => {
-    if (!open || actions) return;
+    if (!open || actions || !signedIn) return;
     void getAiActions()
       .then(setActions)
       .catch((error) => setMessage(error.message));
-  }, [actions, open]);
+  }, [actions, open, signedIn]);
+
+  if (!signedIn) return <LogInPrompt>Log in to use AI</LogInPrompt>;
 
   if (!open) {
     return (
@@ -122,8 +134,13 @@ export function PortfolioAiAssist({
                 documentId,
               });
               setResult(response.content);
+              // `credits.balance` here is the wallet balance, which can still count expired
+              // credits; what can be spent is the wallet's `available` (P-042).
+              const available = await getAvailableCredits();
               setMessage(
-                `${response.credits.spent} credits used. Balance ${response.credits.balance}.`,
+                available == null
+                  ? `${response.credits.spent} credits used.`
+                  : `${response.credits.spent} credits used. ${available} available.`,
               );
             } catch (error) {
               setMessage(error instanceof Error ? error.message : "AI generation failed.");

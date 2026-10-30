@@ -42,6 +42,18 @@ export function getAiActions() {
   return actionsPromise;
 }
 
+/** Credits that can be spent now (GET /billing/credits `available`), or null if unknown. */
+export async function getAvailableCredits() {
+  try {
+    const wallet = await readResponse<{ available?: unknown }>(
+      await authenticatedFetch("/billing/credits"),
+    );
+    return typeof wallet.available === "number" ? wallet.available : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function generateAiContent(input: {
   action: AiAction;
   mode: AiMode;
