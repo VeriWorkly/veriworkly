@@ -4,10 +4,11 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { isPremiumTemplate } from "@/lib/portfolio";
 import { uploadPortfolioAsset } from "@/lib/portfolio-assets";
-import { isPortfolioPubliclyVisible } from "@/lib/portfolio-status";
+import { hasPortfolioAccess, isPortfolioPubliclyVisible } from "@/lib/portfolio-status";
 import { portfolioWorkspaceUrl } from "@/config/site";
-import { usePortfolioStore } from "@/store/portfolio-store";
+import { usePortfolioStore, type ActionResult } from "@/store/portfolio-store";
 import { useWorkspace } from "@/components/WorkspaceProvider";
+import { PublicationStatusCard } from "@/components/dashboard/PublicationStatusCard";
 import { SettingsHeader } from "./SettingsHeader";
 import { SettingsForm } from "./SettingsForm";
 import { SettingsPreviews } from "./SettingsPreviews";
@@ -29,8 +30,15 @@ export function PortfolioSettingsWorkspace() {
   const publish = usePortfolioStore((state) => state.publish);
   const { isAdmin } = useWorkspace();
   const [uploading, setUploading] = useState(false);
+  // A save or publish refused over the subdomain (taken, reserved) is shown by the field.
+  const [subdomainIssue, setSubdomainIssue] = useState<string>();
+  const report = (result: ActionResult, success: string) => {
+    setSubdomainIssue(!result.ok && /subdomain/i.test(result.message) ? result.message : undefined);
+    if (result.ok) toast.success(success);
+    else toast.error(result.message);
+  };
 
-  const isPremium = billing.canPublish;
+  const isPremium = hasPortfolioAccess(billing);
   // Mirrors EditorCommandBar's publish gate — saving settings for an already-live portfolio
   // re-publishes it, so it needs the same production block (enforced server-side either way).
   const publishingDisabledInProd = isProd && !isAdmin;
@@ -46,19 +54,16 @@ export function PortfolioSettingsWorkspace() {
 
       if (isPremiumTemplate(content.templateId) && !isPremium) {
         toast.error(
-          `"${content.templateId}" is a premium template. Upgrade to Creator Pro to save live settings.`,
+          `"${content.templateId}" is a premium template. Creator Pro, the Job Hunter Bundle or a pass is needed to update your live site, or switch to Signal or Atelier.`,
         );
         return;
       }
-      const result = await publish();
-      if (result.ok) toast.success("Settings saved and your live site updated.");
-      else toast.error(result.message);
+      report(await publish(), "Settings saved and your live site updated.");
       return;
     }
 
     const result = await saveDraft();
-    if (result.ok) toast.success(user ? "Settings saved." : result.message);
-    else toast.error(result.message);
+    report(result, user ? "Settings saved." : result.message);
   };
 
   const updateSeo = (patch: Partial<typeof content.seo>) =>
@@ -71,7 +76,7 @@ export function PortfolioSettingsWorkspace() {
       return;
     }
     if (!isPremium) {
-      toast.error("Uploading custom sharing images requires an active Creator Pro subscription.");
+      toast.error("Custom sharing images come with Creator Pro, the Job Hunter Bundle or a pass.");
       return;
     }
     setUploading(true);
@@ -95,15 +100,24 @@ export function PortfolioSettingsWorkspace() {
     <main className="mx-auto max-w-[1500px] px-4 py-7 sm:px-6 sm:py-9 xl:px-10">
       <SettingsHeader status={status} onSave={() => void handleSave()} />
 
+      <div className="mt-6">
+        <PublicationStatusCard />
+      </div>
+
       <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,.85fr)_minmax(24rem,1.15fr)]">
         <SettingsForm
           slug={slug}
-          updateSlug={updateSlug}
+          updateSlug={(value) => {
+            setSubdomainIssue(undefined);
+            updateSlug(value);
+          }}
           seo={content.seo}
           updateSeo={updateSeo}
           uploading={uploading}
           onUpload={(file) => void upload(file)}
           isPremium={isPremium}
+          signedIn={Boolean(user)}
+          subdomainIssue={subdomainIssue}
         />
 
         <SettingsPreviews

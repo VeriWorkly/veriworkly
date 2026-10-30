@@ -27,7 +27,9 @@ export function DashboardMetrics({
       <Metric
         label="Portfolio views"
         value={analyticsLocked ? "—" : String(totalViews)}
-        detail={analyticsLocked ? "Available on Creator Pro" : "All-time public views"}
+        detail={
+          analyticsLocked ? "With Creator Pro, the Bundle or a pass" : "All-time public views"
+        }
         icon={<Eye size={16} />}
       />
       <Metric

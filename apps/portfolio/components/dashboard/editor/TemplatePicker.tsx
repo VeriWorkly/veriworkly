@@ -1,8 +1,10 @@
 import Image from "next/image";
+import Link from "next/link";
 import { X } from "lucide-react";
 import { Modal } from "@veriworkly/ui";
 import { templates as templateCatalog } from "@/templates/catalog/templates";
 import { usePortfolioStore } from "@/store/portfolio-store";
+import { hasPortfolioAccess, upgradeHref } from "@/lib/portfolio-status";
 
 export interface TemplatePickerProps {
   open: boolean;
@@ -12,7 +14,7 @@ export interface TemplatePickerProps {
 export function TemplatePicker({ open, onClose }: TemplatePickerProps) {
   const activeTemplateId = usePortfolioStore((state) => state.content.templateId);
   const updateContent = usePortfolioStore((state) => state.updateContent);
-  const isPremiumUser = usePortfolioStore((state) => state.billing.status === "ACTIVE");
+  const isPremiumUser = usePortfolioStore((state) => hasPortfolioAccess(state.billing));
 
   return (
     <Modal open={open} onClose={onClose}>
@@ -42,24 +44,8 @@ export function TemplatePicker({ open, onClose }: TemplatePickerProps) {
         <div className="grid gap-4 overflow-y-auto p-4 md:grid-cols-2">
           {templateCatalog.map((template) => {
             const isDisabled = template.isPremium && !isPremiumUser;
-            return (
-              <button
-                key={template.id}
-                disabled={isDisabled}
-                className={`group relative overflow-hidden rounded-xl border text-left transition ${
-                  activeTemplateId === template.id
-                    ? "border-accent ring-accent-soft ring-2"
-                    : isDisabled
-                      ? "border-line cursor-not-allowed opacity-60"
-                      : "border-line hover:border-line-strong"
-                }`}
-                onClick={() => {
-                  if (isDisabled) return;
-                  updateContent({ templateId: template.id });
-                  onClose();
-                }}
-                type="button"
-              >
+            const card = (
+              <>
                 {template.isPremium && (
                   <div className="bg-accent absolute top-3 right-3 z-10 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-widest text-white">
                     PRO
@@ -82,7 +68,46 @@ export function TemplatePicker({ open, onClose }: TemplatePickerProps) {
                     </span>
                   </div>
                   <p className="text-muted mt-2 text-xs leading-5">{template.note}</p>
+                  {isDisabled ? (
+                    <p className="text-accent mt-2 text-xs font-bold">
+                      Creator Pro, the Job Hunter Bundle or a pass unlocks {template.name}. See
+                      plans
+                    </p>
+                  ) : null}
                 </div>
+              </>
+            );
+            // A locked template leads to the plans that unlock it instead of doing nothing.
+            if (isDisabled) {
+              return (
+                <Link
+                  key={template.id}
+                  href={upgradeHref(template.id)}
+                  className={`group relative overflow-hidden rounded-xl border text-left transition ${
+                    activeTemplateId === template.id
+                      ? "border-accent ring-accent-soft ring-2"
+                      : "border-line hover:border-line-strong"
+                  }`}
+                >
+                  {card}
+                </Link>
+              );
+            }
+            return (
+              <button
+                key={template.id}
+                className={`group relative overflow-hidden rounded-xl border text-left transition ${
+                  activeTemplateId === template.id
+                    ? "border-accent ring-accent-soft ring-2"
+                    : "border-line hover:border-line-strong"
+                }`}
+                onClick={() => {
+                  updateContent({ templateId: template.id });
+                  onClose();
+                }}
+                type="button"
+              >
+                {card}
               </button>
             );
           })}

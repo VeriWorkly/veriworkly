@@ -5,6 +5,7 @@ import { backendApiUrl, firstPartyServerHeaders } from "@/lib/backend";
 import { fetchServerApiData } from "@/lib/server-api";
 import { parsePortfolioContent, createDefaultPortfolio } from "@/lib/portfolio";
 import { LivePortfolioPreview } from "@/components/LivePortfolioPreview";
+import { hasPortfolioAccess } from "@/lib/portfolio-status";
 import { Metadata } from "next";
 
 export async function generateMetadata({
@@ -50,13 +51,13 @@ export async function generateMetadata({
 export default async function PreviewPage({ params }: { params: Promise<{ documentId: string }> }) {
   const { documentId } = await params;
   if (documentId === "guest") {
-    return <LivePortfolioPreview initialContent={createDefaultPortfolio()} isPremium={false} />;
+    return <LivePortfolioPreview initialContent={createDefaultPortfolio()} canPublish={false} />;
   }
 
   const billingData = await fetchServerApiData<{ billing: { canPublish: boolean } }>(
     "/portfolios/me",
   ).catch(() => null);
-  const isPremium = billingData?.billing?.canPublish ?? false;
+  const canPublish = hasPortfolioAccess(billingData?.billing);
 
   let response: Response;
   try {
@@ -76,7 +77,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ docume
   return (
     <LivePortfolioPreview
       initialContent={parsePortfolioContent(payload.data.content)}
-      isPremium={isPremium}
+      canPublish={canPublish}
     />
   );
 }

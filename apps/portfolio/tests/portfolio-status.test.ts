@@ -5,7 +5,19 @@ import { describe, expect, it } from "vitest";
 // with NODE_ENV=test, so `isDev` is false and the production hosts are asserted.
 import { portfolioWorkspaceUrl } from "@/config/site";
 import { createDefaultPortfolio, type PortfolioContent } from "@/lib/portfolio";
-import { getPortfolioReadiness, isPortfolioPubliclyVisible } from "@/lib/portfolio-status";
+import {
+  getPortfolioReadiness,
+  hasPortfolioAccess,
+  isPortfolioPubliclyVisible,
+  planLabel,
+  publicationNotice,
+} from "@/lib/portfolio-status";
+import {
+  checkSubdomain,
+  defaultSubdomain,
+  subdomainCheckMessage,
+  suggestSubdomain,
+} from "@/lib/subdomain";
 
 function contentWith(patch: Partial<PortfolioContent> = {}): PortfolioContent {
   return { ...createDefaultPortfolio(), ...patch };
@@ -132,5 +144,114 @@ describe("portfolioWorkspaceUrl", () => {
       href: "https://gautam.veriworkly.com",
       display: "gautam.veriworkly.com",
     });
+  });
+});
+
+describe("paid portfolio access (P-010)", () => {
+  it("follows canPublish, not the subscription status", () => {
+    // A pass has no subscription row; an AI Credits plan is ACTIVE but buys no portfolio access.
+    expect(hasPortfolioAccess({ canPublish: true, plan: "BUNDLE" })).toBe(true);
+    expect(hasPortfolioAccess({ canPublish: false, plan: "AI_CREDITS" })).toBe(false);
+    expect(hasPortfolioAccess(null)).toBe(false);
+  });
+});
+
+describe("planLabel", () => {
+  it("names every paid state and never calls a payer free", () => {
+    expect(planLabel({ access: { tier: "pass", isPaying: true } })).toBe("Job Hunter pass");
+    expect(planLabel({ access: { tier: "ai_credits", isPaying: true } })).toBe("AI Credits");
+    expect(planLabel({ access: { tier: "credits", isPaying: true } })).toBe("Credits customer");
+    expect(planLabel({ plan: "PORTFOLIO_PRO" })).toBe("Creator Pro");
+    expect(planLabel({ plan: "FREE", access: { tier: "free", isPaying: true } })).toBe(
+      "Credits customer",
+    );
+    expect(planLabel({ plan: "FREE", access: { tier: "free", isPaying: false } })).toBe("Free");
+  });
+});
+
+describe("publicationNotice (P-014, P-033)", () => {
+  const day = (iso: string) => iso.slice(0, 10);
+
+  it("maps each state to its copy and action", () => {
+    const cases = [
+      [null, "Not published yet", "publish"],
+      [{ status: "LIVE", offlineReason: null }, "Live", null],
+      [{ status: "GRACE", offlineReason: null }, "Plan ended", "renew"],
+      [{ status: "SUSPENDED", offlineReason: "owner" }, "Offline", "republish"],
+      [{ status: "SUSPENDED", offlineReason: "billing" }, "Offline", "republish"],
+      [{ status: "SUSPENDED", offlineReason: "moderation" }, "Taken down", "support"],
+    ] as const;
+
+    for (const [publication, label, action] of cases) {
+      const notice = publicationNotice(publication, null, day);
+      expect([notice.label, notice.action]).toEqual([label, action]);
+    }
+  });
+
+  it("dates grace and a cancelled plan", () => {
+    expect(
+      publicationNotice({ status: "GRACE" }, { graceEndsAt: "2026-11-06T00:00:00Z" }, day).detail,
+    ).toBe(
+      "Your plan ended. Your site keeps its paid features until 2026-11-06, then moves to the free tier (Signal or Atelier with the badge). Renew to keep them.",
+    );
+    expect(
+      publicationNotice(
+        { status: "LIVE" },
+        { cancelAtPeriodEnd: true, accessEndsAt: "2026-12-01T00:00:00Z" },
+        day,
+      ).planEnds,
+    ).toBe("Your plan ends on 2026-12-01.");
+  });
+});
+
+describe("subdomains (P-023, P-019)", () => {
+  it("never starts a portfolio on a reserved or empty subdomain", () => {
+    expect(defaultSubdomain({ name: "Gautam Raj" })).toBe("gautam-raj");
+    expect(defaultSubdomain({ name: "José" })).toBe("jose");
+    expect(defaultSubdomain({ name: "Designer" })).toBe("designer-portfolio");
+    expect(defaultSubdomain({ name: "李明", email: "li.ming@example.com" })).toBe("li-ming");
+    expect(defaultSubdomain({ name: "", email: "" })).toBe("my-portfolio");
+    expect(defaultSubdomain(null)).toBe("my-portfolio");
+  });
+
+  it("suggests the name with four digits", () => {
+    expect(suggestSubdomain("gautam", () => 0)).toBe("gautam-1000");
+  });
+
+  it("reads the availability answer into taken, not allowed or available", async () => {
+    const answer = (status: number, body: unknown) => async () =>
+      new Response(JSON.stringify(body), { status });
+
+    const free = await checkSubdomain("gautam", answer(200, { data: { available: true } }));
+    const taken = await checkSubdomain("gautam", answer(200, { data: { available: false } }));
+    const refused = await checkSubdomain("xn-abc", answer(200, {}));
+    const invalid = await checkSubdomain("gautam", answer(400, { message: "Choose a valid" }));
+
+    expect(subdomainCheckMessage(free)).toBe("gautam.veriworkly.com is available.");
+    expect(subdomainCheckMessage(taken)).toBe(
+      "gautam.veriworkly.com is taken. Choose another name.",
+    );
+    expect(taken.state === "taken" && taken.suggestion).toMatch(/^gautam-\d{4}$/);
+    expect(refused.state).toBe("not-allowed");
+    expect(subdomainCheckMessage(invalid)).toBe(
+      '"gautam" is reserved or not allowed. Choose another name.',
+    );
+  });
+});
+
+describe("reserved subdomains stay in step with the server", () => {
+  it("lists exactly the names apps/server/src/utils/slugs.ts refuses", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { RESERVED_SUBDOMAINS } = await import("@/lib/subdomain");
+    const source = readFileSync(
+      join(__dirname, "..", "..", "server", "src", "utils", "slugs.ts"),
+      "utf8",
+    );
+    // RESERVED_SUBDOMAINS on the server spreads RESERVED_USERNAMES and adds its own names.
+    const blocks = [...source.matchAll(/new Set\(\[([\s\S]*?)\]\)/g)].slice(0, 2);
+    const server = new Set(blocks.flatMap((block) => block[1].match(/"[a-z0-9-]+"/g) ?? []));
+
+    expect([...RESERVED_SUBDOMAINS].map((name) => `"${name}"`).sort()).toEqual([...server].sort());
   });
 });

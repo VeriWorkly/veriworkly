@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Laptop, Monitor, PanelLeftOpen, PanelRightOpen, Smartphone } from "lucide-react";
 import { usePortfolioStore } from "@/store/portfolio-store";
 
@@ -23,15 +23,23 @@ export function PreviewStage({
   const content = usePortfolioStore((state) => state.content);
   const draft = usePortfolioStore((state) => state.draft);
   const ready = usePortfolioStore((state) => state.ready);
+  const pageId = usePortfolioStore((state) => state.selectedPageId);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const width = { mobile: 390, tablet: 768, desktop: "100%" }[viewport];
 
+  // The page selected in the editor goes along, so editing a sub-page previews that page.
+  const sendPreview = useCallback(
+    () =>
+      frameRef.current?.contentWindow?.postMessage(
+        { type: "veriworkly:portfolio-preview", content, pageId },
+        window.location.origin,
+      ),
+    [content, pageId],
+  );
+
   useEffect(() => {
-    frameRef.current?.contentWindow?.postMessage(
-      { type: "veriworkly:portfolio-preview", content },
-      window.location.origin,
-    );
-  }, [content]);
+    sendPreview();
+  }, [sendPreview]);
 
   function setPreviewViewport(next: "mobile" | "tablet" | "desktop") {
     setViewport(next);
@@ -93,12 +101,7 @@ export function PreviewStage({
             ref={frameRef}
             title="Live portfolio preview"
             src={`/preview/${draft ? draft.id : "guest"}`}
-            onLoad={() =>
-              frameRef.current?.contentWindow?.postMessage(
-                { type: "veriworkly:portfolio-preview", content },
-                window.location.origin,
-              )
-            }
+            onLoad={sendPreview}
             style={{ width }}
             className="bg-panel shadow-shadow h-full min-h-[640px] shrink-0 border-0 transition-[width] duration-300"
           />

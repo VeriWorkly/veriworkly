@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Publication } from "@/store/portfolio-store";
 
 // Must be set before `@/store/portfolio-store` (and its `@/lib/backend`
 // import) is first evaluated, since backendApiUrl reads these into
@@ -471,7 +472,7 @@ describe("portfolio store", () => {
       content: baseContent,
     };
 
-    function signedIn(publication: { subdomain: string; status: "LIVE" } | null = null) {
+    function signedIn(publication: Publication = null) {
       return createPortfolioStore({
         user: { name: "Gautam Raj", email: "gautam@veriworkly.com" },
         draft: { ...savedDraft, revision: 1 } as never,
@@ -552,8 +553,12 @@ describe("portfolio store", () => {
       expect(publishCalled).toBe(false);
     });
 
-    it("reports a published site as live", async () => {
-      const publishing = signedIn();
+    it("reports a republished site as live and no longer offline", async () => {
+      const publishing = signedIn({
+        subdomain: "gautam",
+        status: "SUSPENDED",
+        offlineReason: "owner",
+      });
       stubApi({
         "/portfolios/draft": () => jsonResponse(savedDraft),
         "/portfolios/publish": () =>
@@ -563,7 +568,11 @@ describe("portfolio store", () => {
       const result = await publishing.getState().publish();
 
       expect(result.ok).toBe(true);
-      expect(publishing.getState().publication).toEqual({ subdomain: "gautam", status: "LIVE" });
+      expect(publishing.getState().publication).toEqual({
+        subdomain: "gautam",
+        status: "LIVE",
+        offlineReason: null,
+      });
     });
 
     it("tells a stale draft apart from a refused one on save", async () => {
@@ -599,6 +608,8 @@ describe("portfolio store", () => {
 
       expect(result.ok).toBe(true);
       expect(live.getState().publication?.status).toBe("SUSPENDED");
+      // The status card then says the owner took it offline and offers Republish.
+      expect(live.getState().publication?.offlineReason).toBe("owner");
     });
 
     it("treats a 404 unpublish as already offline", async () => {
@@ -625,5 +636,25 @@ describe("portfolio store", () => {
       expect(result).toEqual({ ok: false, status: 500, message: "Something went wrong." });
       expect(live.getState().publication?.status).toBe("LIVE");
     });
+  });
+});
+
+describe("hydration keeps what the dashboard needs", () => {
+  it("keeps the server's offlineReason and never defaults to a reserved subdomain", async () => {
+    const { buildHydratedState } = await import("@/store/portfolio-store");
+
+    const state = buildHydratedState({
+      user: { name: "Designer", email: "d@example.com" },
+      workspace: {
+        draft: undefined,
+        publication: { subdomain: "old", status: "SUSPENDED", offlineReason: "moderation" },
+        billing: { canPublish: false, status: "INACTIVE" },
+      },
+      analytics: null,
+    });
+
+    expect(state.publication?.offlineReason).toBe("moderation");
+    // "designer" is reserved: every save of it used to fail with a 400 (P-023).
+    expect(state.slug).toBe("designer-portfolio");
   });
 });

@@ -17,6 +17,7 @@ import {
   type PortfolioSectionType,
   type PortfolioPage,
 } from "@/lib/portfolio";
+import { defaultSubdomain, isAllowedSubdomain } from "@/lib/subdomain";
 import { sectionLabels, sectionSubtitleDefaults } from "@/lib/section-fields";
 import {
   clearPortfolioCache,
@@ -27,8 +28,28 @@ import {
 export type SaveStatus =
   "Saving" | "Saved" | "Offline" | "Conflict" | "Publish pending" | "Unsaved changes";
 export type WorkspaceState = "loading" | "ready" | "error";
-export type Publication = { subdomain: string; status: "LIVE" | "GRACE" | "SUSPENDED" } | null;
-export type Billing = { canPublish: boolean; status: string; graceEndsAt?: string | null };
+/** Why a SUSPENDED site is offline (`GET /portfolios/me`); null while it is online. */
+export type OfflineReason = "moderation" | "owner" | "billing" | null;
+export type Publication = {
+  subdomain: string;
+  status: "LIVE" | "GRACE" | "SUSPENDED";
+  offlineReason?: OfflineReason;
+} | null;
+/** The slice of the server's billing summary the workspace reads. */
+export type Billing = {
+  /** The portfolio_publish grant is in effect: Creator Pro, the Bundle or an active pass. */
+  canPublish: boolean;
+  status: string;
+  plan?: "FREE" | "PORTFOLIO_PRO" | "AI_CREDITS" | "BUNDLE";
+  graceEndsAt?: string | null;
+  cancelAtPeriodEnd?: boolean;
+  currentPeriodEnd?: string | null;
+  accessEndsAt?: string | null;
+  access?: {
+    tier: "bundle" | "portfolio_pro" | "ai_credits" | "pass" | "credits" | "free";
+    isPaying: boolean;
+  };
+};
 export type EditorPanel = "profile" | "sections" | "style" | "sharing";
 export type PortfolioAnalyticsData = {
   // Set by the server when the account lacks the Creator Pro entitlement. The payload
@@ -66,6 +87,11 @@ async function fetchPayload(path: string, fallbackMessage: string, init?: Reques
     throw error;
   }
   return payload;
+}
+
+/** A guest's subdomain carried into an account; a guest default like "portfolio" is reserved. */
+function accountSlug(slug: string, user: { name?: string | null; email?: string | null } | null) {
+  return isAllowedSubdomain(slug) ? slug : defaultSubdomain(user);
 }
 
 // Module-level (not store state) so concurrent `loadWorkspace()` calls can
@@ -107,7 +133,7 @@ export function buildHydratedState({
     ? ({ ...cloud, content: parsePortfolioContent(cloud.content) } as CloudPortfolioDraft)
     : null;
   const content = restored?.content ?? createDefaultPortfolio(user ?? undefined);
-  const slug = restored?.slug ?? (normalizeSlug(user?.name || "portfolio") || "portfolio");
+  const slug = restored?.slug ?? defaultSubdomain(user);
   const isGuest = !user;
 
   return {
@@ -285,7 +311,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
   const store: StoreApi<PortfolioStoreState> = createStore<PortfolioStoreState>()(
     subscribeWithSelector((set, get) => ({
       content: createDefaultPortfolio(),
-      slug: "portfolio",
+      slug: defaultSubdomain(),
       draft: null,
       publication: null,
       billing: { canPublish: false, status: "INACTIVE" },
@@ -525,7 +551,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
                 user: null,
                 draft: null,
                 content: cached?.content ?? createDefaultPortfolio(),
-                slug: cached?.slug ?? "portfolio",
+                slug: cached?.slug ?? defaultSubdomain(),
                 publication: null,
                 billing: { canPublish: false, status: "INACTIVE" },
                 analyticsData: null,
@@ -565,8 +591,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
 
             let draftToSet: CloudPortfolioDraft | null = null;
             let contentToSet = cached?.content ?? createDefaultPortfolio(user ?? undefined);
-            let slugToSet =
-              cached?.slug ?? (normalizeSlug(user?.name || "portfolio") || "portfolio");
+            let slugToSet = cached ? accountSlug(cached.slug, user) : defaultSubdomain(user);
             let shouldSyncLocalToCloud = false;
             let mergeMessage = "";
 
@@ -604,7 +629,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
 
                   if (localIsNewer) {
                     contentToSet = cached.content;
-                    slugToSet = cached.slug;
+                    slugToSet = isAllowedSubdomain(cached.slug) ? cached.slug : restoredCloud.slug;
                     shouldSyncLocalToCloud = true;
                   } else {
                     contentToSet = restoredCloud.content;
@@ -626,7 +651,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
               } else {
                 const seeded = createDefaultPortfolio(user ?? undefined);
                 contentToSet = seeded;
-                slugToSet = normalizeSlug(user?.name || "portfolio") || "portfolio";
+                slugToSet = defaultSubdomain(user);
                 shouldSyncLocalToCloud = true;
               }
             }
@@ -664,7 +689,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
                 user: null,
                 draft: null,
                 content: cached?.content ?? createDefaultPortfolio(),
-                slug: cached?.slug ?? "portfolio",
+                slug: cached?.slug ?? defaultSubdomain(),
                 publication: null,
                 billing: { canPublish: false, status: "INACTIVE" },
                 analyticsData: null,
@@ -732,7 +757,9 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
               message: serverMessage(payload, "Your portfolio could not be published."),
             };
           }
-          set({ publication: { subdomain: payload.data.subdomain, status: "LIVE" } });
+          set({
+            publication: { subdomain: payload.data.subdomain, status: "LIVE", offlineReason: null },
+          });
           return { ok: true, message: `Published at ${payload.data.publicUrl}` };
         } catch {
           return {
@@ -746,7 +773,9 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
         if (!get().user) return { ok: false, message: "Please log in to manage your site." };
         const offline = () => {
           const pub = get().publication;
-          set({ publication: pub ? { ...pub, status: "SUSPENDED" } : null });
+          set({
+            publication: pub ? { ...pub, status: "SUSPENDED", offlineReason: "owner" } : null,
+          });
         };
         try {
           const response = await authenticatedFetch("/portfolios/unpublish", { method: "POST" });

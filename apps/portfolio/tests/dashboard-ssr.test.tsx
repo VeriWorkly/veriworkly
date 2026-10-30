@@ -8,6 +8,9 @@ import { PortfolioAnalyticsWorkspace } from "@/components/dashboard/analytics/Po
 import { PortfolioDashboardWorkspace } from "@/components/dashboard/overview/PortfolioDashboardWorkspace";
 import { PortfolioSettingsWorkspace } from "@/components/dashboard/settings/PortfolioSettingsWorkspace";
 import { createDefaultPortfolio, type PortfolioContent } from "@/lib/portfolio";
+import { StructureRail } from "@/components/dashboard/editor/StructureRail";
+import { ContentCanvas } from "@/components/dashboard/editor/ContentCanvas";
+import { previewProject, showsBadge } from "@/components/LivePortfolioPreview";
 
 /**
  * `renderToStaticMarkup` runs no effects, so it reproduces exactly what the server
@@ -137,7 +140,7 @@ describe("dashboard server rendering", () => {
       <PortfolioDashboardWorkspace />,
     );
 
-    expect(markup).toContain("Available on Creator Pro");
+    expect(markup).toContain("With Creator Pro, the Bundle or a pass");
   });
 });
 
@@ -212,7 +215,7 @@ describe("analytics server rendering", () => {
 
     expect(markup).toContain("1234");
     expect(markup).toContain("news.ycombinator.com");
-    expect(markup).not.toContain("Upgrade to Pro");
+    expect(markup).not.toContain("/pricing?from=analytics");
   });
 
   it("ships no figures at all when the server locked the payload", () => {
@@ -223,10 +226,174 @@ describe("analytics server rendering", () => {
 
     // The lock is enforced server-side, so the numbers are absent from the payload
     // entirely rather than merely blurred by CSS.
-    expect(markup).toContain("Upgrade to Pro");
+    expect(markup).toContain("/pricing?from=analytics");
     expect(markup).not.toContain("1234");
     expect(markup).not.toContain("news.ycombinator.com");
     // And the hidden region is out of the accessibility tree.
     expect(markup).toContain("inert");
+  });
+});
+
+/** One rule for paid features (P-010) and the site status card (P-014, P-033). */
+type Overrides = {
+  billing?: Record<string, unknown> & { canPublish: boolean; status: string };
+  publication?: {
+    subdomain: string;
+    status: "LIVE" | "GRACE" | "SUSPENDED";
+    offlineReason?: "moderation" | "owner" | "billing" | null;
+  } | null;
+};
+
+function renderWith({ billing, publication }: Overrides, children: React.ReactNode) {
+  const data = bootstrap({ canPublish: false, locked: true });
+  const workspace = {
+    ...data.workspace,
+    ...(billing ? { billing } : {}),
+    ...(publication !== undefined ? { publication } : {}),
+  };
+
+  return renderToStaticMarkup(
+    <WorkspaceProvider initialData={{ ...data, workspace }}>
+      <AnalyticsProvider analytics={data.analytics}>{children}</AnalyticsProvider>
+    </WorkspaceProvider>,
+  );
+}
+
+const passHolder = {
+  canPublish: true,
+  status: "INACTIVE",
+  plan: "BUNDLE" as const,
+  access: { tier: "pass" as const, isPaying: true },
+};
+const aiOnly = {
+  canPublish: false,
+  status: "ACTIVE",
+  plan: "AI_CREDITS" as const,
+  access: { tier: "ai_credits" as const, isPaying: true },
+};
+
+describe("paid portfolio features follow canPublish (P-010)", () => {
+  it("unlocks pages, the badge toggle and SEO for a pass holder with no subscription", () => {
+    const rail = renderWith(
+      { billing: passHolder },
+      <StructureRail
+        selectedSectionId="profile"
+        onSelect={() => {}}
+        onClose={() => {}}
+        onOpenTemplates={() => {}}
+      />,
+    );
+    const canvas = renderWith(
+      { billing: passHolder },
+      <ContentCanvas selectedSectionId="profile" onClose={() => {}} />,
+    );
+    const settings = renderWith({ billing: passHolder }, <PortfolioSettingsWorkspace />);
+
+    expect(rail).toContain('aria-label="Add page"');
+    expect(canvas).not.toContain("/pricing?from=badge");
+    expect(/<input[^>]*type="checkbox"[^>]*>/.exec(canvas)?.[0]).not.toMatch(/\sdisabled/);
+    expect(settings).not.toContain("Premium Feature");
+    expect(settings).toContain("Plan: Job Hunter pass");
+  });
+
+  it("keeps an AI Credits subscriber on the free rules, with a way to unlock each control", () => {
+    const rail = renderWith(
+      { billing: aiOnly },
+      <StructureRail
+        selectedSectionId="profile"
+        onSelect={() => {}}
+        onClose={() => {}}
+        onOpenTemplates={() => {}}
+      />,
+    );
+    const canvas = renderWith(
+      { billing: aiOnly },
+      <ContentCanvas selectedSectionId="profile" onClose={() => {}} />,
+    );
+    const settings = renderWith({ billing: aiOnly }, <PortfolioSettingsWorkspace />);
+
+    expect(rail).not.toContain('aria-label="Add page"');
+    expect(rail).toContain("/pricing?from=pages");
+    expect(/<input[^>]*type="checkbox"[^>]*>/.exec(canvas)?.[0]).toMatch(/\sdisabled/);
+    expect(canvas).toContain("/pricing?from=badge");
+    expect(settings).toContain("Premium Feature");
+    expect(settings).toContain("/pricing?from=seo");
+    // A paying customer is never labelled free.
+    expect(settings).toContain("Plan: AI Credits");
+  });
+});
+
+describe("site status card (P-014, P-033)", () => {
+  const site = { subdomain: "gautam" };
+
+  it("says a site was never published and offers Publish", () => {
+    const markup = renderWith({ publication: null }, <PortfolioDashboardWorkspace />);
+
+    expect(markup).toContain("Not published yet");
+    expect(markup).toContain(">Publish<");
+    expect(markup).not.toContain("Private draft");
+  });
+
+  it("links a live site", () => {
+    const markup = renderWith(
+      { publication: { ...site, status: "LIVE", offlineReason: null } },
+      <PortfolioSettingsWorkspace />,
+    );
+
+    expect(markup).toContain("Live");
+    expect(markup).toContain('href="https://gautam.veriworkly.com"');
+    expect(markup).not.toContain("Republish");
+  });
+
+  it("explains grace with its end date and a renew link", () => {
+    const markup = renderWith(
+      {
+        publication: { ...site, status: "GRACE", offlineReason: null },
+        billing: { canPublish: false, status: "PAST_DUE", graceEndsAt: "2026-11-06T00:00:00.000Z" },
+      },
+      <PortfolioDashboardWorkspace />,
+    );
+
+    expect(markup).toContain("Your site keeps its paid features until 2026-11-06");
+    expect(markup).toContain("/billing");
+  });
+
+  it("offers Republish after the owner unpublished", () => {
+    const markup = renderWith(
+      { publication: { ...site, status: "SUSPENDED", offlineReason: "owner" } },
+      <PortfolioDashboardWorkspace />,
+    );
+
+    expect(markup).toContain("Offline. You unpublished it.");
+    expect(markup).toContain("Republish");
+  });
+
+  it("never offers Republish for a moderation takedown", () => {
+    const markup = renderWith(
+      { publication: { ...site, status: "SUSPENDED", offlineReason: "moderation" } },
+      <PortfolioDashboardWorkspace />,
+    );
+
+    expect(markup).toContain("Taken down by a moderator. Contact support.");
+    expect(markup).not.toContain("Republish");
+  });
+});
+
+describe("editor preview follows the live rules (P-059)", () => {
+  const content = {
+    ...completeContent,
+    removeWatermark: true,
+    pages: [{ id: "p1", slug: "about", title: "About", sections: [completeContent.sections[1]] }],
+  };
+
+  it("drops the badge only with paid access and the toggle on", () => {
+    expect(showsBadge(content, true)).toBe(false);
+    expect(showsBadge(content, false)).toBe(true);
+    expect(showsBadge({ ...content, removeWatermark: false }, true)).toBe(true);
+  });
+
+  it("previews the selected sub-page's sections", () => {
+    expect(previewProject(content, "p1").sections).toEqual([completeContent.sections[1]]);
+    expect(previewProject(content, null).sections).toBe(content.sections);
   });
 });

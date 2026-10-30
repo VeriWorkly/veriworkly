@@ -11,14 +11,29 @@ const templates = Object.fromEntries(
   Object.entries(templateLoaders).map(([id, loader]) => [id, dynamic(loader)]),
 ) as Record<TemplateId, React.ComponentType<{ project: PortfolioContent }>>;
 
+/**
+ * What the preview renders, by the live site's rules (P-059): the badge shows unless the owner
+ * has paid portfolio access and turned it off, and a selected sub-page shows that page's sections.
+ */
+export function previewProject(content: PortfolioContent, pageId: string | null) {
+  const page = pageId ? content.pages?.find((item) => item.id === pageId) : undefined;
+
+  return page ? { ...content, sections: page.sections } : content;
+}
+
+export function showsBadge(content: PortfolioContent, canPublish: boolean) {
+  return !(canPublish && content.removeWatermark);
+}
+
 export function LivePortfolioPreview({
   initialContent,
-  isPremium,
+  canPublish,
 }: {
   initialContent: PortfolioContent;
-  isPremium: boolean;
+  canPublish: boolean;
 }) {
   const [content, setContent] = useState(initialContent);
+  const [pageId, setPageId] = useState<string | null>(null);
 
   useEffect(() => {
     const receive = (event: MessageEvent) => {
@@ -28,6 +43,7 @@ export function LivePortfolioPreview({
       )
         return;
       setContent((current) => parsePortfolioContent(event.data.content, current));
+      setPageId(typeof event.data.pageId === "string" ? event.data.pageId : null);
     };
 
     window.addEventListener("message", receive);
@@ -40,8 +56,8 @@ export function LivePortfolioPreview({
 
   return (
     <>
-      <Template project={content} />
-      {!isPremium ? <Watermark /> : null}
+      <Template project={previewProject(content, pageId)} />
+      {showsBadge(content, canPublish) ? <Watermark /> : null}
     </>
   );
 }

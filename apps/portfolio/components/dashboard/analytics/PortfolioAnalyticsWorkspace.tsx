@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useAnalytics, useWorkspace } from "@/components/WorkspaceProvider";
 import { siteConfig } from "@/config/site";
+import { hasPortfolioAccess, upgradeHref } from "@/lib/portfolio-status";
 import { Lock } from "lucide-react";
 import Link from "next/link";
 import { AnalyticsHeader } from "./AnalyticsHeader";
@@ -27,7 +28,7 @@ export function PortfolioAnalyticsWorkspace() {
   // The server decides this — a locked payload carries no figures to render. Falling back
   // to the local entitlement only covers the case where analytics never loaded at all
   // (guest mode, or a failed request), where there is likewise nothing to show.
-  const locked = analytics?.locked ?? !workspace?.billing?.canPublish;
+  const locked = analytics?.locked ?? !hasPortfolioAccess(workspace?.billing);
 
   const { daily, recentViews, activeDays } = useMemo(() => {
     const series = analytics?.daily.slice().reverse() ?? [];
@@ -79,7 +80,7 @@ export function PortfolioAnalyticsWorkspace() {
               <p className="text-muted mt-1.5 max-w-sm text-xs leading-5">
                 {!user
                   ? "Create an account or log in to sync your portfolio and enable visitor tracking."
-                  : "Upgrade to Creator Pro to unlock visitor metrics, referral history, and traffic trends."}
+                  : "Creator Pro, the Job Hunter Bundle or a pass unlocks visitor metrics, referrers and traffic trends."}
               </p>
               {!user ? (
                 <button
@@ -96,10 +97,10 @@ export function PortfolioAnalyticsWorkspace() {
                 </button>
               ) : (
                 <Link
-                  href="/pricing"
+                  href={upgradeHref("analytics")}
                   className="bg-accent text-accent-foreground hover:bg-accent-strong mt-5 inline-flex min-h-10 items-center justify-center rounded-lg px-5 text-xs font-bold transition"
                 >
-                  Upgrade to Pro
+                  See plans
                 </Link>
               )}
             </div>

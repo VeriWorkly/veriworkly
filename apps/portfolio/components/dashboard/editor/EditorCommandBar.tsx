@@ -5,6 +5,7 @@ import { ArrowDownToLine, ExternalLink, Eye, Globe2, Lock, Save } from "lucide-r
 import { toast } from "sonner";
 import { portfolioWorkspaceUrl, siteConfig } from "@/config/site";
 import { isPremiumTemplate } from "@/lib/portfolio";
+import { hasPortfolioAccess, upgradeHref } from "@/lib/portfolio-status";
 import { usePortfolioStore } from "@/store/portfolio-store";
 import { useWorkspace } from "@/components/WorkspaceProvider";
 import { actionClass as action } from "./constants";
@@ -55,15 +56,13 @@ export function EditorCommandBar() {
       return;
     }
 
-    const isPremiumUser = billing.canPublish;
-
-    if (isPremiumTemplate(content.templateId) && !isPremiumUser) {
+    if (isPremiumTemplate(content.templateId) && !hasPortfolioAccess(billing)) {
       toast.error(
-        `This is a Premium template. Upgrade to Creator Pro to publish it, or switch to a free template.`,
+        "This is a premium template. Creator Pro, the Job Hunter Bundle or a pass publishes it, or switch to Signal or Atelier.",
         {
           action: {
-            label: "Upgrade",
-            onClick: () => window.open("/pricing", "_blank"),
+            label: "See plans",
+            onClick: () => window.open(upgradeHref(content.templateId), "_blank"),
           },
         },
       );

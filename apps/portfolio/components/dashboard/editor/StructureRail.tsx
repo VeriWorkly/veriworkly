@@ -12,6 +12,8 @@ import {
   FilePlus,
 } from "lucide-react";
 import { portfolioSectionTypes } from "@/lib/portfolio";
+import Link from "next/link";
+import { hasPortfolioAccess, upgradeHref } from "@/lib/portfolio-status";
 import { usePortfolioStore } from "@/store/portfolio-store";
 import { RailButton } from "./RailButton";
 import { sectionInfo } from "./constants";
@@ -42,7 +44,7 @@ export function StructureRail({
   const setSelectedPageId = usePortfolioStore((state) => state.setSelectedPageId);
   const addPage = usePortfolioStore((state) => state.addPage);
   const removePage = usePortfolioStore((state) => state.removePage);
-  const isPremiumUser = usePortfolioStore((state) => state.billing.status === "ACTIVE");
+  const isPremiumUser = usePortfolioStore((state) => hasPortfolioAccess(state.billing));
 
   const rootSections = usePortfolioStore((state) => state.content.sections);
   const sections = selectedPageId
@@ -191,6 +193,14 @@ export function StructureRail({
           </div>
         </div>
       )}
+      {!isPremiumUser ? (
+        <p className="border-line text-muted mb-2 border-b px-2 pt-1 pb-3 text-[11px] leading-5">
+          Extra pages come with Creator Pro, the Job Hunter Bundle or a pass.{" "}
+          <Link className="text-accent font-bold" href={upgradeHref("pages")}>
+            See plans
+          </Link>
+        </p>
+      ) : null}
 
       <div className="flex items-center justify-between px-2 py-2">
         <h2 className="text-xs font-extrabold">Page structure</h2>

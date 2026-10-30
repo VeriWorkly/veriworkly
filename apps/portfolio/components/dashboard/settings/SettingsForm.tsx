@@ -3,6 +3,8 @@ import { ExternalLink, Search, ImagePlus, Lock } from "lucide-react";
 import Link from "next/link";
 import { Panel } from "./Panel";
 import { SettingsField } from "./Field";
+import { SubdomainField } from "./SubdomainField";
+import { upgradeHref } from "@/lib/portfolio-status";
 
 const input =
   "w-full rounded-lg border border-line bg-panel px-3 py-2.5 text-sm outline-none focus:border-accent focus:ring-4 focus:ring-accent-soft text-ink disabled:opacity-50 disabled:cursor-not-allowed";
@@ -17,6 +19,8 @@ export interface SettingsFormProps {
   uploading: boolean;
   onUpload: (file?: File) => void;
   isPremium: boolean;
+  signedIn: boolean;
+  subdomainIssue?: string;
 }
 
 export function SettingsForm({
@@ -27,6 +31,8 @@ export function SettingsForm({
   uploading,
   onUpload,
   isPremium,
+  signedIn,
+  subdomainIssue,
 }: SettingsFormProps) {
   return (
     <div className="space-y-5">
@@ -36,35 +42,25 @@ export function SettingsForm({
             <Lock size={12} /> Premium Feature
           </p>
           <p className="mt-1.5">
-            Editing search metadata and uploading social preview images require an active{" "}
-            <strong>Creator Pro</strong> subscription. Your subdomain is free on every plan.
+            Search metadata and a social preview image come with <strong>Creator Pro</strong>, the
+            Job Hunter Bundle or a pass. Your subdomain is free on every plan.
           </p>
           <Link
-            href="/pricing"
+            href={upgradeHref("seo")}
             className="mt-3 inline-flex min-h-8 items-center rounded-lg bg-amber-500 px-3.5 text-[11px] font-extrabold text-black transition hover:bg-amber-600"
           >
-            Upgrade to Pro
+            See plans
           </Link>
         </div>
       ) : null}
 
       <Panel title="Portfolio address" icon={<ExternalLink size={15} />}>
-        <label className="grid gap-2 text-xs font-bold">
-          VeriWorkly subdomain
-          <div className="flex">
-            <input
-              className={`${input} rounded-r-none`}
-              value={slug}
-              onChange={(e) => updateSlug(e.target.value)}
-            />
-            <span className="border-line bg-paper text-muted flex items-center rounded-r-lg border border-l-0 px-3 text-[11px]">
-              .veriworkly.com
-            </span>
-          </div>
-          <span className="text-muted font-medium normal-case">
-            Lowercase letters, numbers, and hyphens only.
-          </span>
-        </label>
+        <SubdomainField
+          slug={slug}
+          updateSlug={updateSlug}
+          signedIn={signedIn}
+          serverIssue={subdomainIssue}
+        />
       </Panel>
 
       <Panel title="Search metadata" icon={<Search size={15} />}>

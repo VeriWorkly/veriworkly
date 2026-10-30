@@ -836,8 +836,11 @@ function asset(value: unknown): PortfolioAssetReference | null {
     : null;
 }
 
+/** Mirrors the server's `normalizeSlug`: accents folded ("José" is "jose"), then a-z, 0-9, "-". */
 export function normalizeSlug(value: string) {
   return value
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9-]+/g, "-")
