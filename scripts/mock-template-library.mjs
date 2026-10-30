@@ -185,6 +185,13 @@ export function formatPeriod(start?: string, end?: string, current?: boolean) {
 export function visibleSection(project: PortfolioProject, type: string) {
   return project.sections.find((section) => section.type === type && section.visible);
 }
+
+export function initials(name: string) {
+  const words = name.trim().split(/\\s+/).filter(Boolean);
+  if (words.length === 0) return "";
+  if (words.length === 1) return Array.from(words[0]).slice(0, 2).join("").toUpperCase();
+  return (Array.from(words[0])[0] + Array.from(words[words.length - 1])[0]).toUpperCase();
+}
 `;
 
 fs.writeFileSync(path.join(templateLibPath, "types.ts"), typesContent);

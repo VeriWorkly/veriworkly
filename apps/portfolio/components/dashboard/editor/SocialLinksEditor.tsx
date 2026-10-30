@@ -3,6 +3,7 @@
 import { Plus, Trash2 } from "lucide-react";
 
 import { createId, type PortfolioLink } from "@/lib/portfolio";
+import { PORTFOLIO_LIMITS, withScheme } from "@/lib/portfolio-limits";
 import { usePortfolioStore } from "@/store/portfolio-store";
 
 import { inputClass as input } from "./constants";
@@ -13,13 +14,6 @@ export const MAX_SOCIAL_LINKS = 12;
 
 const PRESETS = ["GitHub", "LinkedIn", "X", "Website"] as const;
 const OTHER = "Other";
-
-/** A URL typed without a scheme ("github.com/jane") gets https://; the server takes only http(s). */
-export function withScheme(url: string) {
-  const value = url.trim();
-  if (!value || /^[a-z][a-z0-9+.-]*:/i.test(value)) return value;
-  return `https://${value.replace(/^\/+/, "")}`;
-}
 
 /**
  * Social links for the contact section and the page's JSON-LD (P-043). Before this the only way
@@ -71,7 +65,7 @@ export function SocialLinksEditor() {
               <input
                 aria-label={`Label for ${name}`}
                 className={input}
-                maxLength={60}
+                maxLength={PORTFOLIO_LIMITS.linkLabel}
                 placeholder="Label, e.g. Dribbble"
                 value={link.label}
                 onChange={(e) => update(link.id, { label: e.target.value })}

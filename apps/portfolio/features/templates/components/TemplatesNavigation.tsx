@@ -42,7 +42,13 @@ const TemplatesNavigation = ({
         href="/"
         className="flex shrink-0 items-center gap-2.5 text-sm font-bold tracking-[-.04em]"
       >
-        <Image src="/veriworkly-logo.png" width={28} height={28} alt="VeriWorkly Logo" priority />
+        <Image
+          src="/veriworkly-logo-128.png"
+          width={28}
+          height={28}
+          alt="VeriWorkly Logo"
+          priority
+        />
         <span className="text-ink hidden min-[380px]:inline">VeriWorkly Portfolio</span>
         <span className="text-ink inline min-[380px]:hidden">VeriWorkly</span>
       </Link>
@@ -112,7 +118,7 @@ const TemplatesNavigation = ({
                     className="flex items-center gap-2.5 text-sm font-bold tracking-[-.04em]"
                   >
                     <Image
-                      src="/veriworkly-logo.png"
+                      src="/veriworkly-logo-128.png"
                       width={26}
                       height={26}
                       alt="VeriWorkly Logo"

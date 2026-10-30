@@ -213,55 +213,97 @@ export const sectionFields: Record<PortfolioSectionType, SectionField[]> = {
 };
 
 /**
- * Human-readable section names.
- *
- * Lives here rather than in the editor's `constants.ts` so the store can use it
- * too without a component-layer import. `addSection` previously derived a title
- * with `type[0].toUpperCase() + type.slice(1)`, which rendered the camelCase
- * internal id straight into the page heading — "TestScores" instead of
- * "Test Scores".
+ * Per section type: its name (the title a new section gets, also shown in the editor), the
+ * subtitle a new section is seeded with, and the editor's one-line description. One table, so the
+ * store, the editor and the templates never disagree on a name ("Test Scores", never the camelCase
+ * id).
  */
-export const sectionLabels: Record<PortfolioSectionType, string> = {
-  projects: "Projects",
-  experience: "Experience",
-  services: "Services",
-  skills: "Skills",
-  education: "Education",
-  writing: "Writing",
-  testimonials: "Testimonials",
-  awards: "Awards",
-  certifications: "Certifications",
-  languages: "Languages",
-  interests: "Interests",
-  publications: "Publications",
-  patents: "Patents",
-  testScores: "Test Scores",
-  achievements: "Achievements",
-  volunteer: "Volunteer Experience",
-  custom: "Custom Section",
-  contact: "Contact",
-};
-
-/** Section-level subtitle defaults, seeded so nobody starts with a bare page. */
-export const sectionSubtitleDefaults: Record<PortfolioSectionType, string> = {
-  projects: "Selected work and the outcomes behind it.",
-  experience: "Where I've worked and what I was responsible for.",
-  education: "Formal study and training.",
-  services: "Ways we can work together.",
-  skills: "Tools and capabilities I work with.",
-  writing: "Essays, notes, and talks.",
-  testimonials: "What people I've worked with say.",
-  awards: "Recognition and honours.",
-  certifications: "Credentials and licences.",
-  languages: "Languages I speak and write.",
-  interests: "What I spend time on outside work.",
-  publications: "Papers, articles, and books.",
-  patents: "Filed and granted inventions.",
-  testScores: "Standardized results.",
-  achievements: "Milestones worth noting.",
-  volunteer: "Community and non-profit work.",
-  custom: "",
-  contact: "",
+export const sectionMeta: Record<
+  PortfolioSectionType,
+  { label: string; subtitle: string; detail: string }
+> = {
+  projects: {
+    label: "Projects",
+    subtitle: "Selected work and the outcomes behind it.",
+    detail: "Case studies and shipped work",
+  },
+  experience: {
+    label: "Experience",
+    subtitle: "Where I've worked and what I was responsible for.",
+    detail: "Roles, teams, and outcomes",
+  },
+  services: {
+    label: "Services",
+    subtitle: "Ways we can work together.",
+    detail: "Ways people can work with you",
+  },
+  skills: {
+    label: "Skills",
+    subtitle: "Tools and capabilities I work with.",
+    detail: "Capabilities and tools",
+  },
+  education: {
+    label: "Education",
+    subtitle: "Formal study and training.",
+    detail: "Degrees and training",
+  },
+  writing: {
+    label: "Writing",
+    subtitle: "Essays, notes, and talks.",
+    detail: "Articles and talks",
+  },
+  testimonials: {
+    label: "Testimonials",
+    subtitle: "What people I've worked with say.",
+    detail: "Words from collaborators",
+  },
+  awards: {
+    label: "Awards",
+    subtitle: "Recognition and honours.",
+    detail: "Recognition and milestones",
+  },
+  certifications: {
+    label: "Certifications",
+    subtitle: "Credentials and licences.",
+    detail: "Licenses, credentials, and courses",
+  },
+  languages: {
+    label: "Languages",
+    subtitle: "Languages I speak and write.",
+    detail: "Spoken and written proficiencies",
+  },
+  interests: {
+    label: "Interests",
+    subtitle: "What I spend time on outside work.",
+    detail: "Personal pursuits and hobbies",
+  },
+  publications: {
+    label: "Publications",
+    subtitle: "Papers, articles, and books.",
+    detail: "Articles, papers, and books",
+  },
+  patents: {
+    label: "Patents",
+    subtitle: "Filed and granted inventions.",
+    detail: "Inventions and intellectual property",
+  },
+  testScores: {
+    label: "Test Scores",
+    subtitle: "Standardized results.",
+    detail: "Standardized tests and exams",
+  },
+  achievements: {
+    label: "Achievements",
+    subtitle: "Milestones worth noting.",
+    detail: "Key milestones and recognitions",
+  },
+  volunteer: {
+    label: "Volunteer Experience",
+    subtitle: "Community and non-profit work.",
+    detail: "Non-profit and community service",
+  },
+  custom: { label: "Custom Section", subtitle: "", detail: "Additional projects or lab sections" },
+  contact: { label: "Contact", subtitle: "", detail: "Your closing invitation" },
 };
 
 /** A blank item pre-shaped with every key this section type uses. */

@@ -20,15 +20,15 @@ export const SESSION_COOKIE_NAMES = [
 
 const GUEST_COOKIE_NAME = "veriworkly-guest-mode";
 
-export function isPublicPlatformPath(path: string) {
+function isPublicPlatformPath(path: string) {
   return publicPlatformPaths.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }
 
-export function hasPortfolioSessionCookie(request: NextRequest) {
+function hasPortfolioSessionCookie(request: NextRequest) {
   return SESSION_COOKIE_NAMES.some((cookieName) => Boolean(request.cookies.get(cookieName)?.value));
 }
 
-export function hasPortfolioGuestCookie(request: NextRequest) {
+function hasPortfolioGuestCookie(request: NextRequest) {
   return request.cookies.get(GUEST_COOKIE_NAME)?.value === "true";
 }
 

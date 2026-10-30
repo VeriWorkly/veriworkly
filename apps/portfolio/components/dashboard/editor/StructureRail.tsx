@@ -11,14 +11,14 @@ import {
   FileText,
   FilePlus,
 } from "lucide-react";
-import { portfolioSectionTypes } from "@/lib/portfolio";
+import { createId, portfolioSectionTypes, type PortfolioSection } from "@/lib/portfolio";
 import Link from "next/link";
 import { hasPortfolioAccess, upgradeHref } from "@/lib/portfolio-status";
 import { usePortfolioStore } from "@/store/portfolio-store";
 import { PORTFOLIO_LIMITS } from "@/lib/portfolio-limits";
 import { RailButton } from "./RailButton";
 import { ConfirmDelete, type DeleteRequest } from "./ConfirmDelete";
-import { sectionInfo } from "./constants";
+import { sectionMeta } from "@/lib/section-fields";
 
 export interface StructureRailProps {
   /** Display classes from the editor layout (a tab below `lg`). */
@@ -77,10 +77,19 @@ export function StructureRail({
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "") || index
     }`;
-    return { slug, title: `Detail: ${title}` };
+    // The page starts with that project in it, not as an empty shell.
+    const sections = projectsSection
+      ? [{ ...projectsSection, id: createId("section"), title, items: [item] }]
+      : [];
+    return { slug, title, label: `Detail: ${title}`, sections };
   });
 
-  const availablePages = [...PREDEFINED_PAGES, ...projectDetailPages];
+  const availablePages: Array<{
+    slug: string;
+    title: string;
+    label?: string;
+    sections?: PortfolioSection[];
+  }> = [...PREDEFINED_PAGES, ...projectDetailPages];
 
   return (
     <aside
@@ -143,13 +152,13 @@ export function StructureRail({
                       }`}
                       onClick={() => {
                         if (isAdded) return;
-                        addPage(pageOption.slug, pageOption.title);
+                        addPage(pageOption.slug, pageOption.title, pageOption.sections);
                         setOpenPages(false);
                       }}
                       disabled={isAdded}
                       type="button"
                     >
-                      {pageOption.title}
+                      {pageOption.label ?? pageOption.title}
                     </button>
                   );
                 })}
@@ -277,7 +286,7 @@ export function StructureRail({
               onClick={() => onSelect(section.id)}
               type="button"
             >
-              {section.title.trim() || `${sectionInfo[section.type].label} (needs a title)`}
+              {section.title.trim() || `${sectionMeta[section.type].label} (needs a title)`}
             </button>
             <RailButton
               selected={selectedSectionId === section.id}
@@ -310,7 +319,7 @@ export function StructureRail({
               danger
               onClick={() =>
                 setPendingDelete({
-                  title: `Delete ${section.title.trim() || sectionInfo[section.type].label}?`,
+                  title: `Delete ${section.title.trim() || sectionMeta[section.type].label}?`,
                   detail: `The section and its ${section.items.length} ${
                     section.items.length === 1 ? "item" : "items"
                   } will be removed from your draft.`,
@@ -344,9 +353,9 @@ export function StructureRail({
                 }}
                 type="button"
               >
-                <span className="block text-xs font-extrabold">{sectionInfo[type].label}</span>
+                <span className="block text-xs font-extrabold">{sectionMeta[type].label}</span>
                 <span className="text-muted mt-0.5 block text-[10px]">
-                  {sectionInfo[type].detail}
+                  {sectionMeta[type].detail}
                 </span>
               </button>
             ))}

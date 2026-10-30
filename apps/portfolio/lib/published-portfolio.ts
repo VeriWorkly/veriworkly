@@ -1,6 +1,10 @@
 import { cache } from "react";
 import { backendApiUrl, firstPartyServerHeaders } from "@/lib/backend";
-import { parsePortfolioContent, type PortfolioContent } from "@/lib/portfolio";
+import {
+  parsePortfolioContent,
+  type PortfolioContent,
+  type PortfolioSection,
+} from "@/lib/portfolio";
 
 export interface PublishedPortfolio {
   subdomain: string;
@@ -14,6 +18,29 @@ export interface PublishedPortfolio {
 }
 
 const FETCH_TIMEOUT_MS = 8000;
+
+/**
+ * What a visitor may see, the same rule as the server's `publicSnapshot`: no hidden section, no
+ * extra pages without portfolio access, and no email unless a contact section is shown. The
+ * server already strips these; doing it again here keeps a server slip off the page.
+ */
+export function publicView(snapshot: PortfolioContent, isPaid: boolean): PortfolioContent {
+  const visible = (sections: PortfolioSection[]) => sections.filter((section) => section.visible);
+  const sections = visible(snapshot.sections);
+  const pages = isPaid
+    ? (snapshot.pages ?? []).map((page) => ({ ...page, sections: visible(page.sections) }))
+    : [];
+  const showsContact = [sections, ...pages.map((page) => page.sections)].some((list) =>
+    list.some((section) => section.type === "contact"),
+  );
+
+  return {
+    ...snapshot,
+    identity: showsContact ? snapshot.identity : { ...snapshot.identity, email: "" },
+    sections,
+    pages,
+  };
+}
 
 /**
  * Only a 404, or a 200 without a site in it, means "no such portfolio" (null, so the page renders
@@ -44,12 +71,14 @@ export const getPublishedPortfolio = cache(
     const data = payload.data;
     if (!data?.snapshot || !data.subdomain) return null;
 
+    const isPaid = data.isPaid === true;
+
     return {
       subdomain: data.subdomain,
-      snapshot: parsePortfolioContent(data.snapshot),
+      snapshot: publicView(parsePortfolioContent(data.snapshot), isPaid),
       templateId: String(data.templateId ?? ""),
       updatedAt: String(data.updatedAt ?? ""),
-      isPaid: data.isPaid === true,
+      isPaid,
       isPremiumTemplate: data.isPremiumTemplate === true,
     };
   },

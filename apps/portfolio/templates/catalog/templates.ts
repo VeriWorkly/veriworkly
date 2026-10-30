@@ -7,8 +7,6 @@ import {
 
 export type TemplateId = PrivateTemplateId;
 
-export const templateIds = Object.keys(templatesRegistry) as unknown as readonly TemplateId[];
-
 export interface TemplateSummary {
   id: TemplateId;
   name: string;
@@ -22,16 +20,19 @@ export interface TemplateSummary {
 
 export const templates: TemplateSummary[] = (
   Object.entries(templatesRegistry) as [TemplateId, TemplateRegistryEntry][]
-).map(([id, entry]) => ({
-  id,
-  name: entry.name,
-  note: entry.note,
-  mood: entry.mood,
-  audience: entry.audience,
-  strengths: entry.strengths,
-  image: entry.image,
-  isPremium: Boolean(entry.isPremium),
-}));
+)
+  // Listed field by field: the loader and design stay behind, since a function cannot be passed
+  // to a client component.
+  .map(([id, entry]) => ({
+    id,
+    name: entry.name,
+    note: entry.note,
+    mood: entry.mood,
+    audience: entry.audience,
+    strengths: entry.strengths,
+    image: entry.image,
+    isPremium: Boolean(entry.isPremium),
+  }));
 
 export function isTemplateId(value: string): value is TemplateId {
   return value in templatesRegistry;

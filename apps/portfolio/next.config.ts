@@ -34,9 +34,13 @@ const cspDirectives = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"}`,
   "style-src 'self' 'unsafe-inline'",
+  // Uploaded images are served from the server's R2_PUBLIC_BASE_URL, a server-only setting this
+  // app cannot read at build time, so any https image host stays allowed.
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  `connect-src 'self' https://*.veriworkly.com${isProd ? "" : " http://localhost:* ws://localhost:*"}`,
+  // Image uploads PUT straight to R2 on the presigned URL the server signs for its R2_ENDPOINT
+  // (`https://<bucket>.<account>.r2.cloudflarestorage.com`); without it every upload is blocked.
+  `connect-src 'self' https://*.veriworkly.com https://*.r2.cloudflarestorage.com${isProd ? "" : " http://localhost:* ws://localhost:*"}`,
   "frame-src 'self'",
   "frame-ancestors 'self'",
   "object-src 'none'",

@@ -6,13 +6,11 @@ import { uploadPortfolioAsset } from "@/lib/portfolio-assets";
 import { hasPortfolioAccess, isPortfolioPubliclyVisible } from "@/lib/portfolio-status";
 import { portfolioWorkspaceUrl } from "@/config/site";
 import { usePortfolioStore, type ActionResult } from "@/store/portfolio-store";
-import { useWorkspace } from "@/components/WorkspaceProvider";
+import { usePublishingClosed } from "@/components/WorkspaceProvider";
 import { PublicationStatusCard } from "@/components/dashboard/PublicationStatusCard";
 import { SettingsHeader } from "./SettingsHeader";
 import { SettingsForm } from "./SettingsForm";
 import { SettingsPreviews } from "./SettingsPreviews";
-
-const isProd = process.env.NODE_ENV === "production";
 
 export function PortfolioSettingsWorkspace() {
   // Selected field by field: a bare `usePortfolioStore()` subscribes to the whole store,
@@ -28,7 +26,6 @@ export function PortfolioSettingsWorkspace() {
   const updateContent = usePortfolioStore((state) => state.updateContent);
   const saveDraft = usePortfolioStore((state) => state.saveDraft);
   const publish = usePortfolioStore((state) => state.publish);
-  const { isAdmin } = useWorkspace();
   const [uploading, setUploading] = useState(false);
   // A save or publish refused over the subdomain (taken, reserved) is shown by the field.
   const [subdomainIssue, setSubdomainIssue] = useState<string>();
@@ -40,7 +37,7 @@ export function PortfolioSettingsWorkspace() {
 
   const isPremium = hasPortfolioAccess(billing);
   // Mirrors EditorCommandBar's publish gate (enforced server-side either way).
-  const publishingDisabledInProd = isProd && !isAdmin;
+  const publishingDisabledInProd = usePublishingClosed();
 
   // Saves only the draft (P-037). Republishing from here sent the whole in-memory draft live,
   // editor changes included, without the owner choosing to publish them.

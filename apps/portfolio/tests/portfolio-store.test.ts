@@ -100,75 +100,35 @@ describe("portfolio store", () => {
     expect(store.getState().content.sections).toHaveLength(24);
   });
 
+  it("starts a project detail page with that project in it, not an empty shell", () => {
+    store.setState({ ready: true });
+    const section = {
+      id: "s1",
+      type: "projects" as const,
+      title: "Atlas",
+      visible: true,
+      items: [{ id: "p1", title: "Atlas" }],
+    };
+
+    store.getState().addPage("work/atlas", "Atlas", [section]);
+
+    expect(store.getState().content.pages?.[0]).toMatchObject({
+      slug: "work/atlas",
+      title: "Atlas",
+      sections: [section],
+    });
+  });
+
   it("normalizes slug input through updateSlug", () => {
     store.getState().updateSlug("  Gautam Raj!! ");
     expect(store.getState().slug).toBe("gautam-raj");
   });
 
-  it("keeps the newer cloud draft when a stale local guest cache disagrees with it", async () => {
+  // S2: a guest draft left in a shared browser may belong to someone else. Signing in never
+  // carries it into the account unasked; the owner brings it in or discards it.
+  describe("a guest draft found after signing in", () => {
     const localContent = { ...baseContent, identity: { ...baseContent.identity, bio: "local" } };
     const cloudContent = { ...baseContent, identity: { ...baseContent.identity, bio: "cloud" } };
-
-    localStorageMock.setItem(
-      CACHE_KEY,
-      JSON.stringify({
-        slug: "local-slug",
-        content: localContent,
-        updatedAt: "2024-01-01T00:00:00.000Z",
-      }),
-    );
-
-    const cloudDraft = {
-      id: "draft-1",
-      slug: "cloud-slug",
-      templateId: "signal",
-      content: cloudContent,
-      revision: 3,
-      updatedAt: "2024-06-01T00:00:00.000Z", // newer than the local cache above
-    };
-
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL) => {
-        const url = String(input);
-        if (url.includes("/users/me")) {
-          return jsonResponse({ name: "Gautam Raj", email: "gautam@veriworkly.com" });
-        }
-        if (url.includes("/portfolios/me")) {
-          return jsonResponse({ draft: cloudDraft, publication: null, billing: null });
-        }
-        if (url.includes("/portfolios/analytics")) {
-          return jsonResponse(null);
-        }
-        if (url.includes("/portfolios/draft")) {
-          return jsonResponse(cloudDraft);
-        }
-        return jsonResponse(null, 404);
-      }),
-    );
-
-    await store.getState().loadWorkspace();
-
-    const state = store.getState();
-    expect(state.content.identity.bio).toBe("cloud");
-    expect(state.slug).toBe("cloud-slug");
-    // The older guest draft lost; it is not offered again on every visit.
-    expect(localStorageMock.getItem(CACHE_KEY)).toBeNull();
-  });
-
-  it("syncs the local guest draft up when it is provably newer than the cloud draft", async () => {
-    const localContent = { ...baseContent, identity: { ...baseContent.identity, bio: "local" } };
-    const cloudContent = { ...baseContent, identity: { ...baseContent.identity, bio: "cloud" } };
-
-    localStorageMock.setItem(
-      CACHE_KEY,
-      JSON.stringify({
-        slug: "local-slug",
-        content: localContent,
-        updatedAt: "2024-06-01T00:00:00.000Z", // newer than the cloud draft below
-      }),
-    );
-
     const cloudDraft = {
       id: "draft-1",
       slug: "cloud-slug",
@@ -177,78 +137,111 @@ describe("portfolio store", () => {
       revision: 3,
       updatedAt: "2024-01-01T00:00:00.000Z",
     };
+    let sentBodies: Array<{ subdomain: string; snapshot: typeof baseContent }>;
 
-    let draftSaveCalled = false;
+    function signIn(cloud: typeof cloudDraft | null) {
+      sentBodies = [];
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+          const url = String(input);
+          if (url.includes("/users/me")) {
+            return jsonResponse({ name: "Gautam Raj", email: "gautam@veriworkly.com" });
+          }
+          if (url.includes("/portfolios/me")) {
+            return jsonResponse({ draft: cloud, publication: null, billing: null });
+          }
+          if (url.includes("/portfolios/analytics")) return jsonResponse(null);
+          if (url.includes("/portfolios/draft")) {
+            const body = JSON.parse(String(init?.body));
+            sentBodies.push(body);
+            return jsonResponse({
+              ...(cloud ?? cloudDraft),
+              revision: (cloud?.revision ?? 0) + sentBodies.length,
+              slug: body.subdomain,
+              content: body.snapshot,
+            });
+          }
+          return jsonResponse(null, 404);
+        }),
+      );
+    }
 
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL) => {
-        const url = String(input);
-        if (url.includes("/users/me")) {
-          return jsonResponse({ name: "Gautam Raj", email: "gautam@veriworkly.com" });
-        }
-        if (url.includes("/portfolios/me")) {
-          return jsonResponse({ draft: cloudDraft, publication: null, billing: null });
-        }
-        if (url.includes("/portfolios/analytics")) {
-          return jsonResponse(null);
-        }
-        if (url.includes("/portfolios/draft")) {
-          draftSaveCalled = true;
-          return jsonResponse({ ...cloudDraft, content: localContent, slug: "local-slug" });
-        }
-        return jsonResponse(null, 404);
-      }),
-    );
+    function leaveGuestDraft(updatedAt = "2024-06-01T00:00:00.000Z") {
+      localStorageMock.setItem(
+        CACHE_KEY,
+        JSON.stringify({ slug: "local-slug", content: localContent, updatedAt }),
+      );
+    }
 
-    await store.getState().loadWorkspace();
+    it("keeps the cloud draft and asks, even when the guest draft is newer", async () => {
+      leaveGuestDraft();
+      signIn(cloudDraft);
 
-    const state = store.getState();
-    expect(state.content.identity.bio).toBe("local");
-    expect(state.slug).toBe("local-slug");
-    expect(draftSaveCalled).toBe(true);
-    await vi.waitFor(() => expect(localStorageMock.getItem(CACHE_KEY)).toBeNull());
-  });
+      await store.getState().loadWorkspace();
 
-  it("carries a guest draft into a new account that has no cloud draft, then forgets it", async () => {
-    const guestContent = { ...baseContent, identity: { ...baseContent.identity, bio: "guest" } };
-    localStorageMock.setItem(
-      CACHE_KEY,
-      JSON.stringify({
-        slug: "guest-slug",
-        content: guestContent,
-        updatedAt: "2026-10-30T00:00:00Z",
-      }),
-    );
-    let sentBio = "";
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-        const url = String(input);
-        if (url.includes("/users/me")) return jsonResponse({ name: "New User", email: "n@x.com" });
-        if (url.includes("/portfolios/me")) {
-          return jsonResponse({ draft: null, publication: null, billing: null });
-        }
-        if (url.includes("/portfolios/draft")) {
-          sentBio = JSON.parse(String(init?.body)).snapshot.identity.bio;
-          return jsonResponse({
-            id: "d1",
-            slug: "guest-slug",
-            templateId: "signal",
-            content: guestContent,
-            revision: 1,
-            updatedAt: "2026-10-30T00:00:01Z",
-          });
-        }
-        return jsonResponse(null);
-      }),
-    );
+      const state = store.getState();
+      expect(state.content.identity.bio).toBe("cloud");
+      expect(state.slug).toBe("cloud-slug");
+      expect(state.guestDraft).toMatchObject({ slug: "local-slug", replacesCloud: true });
+      expect(sentBodies).toHaveLength(0);
+      expect(localStorageMock.getItem(CACHE_KEY)).not.toBeNull();
+    });
 
-    await store.getState().loadWorkspace();
+    it("brings the guest draft in only when asked, then forgets it", async () => {
+      leaveGuestDraft();
+      signIn(cloudDraft);
+      await store.getState().loadWorkspace();
 
-    expect(store.getState().content.identity.bio).toBe("guest");
-    await vi.waitFor(() => expect(localStorageMock.getItem(CACHE_KEY)).toBeNull());
-    expect(sentBio).toBe("guest");
+      const result = await store.getState().keepGuestDraft();
+
+      expect(result.ok).toBe(true);
+      expect(store.getState().content.identity.bio).toBe("local");
+      expect(sentBodies.at(-1)).toMatchObject({
+        subdomain: "local-slug",
+        snapshot: { identity: { bio: "local" } },
+      });
+      expect(store.getState().guestDraft).toBeNull();
+      expect(localStorageMock.getItem(CACHE_KEY)).toBeNull();
+    });
+
+    it("discards the guest draft and clears it from the browser", async () => {
+      leaveGuestDraft();
+      signIn(cloudDraft);
+      await store.getState().loadWorkspace();
+
+      store.getState().discardGuestDraft();
+
+      expect(store.getState().guestDraft).toBeNull();
+      expect(store.getState().content.identity.bio).toBe("cloud");
+      expect(localStorageMock.getItem(CACHE_KEY)).toBeNull();
+      expect(sentBodies).toHaveLength(0);
+    });
+
+    it("asks a new account too: its first draft starts blank, not as the guest's", async () => {
+      leaveGuestDraft();
+      signIn(null);
+
+      await store.getState().loadWorkspace();
+      await vi.waitFor(() => expect(sentBodies).toHaveLength(1));
+
+      expect(sentBodies[0].snapshot.identity.bio).not.toBe("local");
+      expect(store.getState().guestDraft).toMatchObject({ replacesCloud: false });
+      expect(localStorageMock.getItem(CACHE_KEY)).not.toBeNull();
+    });
+
+    it("does not ask about a guest draft that matches the cloud copy", async () => {
+      localStorageMock.setItem(
+        CACHE_KEY,
+        JSON.stringify({ slug: "cloud-slug", content: cloudContent, updatedAt: null }),
+      );
+      signIn(cloudDraft);
+
+      await store.getState().loadWorkspace();
+
+      expect(store.getState().guestDraft).toBeNull();
+      expect(localStorageMock.getItem(CACHE_KEY)).toBeNull();
+    });
   });
 
   it("never writes a signed-in draft to the browser cache", async () => {

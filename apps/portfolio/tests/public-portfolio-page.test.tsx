@@ -289,6 +289,50 @@ describe("reading a published site (P-007)", () => {
     expect(read!.snapshot.removeWatermark).toBe(true);
     expect(read!.snapshot.pages).toHaveLength(1);
   });
+
+  // S1: the server's publicSnapshot already strips these; the page must not rely on it alone.
+  const section = (id: string, type: string, visible: boolean) => ({
+    id,
+    type,
+    title: id,
+    visible,
+    items: [],
+  });
+
+  it("drops hidden sections, unpaid pages and an email with no visible contact", async () => {
+    const site = published({ isPaid: false });
+    site.snapshot.sections = [
+      section("about", "skills", true),
+      section("secret", "projects", false),
+      section("contact", "contact", false),
+    ] as typeof site.snapshot.sections;
+    fetchMock.mockResolvedValueOnce(reply(200, { data: { ...site, isPaid: false } }));
+
+    const read = await getPublishedPortfolio("jane");
+
+    expect(read!.snapshot.sections.map((s) => s.id)).toEqual(["about"]);
+    expect(read!.snapshot.pages).toEqual([]);
+    expect(read!.snapshot.identity.email).toBe("");
+  });
+
+  it("keeps the email and paid pages when a visible contact section is on a page", async () => {
+    const site = published({ isPaid: true });
+    site.snapshot.sections = [section("about", "skills", true)] as typeof site.snapshot.sections;
+    site.snapshot.pages = [
+      {
+        id: "p1",
+        slug: "talks",
+        title: "Talks",
+        sections: [section("hidden", "projects", false), section("contact", "contact", true)],
+      },
+    ] as typeof site.snapshot.pages;
+    fetchMock.mockResolvedValueOnce(reply(200, { data: { ...site, isPaid: true } }));
+
+    const read = await getPublishedPortfolio("jane");
+
+    expect(read!.snapshot.pages![0].sections.map((s) => s.id)).toEqual(["contact"]);
+    expect(read!.snapshot.identity.email).toBe("jane@example.com");
+  });
 });
 
 describe("the revalidate hook", () => {

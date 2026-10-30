@@ -132,7 +132,7 @@ const BundlePricingSection = () => {
             <div>
               <div className="flex items-center gap-2">
                 <span className="relative flex h-2 w-2" aria-hidden="true">
-                  <span className="bg-accent absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"></span>
+                  <span className="bg-accent absolute inline-flex h-full w-full rounded-full opacity-75 motion-safe:animate-ping"></span>
                   <span className="bg-accent relative inline-flex h-2 w-2 rounded-full"></span>
                 </span>
                 <p className="text-accent text-xs font-bold tracking-[0.14em] uppercase">

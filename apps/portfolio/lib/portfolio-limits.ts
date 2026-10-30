@@ -17,6 +17,7 @@ export const PORTFOLIO_LIMITS = {
   items: 24,
   pages: 10,
   pageSlug: 63,
+  linkLabel: 80,
 } as const;
 
 /** Empty, or something the server's email check accepts. */

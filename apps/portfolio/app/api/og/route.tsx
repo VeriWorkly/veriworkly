@@ -3,7 +3,13 @@ import { clampOgText } from "@/lib/og-text";
 
 export const runtime = "nodejs";
 
+/**
+ * The owner's card generator for the gitignored og-generator page. It draws whatever the query
+ * says on a VeriWorkly-branded card, so it only runs in development (S3).
+ */
 export async function GET(request: Request) {
+  if (process.env.NODE_ENV === "production") return new Response("Not found", { status: 404 });
+
   try {
     const { searchParams } = new URL(request.url);
 

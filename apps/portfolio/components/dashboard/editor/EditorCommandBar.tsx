@@ -13,11 +13,9 @@ import {
   upgradeHref,
 } from "@/lib/portfolio-status";
 import { saveStatusLabel, usePortfolioStore } from "@/store/portfolio-store";
-import { useWorkspace } from "@/components/WorkspaceProvider";
+import { usePublishingClosed } from "@/components/WorkspaceProvider";
 import { actionClass as action } from "./constants";
 import { ImportMasterProfileModal } from "./ImportMasterProfileModal";
-
-const isProd = process.env.NODE_ENV === "production";
 
 export interface EditorCommandBarProps {
   /** Opens the page, section and field a publish checklist entry points at. */
@@ -39,13 +37,12 @@ export function EditorCommandBar({ onJump }: EditorCommandBarProps) {
   const user = usePortfolioStore((state) => state.user);
   const saveDraft = usePortfolioStore((state) => state.saveDraft);
   const publish = usePortfolioStore((state) => state.publish);
-  const { isAdmin } = useWorkspace();
 
   // Publishing is blocked in production for everyone except the admin — this mirrors the
   // server's hard block in PortfolioController.publish, which is the actual enforcement point.
   // This client-side check only exists to avoid a doomed save+publish round trip and to make the
   // state visible in the UI.
-  const publishingDisabledInProd = isProd && !isAdmin;
+  const publishingDisabledInProd = usePublishingClosed();
 
   const handlePublish = async () => {
     if (publishingDisabledInProd) {
@@ -126,7 +123,13 @@ export function EditorCommandBar({ onJump }: EditorCommandBarProps) {
     <>
       <header className="z-40 grid min-h-16 shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/10 bg-[#171717] px-3 text-white sm:px-4">
         <Link className="flex items-center gap-2" href="/dashboard">
-          <Image src="/veriworkly-logo.png" width={30} height={30} alt="VeriWorkly logo" priority />
+          <Image
+            src="/veriworkly-logo-128.png"
+            width={30}
+            height={30}
+            alt="VeriWorkly logo"
+            priority
+          />
           <span className="hidden text-sm font-bold sm:block">VeriWorkly</span>
         </Link>
         <div className="min-w-0 text-center">

@@ -1,7 +1,5 @@
 import type { PortfolioContent } from "@/lib/portfolio";
 
-export type PortfolioPublicationStatus = "LIVE" | "GRACE" | "SUSPENDED";
-
 /**
  * Whether the public site actually resolves right now.
  *

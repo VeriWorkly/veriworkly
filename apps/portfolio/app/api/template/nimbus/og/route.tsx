@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { OG_CACHE_HEADERS, clampOgText } from "@/lib/og-text";
+import { OG_CACHE_HEADERS, ogCard, ogNotFound } from "@/lib/og-text";
 
 export const runtime = "nodejs";
 
@@ -26,23 +26,13 @@ const RULE = "rgba(255, 255, 255, 0.16)";
 
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-
-    const name = clampOgText(searchParams.get("name") ?? "Your Name", 60);
-    const headline = clampOgText(
-      searchParams.get("headline") ?? "Developer and designer building useful products.",
-      100,
-    );
-    const bio = clampOgText(
-      searchParams.get("bio") ?? "Projects, experience and contact details in one place.",
-      180,
-    );
-    const availability = clampOgText(
-      searchParams.get("availability") ?? "Available for collaborations",
-      60,
-    );
-    const location = clampOgText(searchParams.get("location") ?? "Remote", 60);
-    const subdomain = clampOgText(searchParams.get("subdomain") ?? "yourname", 63);
+    const card = await ogCard(request, "nimbus", {
+      bio: "Projects, experience and contact details in one place.",
+      availability: "Available for collaborations",
+      location: "Remote",
+    });
+    if (!card) return ogNotFound();
+    const { name, headline, bio, availability, location, subdomain } = card;
 
     return new ImageResponse(
       <div

@@ -1,83 +1,54 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { backendApiUrl, firstPartyServerHeaders } from "@/lib/backend";
+import type { Metadata } from "next";
+
 import { fetchServerApiData } from "@/lib/server-api";
 import { parsePortfolioContent, createDefaultPortfolio } from "@/lib/portfolio";
 import { LivePortfolioPreview } from "@/components/LivePortfolioPreview";
 import { hasPortfolioAccess } from "@/lib/portfolio-status";
-import { Metadata } from "next";
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ documentId: string }>;
-}): Promise<Metadata> {
+type Params = { params: Promise<{ documentId: string }> };
+
+/** The draft to preview: null when there is none for this user, throws when the API failed. */
+function readPreview(documentId: string) {
+  return fetchServerApiData<{ content: unknown }>(
+    `/portfolios/preview/${encodeURIComponent(documentId)}`,
+  );
+}
+
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { documentId } = await params;
-  if (documentId === "guest") {
-    return {
-      title: "Guest Portfolio Preview",
-      robots: { index: false, follow: false },
-    };
-  }
-  try {
-    const cookieStore = await cookies();
-    const response = await fetch(
-      backendApiUrl(`/portfolios/preview/${encodeURIComponent(documentId)}`, true),
-      {
-        headers: firstPartyServerHeaders({ Cookie: cookieStore.toString() }),
-        cache: "no-store",
-      },
-    );
-    if (response.ok) {
-      const payload = await response.json();
-      const content = parsePortfolioContent(payload.data?.content);
-      const name = content.identity.name;
-      return {
-        title: `${name} | Private Portfolio Preview`,
-        description: `Private workspace preview of ${name}'s professional portfolio on VeriWorkly.`,
-        robots: { index: false, follow: false },
-      };
-    }
-  } catch {
-    // Fail silently
-  }
+  const robots = { index: false, follow: false };
+  if (documentId === "guest") return { title: "Guest Portfolio Preview", robots };
+
+  const preview = await readPreview(documentId).catch(() => null);
+  if (!preview) return { title: "Private Portfolio Preview", robots };
+
+  const name = parsePortfolioContent(preview.content).identity.name;
   return {
-    title: "Private Portfolio Preview",
-    robots: { index: false, follow: false },
+    title: `${name} | Private Portfolio Preview`,
+    description: `Private workspace preview of ${name}'s professional portfolio on VeriWorkly.`,
+    robots,
   };
 }
 
-export default async function PreviewPage({ params }: { params: Promise<{ documentId: string }> }) {
+export default async function PreviewPage({ params }: Params) {
   const { documentId } = await params;
   if (documentId === "guest") {
     return <LivePortfolioPreview initialContent={createDefaultPortfolio()} canPublish={false} />;
   }
 
-  const billingData = await fetchServerApiData<{ billing: { canPublish: boolean } }>(
-    "/portfolios/me",
-  ).catch(() => null);
-  const canPublish = hasPortfolioAccess(billingData?.billing);
+  const [billingData, preview] = await Promise.all([
+    fetchServerApiData<{ billing: { canPublish: boolean } }>("/portfolios/me").catch(() => null),
+    readPreview(documentId).catch(() => undefined),
+  ]);
+  if (preview === undefined) return <PreviewUnavailable />;
+  if (preview === null) notFound();
 
-  let response: Response;
-  try {
-    response = await fetch(
-      backendApiUrl(`/portfolios/preview/${encodeURIComponent(documentId)}`, true),
-      {
-        headers: firstPartyServerHeaders({ Cookie: (await cookies()).toString() }),
-        cache: "no-store",
-      },
-    );
-  } catch {
-    return <PreviewUnavailable />;
-  }
-  if (response.status === 404) notFound();
-  if (!response.ok) return <PreviewUnavailable />;
-  const payload = await response.json();
   return (
     <LivePortfolioPreview
-      initialContent={parsePortfolioContent(payload.data.content)}
-      canPublish={canPublish}
+      initialContent={parsePortfolioContent(preview.content)}
+      canPublish={hasPortfolioAccess(billingData?.billing)}
     />
   );
 }

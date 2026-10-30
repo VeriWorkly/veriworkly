@@ -1,7 +1,10 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup, renderToString } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// The template preview page renders on the server through the server-only template runtime.
+vi.mock("server-only", () => ({}));
 
 import AtelierTemplate from "@/template-library/atelier/AtelierTemplate";
 import CipherTemplate from "@/template-library/cipher/CipherTemplate";
@@ -183,6 +186,31 @@ describe.skipIf(IS_MOCK_LIBRARY)(
         }
         expect(markup).not.toContain('data-section="contact"');
         expect(markup).not.toContain("Subcontact");
+      });
+
+      // S1: a hidden contact section means no way to email the owner anywhere on the page.
+      it("offers no mailto link when contact is hidden", () => {
+        const project = fullProject();
+        project.sections = project.sections.map((s) => ({ ...s, visible: s.type !== "contact" }));
+        const markup = renderToString(<Template project={project} />);
+        expect(markup).not.toContain("mailto:");
+      });
+
+      // Volunteer roles imported from a profile carry startDate/endDate, not `date`.
+      it("shows a volunteer role's period when it has no date", () => {
+        const project = fullProject();
+        project.sections = [
+          {
+            id: "v",
+            type: "volunteer",
+            title: "Volunteering",
+            visible: true,
+            items: [{ id: "v1", title: "Mentor", startDate: "2019", endDate: "2021" }],
+          },
+        ];
+        const markup = renderToString(<Template project={project} />);
+        expect(markup).toContain("2019");
+        expect(markup).toContain("2021");
       });
 
       it("shows the contact section's own title and subtitle when it is on", () => {
@@ -437,7 +465,7 @@ describe("template gallery (P-061, P-079)", () => {
 
       expect(previewMeta.robots).toEqual({ index: false, follow: true });
       const image = JSON.stringify(detailMeta.openGraph?.images);
-      if (template.isPremium) expect(image).toContain(`/api/template/${template.id}/og?`);
+      if (template.isPremium) expect(image).toContain(`/api/template/${template.id}/og"`);
       else expect(image).toContain(`/og/templates/${template.id}-template-page-og.png`);
     }
 
@@ -445,5 +473,7 @@ describe("template gallery (P-061, P-079)", () => {
       await preview.default({ params: Promise.resolve({ id: "signal" }) }),
     );
     expect(html).toContain("Demo content.");
+    // Server-rendered: the sample is in the HTML, not filled in by JavaScript later.
+    expect(html).toContain(demoPortfolio.identity.name);
   });
 });

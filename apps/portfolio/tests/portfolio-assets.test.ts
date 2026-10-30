@@ -82,3 +82,16 @@ describe("portfolio asset upload (P-003)", () => {
     await expect(uploadPortfolioAsset("AVATAR", file)).resolves.toMatchObject({ ok: false });
   });
 });
+
+// S5: the browser PUTs the file straight to R2 on the server's presigned URL, so the page's CSP
+// has to let it connect there, or every upload fails in production.
+describe("the content security policy", () => {
+  it("lets the browser upload to the presigned R2 host", async () => {
+    const { default: config } = await import("@/next.config");
+    const [rule] = await config.headers!();
+    const csp = rule.headers.find((header) => header.key === "Content-Security-Policy")!.value;
+    const connect = csp.split("; ").find((directive) => directive.startsWith("connect-src"));
+
+    expect(connect).toContain("https://*.r2.cloudflarestorage.com");
+  });
+});

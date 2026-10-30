@@ -74,7 +74,7 @@ export const PRICING_OFFERS = [
 export type PricingOffer = (typeof PRICING_OFFERS)[number];
 
 /** Nothing paid is "InStock" while checkout is closed. */
-export function toSchemaOffer(offer: PricingOffer, url: string, paymentsBlocked: boolean) {
+function toSchemaOffer(offer: PricingOffer, url: string, paymentsBlocked: boolean) {
   const price = offer.price.toFixed(2);
   const free = offer.price === 0;
 

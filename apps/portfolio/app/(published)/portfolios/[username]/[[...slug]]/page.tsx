@@ -67,13 +67,11 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     `${name} - ${project.identity.headline || "Professional Portfolio"}. View projects, experience, and contact information.`;
 
   const socialImage = absoluteUrl(project.seo.socialImage?.url);
+  // The card route reads the published site itself; `v` only gives each revision its own URL,
+  // so a CDN-cached card changes when the site does.
   const ogParams = new URLSearchParams({
-    name,
-    headline: project.identity.headline || "",
-    bio: (project.identity.bio || "").slice(0, 200),
-    availability: project.identity.availability || "",
-    location: project.identity.location || "",
     subdomain: publication.subdomain,
+    v: publication.updatedAt,
   });
   const images = [
     {

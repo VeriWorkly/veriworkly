@@ -48,7 +48,7 @@ const TemplateBestFit = ({
                     key={prof.role}
                     className="rounded-2xl border border-white/10 bg-white/2 p-4.5"
                   >
-                    <h4 className="text-accent dark:text-accent mb-1.5 animate-pulse font-mono text-[10px] font-bold tracking-wider uppercase">
+                    <h4 className="text-accent dark:text-accent mb-1.5 font-mono text-[10px] font-bold tracking-wider uppercase motion-safe:animate-pulse">
                       {prof.role}
                     </h4>
                     <p className="text-xs leading-relaxed text-white/70">{prof.why}</p>

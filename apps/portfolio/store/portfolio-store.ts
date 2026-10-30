@@ -19,7 +19,7 @@ import {
 } from "@/lib/portfolio";
 import { defaultSubdomain, isAllowedSubdomain } from "@/lib/subdomain";
 import { PORTFOLIO_LIMITS } from "@/lib/portfolio-limits";
-import { sectionLabels, sectionSubtitleDefaults } from "@/lib/section-fields";
+import { sectionMeta } from "@/lib/section-fields";
 import {
   clearPortfolioCache,
   loadPortfolioCache,
@@ -66,7 +66,6 @@ export type Billing = {
     isPaying: boolean;
   };
 };
-export type EditorPanel = "profile" | "sections" | "style" | "sharing";
 export type PortfolioAnalyticsData = {
   // Set by the server when the account lacks the Creator Pro entitlement. The payload
   // then carries no real figures at all, so the dashboard must render a locked state
@@ -154,11 +153,6 @@ async function fetchPayload(path: string, fallbackMessage: string, init?: Reques
   return payload;
 }
 
-/** A guest's subdomain carried into an account; a guest default like "portfolio" is reserved. */
-function accountSlug(slug: string, user: { name?: string | null; email?: string | null } | null) {
-  return isAllowedSubdomain(slug) ? slug : defaultSubdomain(user);
-}
-
 /**
  * Leaving the page (`beforeunload`): true when the browser should ask first. A guest's draft lives
  * in this browser, so it is written now and the guest is never held up.
@@ -187,9 +181,7 @@ export type PortfolioHydratedState = Pick<
   | "slug"
   | "publication"
   | "billing"
-  | "analyticsData"
   | "message"
-  | "previewIssue"
   | "workspaceState"
   | "status"
   | "saveIssue"
@@ -207,7 +199,6 @@ export type PortfolioHydratedState = Pick<
 export function buildHydratedState({
   user,
   workspace,
-  analytics,
 }: PortfolioWorkspaceBootstrap): PortfolioHydratedState {
   const cloud = workspace?.draft as CloudPortfolioDraft | undefined;
   const restored = cloud
@@ -224,9 +215,7 @@ export function buildHydratedState({
     slug,
     publication: workspace?.publication ?? null,
     billing: workspace?.billing ?? { canPublish: false, status: "INACTIVE" },
-    analyticsData: analytics,
     message: isGuest ? "" : workspace ? "" : "Could not load your portfolio workspace.",
-    previewIssue: "",
     workspaceState: "ready",
     status: isGuest || workspace ? "Saved" : "Not saved",
     saveIssue:
@@ -243,31 +232,19 @@ interface PortfolioStoreState {
   publication: Publication;
   billing: Billing;
   user: { name?: string | null; email?: string | null } | null;
-  analyticsData: PortfolioAnalyticsData | null;
   status: SaveStatus;
   saveIssue: SaveIssue;
   message: string;
   ready: boolean;
   workspaceState: WorkspaceState;
-  previewIssue: string;
-  activePanel: EditorPanel;
   isDirty: boolean;
   selectedPageId: string | null;
+  /** A guest draft found in this browser after signing in, until the owner keeps or discards it. */
+  guestDraft: { content: PortfolioContent; slug: string; replacesCloud: boolean } | null;
 
   // Setters
-  setContent: (content: PortfolioContent) => void;
-  setSlug: (slug: string) => void;
   updateSlug: (slug: string) => void;
-  setDraft: (draft: CloudPortfolioDraft | null) => void;
-  setPublication: (publication: Publication) => void;
-  setBilling: (billing: Billing) => void;
-  setStatus: (status: SaveStatus) => void;
   setMessage: (message: string) => void;
-  setReady: (ready: boolean) => void;
-  setWorkspaceState: (workspaceState: WorkspaceState) => void;
-  setPreviewIssue: (previewIssue: string) => void;
-  setActivePanel: (activePanel: EditorPanel) => void;
-  setIsDirty: (isDirty: boolean) => void;
   setSelectedPageId: (id: string | null) => void;
 
   // State Updaters
@@ -280,9 +257,8 @@ interface PortfolioStoreState {
   removeSection: (id: string) => void;
 
   // Page Management
-  addPage: (slug: string, title: string) => void;
+  addPage: (slug: string, title: string, sections?: PortfolioSection[]) => void;
   removePage: (id: string) => void;
-  updatePage: (id: string, patch: Partial<PortfolioPage>) => void;
 
   // Async Actions
   loadWorkspace: () => Promise<void>;
@@ -292,6 +268,9 @@ interface PortfolioStoreState {
   unpublish: () => Promise<ActionResult>;
   /** After a conflict: take the cloud copy, or save this one over it. */
   resolveConflict: (keep: "cloud" | "mine") => Promise<ActionResult>;
+  /** Bring the guest draft into the account (replacing the current draft), or forget it. */
+  keepGuestDraft: () => Promise<ActionResult>;
+  discardGuestDraft: () => void;
 }
 
 export type PortfolioStoreApi = ReturnType<typeof createPortfolioStore>;
@@ -377,17 +356,17 @@ async function sendDraft(store: StoreApi<PortfolioStoreState>): Promise<SaveResu
       saveIssue: null,
       isDirty: unsaved,
       message: "",
-      previewIssue: "",
     });
     return { ok: true, message: "Draft saved.", draft: saved };
   } catch (error) {
     const reason =
-      error instanceof Error && error.name !== "AbortError" ? error.message : "Draft sync failed.";
+      error instanceof Error && error.name !== "AbortError" && error.name !== "TimeoutError"
+        ? error.message
+        : "Draft sync failed.";
     const offline = !(error as { status?: number }).status;
     set({
       status: "Not saved",
       saveIssue: { reason: offline ? "Could not reach VeriWorkly." : reason, retry: true },
-      previewIssue: "Live preview is unavailable while your draft cannot sync.",
     });
     return {
       ok: false,
@@ -415,34 +394,21 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
       publication: null,
       billing: { canPublish: false, status: "INACTIVE" },
       user: null,
-      analyticsData: null,
       status: "Saved",
       saveIssue: null,
       message: "",
       ready: false,
       workspaceState: "loading",
-      previewIssue: "",
-      activePanel: "profile",
       isDirty: false,
       selectedPageId: null,
+      guestDraft: null,
 
-      setContent: (content) => set({ content }),
-      setSlug: (slug) => set({ slug }),
       updateSlug: (slug) =>
         set((state) => ({
           slug: normalizeSlug(slug),
           ...touched(state),
         })),
-      setDraft: (draft) => set({ draft }),
-      setPublication: (publication) => set({ publication }),
-      setBilling: (billing) => set({ billing }),
-      setStatus: (status) => set({ status }),
       setMessage: (message) => set({ message }),
-      setReady: (ready) => set({ ready }),
-      setWorkspaceState: (workspaceState) => set({ workspaceState }),
-      setPreviewIssue: (previewIssue) => set({ previewIssue }),
-      setActivePanel: (activePanel) => set({ activePanel }),
-      setIsDirty: (isDirty) => set({ isDirty }),
       setSelectedPageId: (id) => set({ selectedPageId: id }),
 
       updateContent: (patch) =>
@@ -527,11 +493,8 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
           const newSection: PortfolioSection = {
             id: createId("section"),
             type,
-            // `sectionInfo` carries the human label ("Test Scores"); the old
-            // `type[0].toUpperCase() + slice(1)` produced "TestScores" for
-            // camelCase types and rendered that straight into the heading.
-            title: sectionLabels[type],
-            subtitle: sectionSubtitleDefaults[type],
+            title: sectionMeta[type].label,
+            subtitle: sectionMeta[type].subtitle,
             visible: true,
             items: [],
           };
@@ -578,14 +541,14 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
           };
         }),
 
-      addPage: (slug, title) =>
+      addPage: (slug, title, sections = []) =>
         set((state) => {
           if ((state.content.pages?.length ?? 0) >= PORTFOLIO_LIMITS.pages) return {};
           const newPage: PortfolioPage = {
             id: createId("page"),
             slug,
             title,
-            sections: [],
+            sections,
           };
           return {
             content: {
@@ -606,17 +569,6 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
           ...touched(state),
         })),
 
-      updatePage: (id, patch) =>
-        set((state) => ({
-          content: {
-            ...state.content,
-            pages: (state.content.pages || []).map((page) =>
-              page.id === id ? { ...page, ...patch } : page,
-            ),
-          },
-          ...touched(state),
-        })),
-
       hydrateWorkspace: (bootstrap) => set(buildHydratedState(bootstrap)),
 
       loadWorkspace: async () => {
@@ -631,7 +583,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
           if (cached) {
             set({ content: cached.content, slug: cached.slug });
           }
-          set({ workspaceState: "loading", previewIssue: "" });
+          set({ workspaceState: "loading" });
           try {
             // Standard check to see if user has a session without triggering redirect
             const response = await fetch(backendApiUrl("/users/me"), { credentials: "include" });
@@ -644,7 +596,6 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
                 slug: cached?.slug ?? defaultSubdomain(),
                 publication: null,
                 billing: { canPublish: false, status: "INACTIVE" },
-                analyticsData: null,
                 message: "",
                 workspaceState: "ready",
                 status: "Saved",
@@ -661,7 +612,7 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
             }
 
             // User is logged in, continue with fetching data
-            const [userPayload, portfolioPayload, analyticsPayload] = await Promise.all([
+            const [userPayload, portfolioPayload] = await Promise.all([
               response
                 .json()
                 .then((r) => r.data)
@@ -671,104 +622,52 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
                   return data;
                 }),
               fetchPayload("/portfolios/me", "Could not load your portfolio workspace."),
-              fetchPayload("/portfolios/analytics", "Could not load portfolio analytics.").catch(
-                () => null,
-              ),
             ]);
             const user = userPayload ?? null;
-            const analytics = analyticsPayload?.data ?? null;
             const cloud = portfolioPayload?.data?.draft;
 
-            let draftToSet: CloudPortfolioDraft | null = null;
-            let contentToSet = cached?.content ?? createDefaultPortfolio(user ?? undefined);
-            let slugToSet = cached ? accountSlug(cached.slug, user) : defaultSubdomain(user);
-            let shouldSyncLocalToCloud = false;
-            let mergeMessage = "";
+            const cloudDraft = cloud
+              ? ({
+                  ...cloud,
+                  content: parsePortfolioContent(cloud.content),
+                } as CloudPortfolioDraft)
+              : null;
+            const contentToSet = cloudDraft?.content ?? createDefaultPortfolio(user ?? undefined);
+            const slugToSet = cloudDraft?.slug ?? defaultSubdomain(user);
 
-            if (cloud) {
-              const restoredCloud = {
-                ...cloud,
-                content: parsePortfolioContent(cloud.content),
-              } as CloudPortfolioDraft;
-
-              draftToSet = restoredCloud;
-
-              if (cached) {
-                // Compare local cache with cloud content to see if there are local guest edits
-                const localSerialized = JSON.stringify(cached.content);
-                const cloudSerialized = JSON.stringify(restoredCloud.content);
-                const contentDiffers =
-                  localSerialized !== cloudSerialized || cached.slug !== restoredCloud.slug;
-
-                if (!contentDiffers) {
-                  contentToSet = restoredCloud.content;
-                  slugToSet = restoredCloud.slug;
-                } else {
-                  // Both a local guest draft and a cloud draft exist, and they
-                  // disagree. Only let the local copy win when it is *provably*
-                  // newer than the cloud draft — otherwise a stale local cache
-                  // (or one written before timestamps existed) would silently
-                  // clobber cloud content that may have been edited elsewhere,
-                  // e.g. from another device or after publishing.
-                  const localUpdatedAt = cached.updatedAt ? Date.parse(cached.updatedAt) : NaN;
-                  const cloudUpdatedAt = Date.parse(restoredCloud.updatedAt);
-                  const localIsNewer =
-                    !Number.isNaN(localUpdatedAt) &&
-                    !Number.isNaN(cloudUpdatedAt) &&
-                    localUpdatedAt > cloudUpdatedAt;
-
-                  if (localIsNewer) {
-                    contentToSet = cached.content;
-                    slugToSet = isAllowedSubdomain(cached.slug) ? cached.slug : restoredCloud.slug;
-                    shouldSyncLocalToCloud = true;
-                  } else {
-                    contentToSet = restoredCloud.content;
-                    slugToSet = restoredCloud.slug;
-                    if (Number.isNaN(localUpdatedAt)) {
-                      mergeMessage =
-                        "We found local draft changes made before you logged in that couldn't be dated, so your saved portfolio was kept. Re-apply those changes if you still need them.";
-                    }
-                  }
-                }
-              } else {
-                contentToSet = restoredCloud.content;
-                slugToSet = restoredCloud.slug;
-              }
-            } else {
-              // No cloud draft exists yet.
-              if (cached) {
-                shouldSyncLocalToCloud = true;
-              } else {
-                const seeded = createDefaultPortfolio(user ?? undefined);
-                contentToSet = seeded;
-                slugToSet = defaultSubdomain(user);
-                shouldSyncLocalToCloud = true;
-              }
-            }
+            // A guest draft in this browser may be someone else's (a shared computer), so it is
+            // never carried into the account unasked: the owner chooses (`keepGuestDraft`,
+            // `discardGuestDraft`). One that matches the cloud copy has nothing to offer.
+            const sameAsCloud =
+              !!cloudDraft &&
+              !!cached &&
+              cached.slug === cloudDraft.slug &&
+              JSON.stringify(cached.content) === JSON.stringify(cloudDraft.content);
+            if (sameAsCloud) clearPortfolioCache();
 
             set({
               user,
-              draft: draftToSet,
+              draft: cloudDraft,
               content: contentToSet,
               slug: slugToSet,
+              guestDraft:
+                cached && !sameAsCloud
+                  ? { content: cached.content, slug: cached.slug, replacesCloud: !!cloudDraft }
+                  : null,
               publication: portfolioPayload?.data?.publication ?? null,
               billing: portfolioPayload?.data?.billing ?? { canPublish: false, status: "INACTIVE" },
-              analyticsData: analytics,
-              message: mergeMessage,
+              message: "",
               workspaceState: "ready",
               ready: true,
             });
 
-            // No caller is waiting on this save, so its failure goes to the notice. Once the
-            // guest draft is in the account (or lost to a newer cloud copy) it is not carried
-            // in again.
-            if (cached && !shouldSyncLocalToCloud) clearPortfolioCache();
-            if (shouldSyncLocalToCloud) {
+            // A new account gets its first draft now. No caller is waiting on this save, so its
+            // failure goes to the notice.
+            if (!cloudDraft) {
               void get()
                 .saveDraft()
                 .then((result) => {
-                  if (result.ok) clearPortfolioCache();
-                  else set({ message: result.message });
+                  if (!result.ok) set({ message: result.message });
                 });
             }
           } catch (error) {
@@ -782,7 +681,6 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
                 slug: cached?.slug ?? defaultSubdomain(),
                 publication: null,
                 billing: { canPublish: false, status: "INACTIVE" },
-                analyticsData: null,
                 message: "",
                 workspaceState: "ready",
                 status: "Saved",
@@ -795,7 +693,6 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
               status: "Not saved",
               saveIssue: { reason: "Your workspace did not load.", retry: false },
               workspaceState: "error",
-              previewIssue: "Live preview is unavailable until the workspace reconnects.",
               message:
                 error instanceof Error ? error.message : "Could not load your portfolio workspace.",
               ready: true,
@@ -922,6 +819,26 @@ export function createPortfolioStore(preloaded?: Partial<PortfolioStoreState>) {
         // Keep mine: this content, saved at the revision the cloud copy has now, overwriting it.
         set({ draft: cloud, isDirty: true, status: "Unsaved changes", saveIssue: null });
         return get().saveDraft();
+      },
+
+      keepGuestDraft: async () => {
+        const guest = get().guestDraft;
+        if (!guest) return { ok: true, message: "" };
+        set((state) => ({
+          content: guest.content,
+          // A guest default like "portfolio" is reserved; keep the account's own then.
+          slug: isAllowedSubdomain(guest.slug) ? guest.slug : state.slug,
+          guestDraft: null,
+          ...touched(state),
+        }));
+        const result = await get().saveDraft();
+        if (result.ok) clearPortfolioCache();
+        return result;
+      },
+
+      discardGuestDraft: () => {
+        clearPortfolioCache();
+        set({ guestDraft: null });
       },
 
       ...preloaded,

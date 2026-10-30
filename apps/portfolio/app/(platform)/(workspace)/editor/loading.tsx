@@ -7,7 +7,13 @@ export default function EditorLoading() {
       {/* Mock EditorCommandBar */}
       <header className="z-40 grid min-h-16 shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/10 bg-[#171717] px-3 text-white sm:px-4">
         <div className="flex items-center gap-2">
-          <Image src="/veriworkly-logo.png" width={30} height={30} alt="VeriWorkly logo" priority />
+          <Image
+            src="/veriworkly-logo-128.png"
+            width={30}
+            height={30}
+            alt="VeriWorkly logo"
+            priority
+          />
           <span className="hidden text-sm font-bold sm:block">VeriWorkly</span>
         </div>
         <div className="min-w-0 text-center">

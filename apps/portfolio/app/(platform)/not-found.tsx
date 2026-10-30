@@ -14,7 +14,7 @@ const NotFoundPage = () => {
           <main className="border-line bg-panel flex min-h-115 flex-col justify-between rounded-4xl border-2 p-6 shadow-[8px_10px_0_rgba(17,17,15,0.03)] sm:p-8">
             <div>
               <div className="border-line bg-paper/30 relative flex h-48 w-full flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed sm:h-56">
-                <EyeOff className="text-muted size-8 animate-pulse opacity-40" />
+                <EyeOff className="text-muted size-8 opacity-40 motion-safe:animate-pulse" />
 
                 <span className="text-muted mt-3 font-mono text-[10px] tracking-widest uppercase opacity-60">
                   MEDIA_NOT_RESOLVED
@@ -73,7 +73,7 @@ const NotFoundPage = () => {
                 <div>
                   <div className="text-[10px] font-bold opacity-50">STATUS</div>
                   <div className="text-danger mt-0.5 flex items-center gap-1.5 text-xs font-bold">
-                    <span className="bg-danger size-1.5 animate-ping rounded-full" />
+                    <span className="bg-danger size-1.5 rounded-full motion-safe:animate-ping" />
                     404 Disconnected
                   </div>
                 </div>
