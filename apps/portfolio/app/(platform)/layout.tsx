@@ -58,6 +58,10 @@ export const metadata: Metadata = {
     creator: siteConfig.twitter.handle,
   },
 
+  // Linked here, not from app/manifest.json: a file there is added to every page, published
+  // portfolios included, and a user's site must not install as the VeriWorkly app (P-051).
+  manifest: "/manifest.json",
+
   icons: {
     icon: "/favicon.ico",
     shortcut: "/favicon.ico",
