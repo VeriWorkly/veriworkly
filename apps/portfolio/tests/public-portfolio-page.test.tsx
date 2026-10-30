@@ -277,6 +277,16 @@ describe("reading a published site (P-007)", () => {
     await expect(getPublishedPortfolio("jane")).rejects.toThrow("timed out");
   });
 
+  it("reads a mixed-case path under the lowercase subdomain the server revalidates", async () => {
+    fetchMock.mockResolvedValueOnce(reply(404));
+
+    await getPublishedPortfolio("Alice");
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toContain("/portfolios/public/alice");
+    expect(init.next.tags).toEqual(["portfolio-alice"]);
+  });
+
   it("reads isPaid and isPremiumTemplate from the API", async () => {
     const site = published({ isPaid: true, templateId: "nimbus", removeWatermark: true });
     fetchMock.mockResolvedValueOnce(
