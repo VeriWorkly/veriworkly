@@ -40,9 +40,12 @@ const TemplatePreviewSection = ({
 
         <Link
           href={`/templates/${template.id}/preview`}
+          target="_blank"
+          rel="noopener noreferrer"
           className="bg-ink-2 text-paper inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-6 text-sm font-bold transition duration-300 hover:-translate-y-1"
         >
-          Full page review <ExternalLink size={15} />
+          Full page review <ExternalLink size={15} aria-hidden="true" />
+          <span className="sr-only">(opens in a new tab)</span>
         </Link>
 
         <Link

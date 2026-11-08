@@ -444,6 +444,18 @@ describe("template gallery (P-061, P-079)", () => {
     expect(html).not.toContain('href="/dashboard"');
   });
 
+  it("opens every full page preview in a new tab, so the gallery stays open", () => {
+    const html = renderToStaticMarkup(<TemplateCatalog templates={templates} />);
+    const previewLinks = html.match(/<a[^>]*href="\/templates\/[^"/]+\/preview"[^>]*>/g) ?? [];
+
+    // The frame's "Full page" chip and the "Open full page preview" button, per template.
+    expect(previewLinks).toHaveLength(templates.length * 2);
+    for (const link of previewLinks) {
+      expect(link).toContain('target="_blank"');
+      expect(link).toContain('rel="noopener noreferrer"');
+    }
+  });
+
   it("offers free templates at 0 and gives premium ones no made-up price", async () => {
     for (const template of templates) {
       const schema = createTemplateSchema(template, "https://portfolio.test");

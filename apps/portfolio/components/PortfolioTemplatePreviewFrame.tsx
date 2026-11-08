@@ -32,9 +32,12 @@ export function PortfolioTemplatePreviewFrame({
         <Link
           className="bg-ink-2 text-paper inline-flex items-center gap-1.5 rounded-full px-3 py-1.5"
           href={`/templates/${templateId}/preview`}
+          target="_blank"
+          rel="noopener noreferrer"
           tabIndex={ariaHidden ? -1 : undefined}
         >
-          Full page <ExternalLink size={12} />
+          Full page <ExternalLink size={12} aria-hidden="true" />
+          <span className="sr-only">(opens in a new tab)</span>
         </Link>
       </div>
 

@@ -79,9 +79,12 @@ const TemplateLinksSection = () => {
               <div className="mt-5 flex flex-wrap gap-3">
                 <Link
                   href={`/templates/${template.id}/preview`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className={`${action} min-h-11 bg-[#11110f] text-white hover:bg-neutral-800`}
                 >
                   Full page review <ExternalLink size={15} aria-hidden="true" />
+                  <span className="sr-only">(opens in a new tab)</span>
                 </Link>
 
                 <Link

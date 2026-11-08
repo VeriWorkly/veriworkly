@@ -56,9 +56,12 @@ const TemplateCatalog = ({ templates }: { templates: TemplateSummary[] }) => {
 
               <Link
                 href={`/templates/${template.id}/preview`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className={`${templateAction} border-ink-2/15 text-ink-2 bg-panel border`}
               >
-                Open full page preview <ExternalLink size={15} />
+                Open full page preview <ExternalLink size={15} aria-hidden="true" />
+                <span className="sr-only">(opens in a new tab)</span>
               </Link>
 
               <Link
