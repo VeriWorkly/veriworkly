@@ -12,6 +12,7 @@ import {
 import type { PlanKey } from "@/features/pricing/data/offers";
 import FaqAccordionItem from "@/features/faq/components/FaqAccordionItem";
 import TemplateLinksSection, { landingTemplates } from "@/components/landing/TemplateLinksSection";
+import FeatureGridSection from "@/components/landing/FeatureGridSection";
 
 const checkoutHref = "https://app.example/checkout?productKey=bundle&interval=annual";
 
@@ -155,5 +156,17 @@ describe("landing template links (P-080)", () => {
     const cards = html.match(/<article[^>]*data-stack-card[^>]*>/g) ?? [];
     expect(cards).toHaveLength(3);
     for (const card of cards) expect(card).toMatch(/class="[^"]*\bbg-accent\b/);
+  });
+});
+
+describe("landing feature grid", () => {
+  it("shows real Signal and Atelier screenshots in the mood card", () => {
+    const html = renderToStaticMarkup(<FeatureGridSection />);
+
+    expect(html).toContain("signal-template-preview.png");
+    expect(html).toContain("atelier-template-preview.png");
+    expect(html).toContain('alt="Signal portfolio template"');
+    expect(html).toContain('alt="Atelier portfolio template"');
+    expect(html).not.toContain(">Aa<");
   });
 });
