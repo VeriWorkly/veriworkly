@@ -1109,11 +1109,13 @@ describe("an open editor follows changes saved elsewhere (S-315)", () => {
     await editorReady();
 
     // As a cloud pull leaves it when the cloud moved past this device's unsynced edits.
-    await page.evaluate((id) => {
+    // Returns the sync block it replaced, so the document can be put back afterwards.
+    const originalSync = await page.evaluate((id) => {
       const documentKey = `veriworkly:docs:v3:doc:resume:${id}`;
       const indexKey = "veriworkly:docs:v3:index";
       const stored = JSON.parse(localStorage.getItem(documentKey)!);
       const index = JSON.parse(localStorage.getItem(indexKey)!);
+      const previous = stored.sync;
 
       stored.sync = { ...stored.sync, enabled: true, status: "conflicted", cloudDocumentId: id };
       index.items[`RESUME:${id}`].sync = stored.sync;
@@ -1121,28 +1123,52 @@ describe("an open editor follows changes saved elsewhere (S-315)", () => {
 
       localStorage.setItem(documentKey, JSON.stringify(stored));
       localStorage.setItem(indexKey, JSON.stringify(index));
+
+      return previous;
     }, resumeId);
 
-    await page.reload({ waitUntil: "networkidle" });
-    await editorReady();
-    await expect
-      .poll(() => page.getByText("This document changed on another device").count(), {
-        timeout: 15_000,
-      })
-      .toBe(1);
+    try {
+      await page.reload({ waitUntil: "networkidle" });
+      await editorReady();
+      await expect
+        .poll(() => page.getByText("This document changed on another device").count(), {
+          timeout: 15_000,
+        })
+        .toBe(1);
 
-    await page
-      .getByLabel(/full name/i)
-      .first()
-      .fill("Typed During Conflict");
+      await page
+        .getByLabel(/full name/i)
+        .first()
+        .fill("Typed During Conflict");
 
-    await expect
-      .poll(
-        async () =>
-          ((await readStoredDocument(resumeId))?.content.basics as { fullName?: string }).fullName,
-        { timeout: 15_000 },
-      )
-      .toBe("Typed During Conflict");
+      await expect
+        .poll(
+          async () =>
+            ((await readStoredDocument(resumeId))?.content.basics as { fullName?: string })
+              .fullName,
+          { timeout: 15_000 },
+        )
+        .toBe("Typed During Conflict");
+    } finally {
+      // A guest at the free limit is handed their existing document by every later "new"
+      // (S-360). Left conflicted, it opened the next test (S-288) already waiting on a choice.
+      await page.evaluate(
+        ({ id, sync }) => {
+          const documentKey = `veriworkly:docs:v3:doc:resume:${id}`;
+          const indexKey = "veriworkly:docs:v3:index";
+          const stored = JSON.parse(localStorage.getItem(documentKey)!);
+          const index = JSON.parse(localStorage.getItem(indexKey)!);
+
+          stored.sync = sync;
+          index.items[`RESUME:${id}`].sync = sync;
+          index.revision += 1;
+
+          localStorage.setItem(documentKey, JSON.stringify(stored));
+          localStorage.setItem(indexKey, JSON.stringify(index));
+        },
+        { id: resumeId, sync: originalSync },
+      );
+    }
   });
 });
 
