@@ -3,7 +3,15 @@ import { ArrowRight, ExternalLink } from "lucide-react";
 
 import { PortfolioTemplatePreviewFrame } from "@/components/PortfolioTemplatePreviewFrame";
 
-import { templates } from "@/lib/portfolio";
+import { templates, type TemplateId } from "@/lib/portfolio";
+
+// The landing page features a fixed three, so the stack stays short as the catalog grows; the
+// full list lives on /templates. Picked by id so names and images still come from the catalog.
+const LANDING_TEMPLATE_IDS: TemplateId[] = ["cipher", "atelier", "nimbus"];
+
+export const landingTemplates = LANDING_TEMPLATE_IDS.flatMap(
+  (id) => templates.find((template) => template.id === id) ?? [],
+);
 
 const action =
   "inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-sm font-bold transition duration-300 hover:-translate-y-1";
@@ -41,7 +49,7 @@ const TemplateLinksSection = () => {
           </p>
 
           <div className="mt-7 grid gap-2">
-            {templates.map((template) => (
+            {landingTemplates.map((template) => (
               <Link
                 key={template.id}
                 href={`/templates/${template.id}`}
@@ -61,12 +69,13 @@ const TemplateLinksSection = () => {
         </div>
 
         <div className="grid gap-24 max-lg:pt-12">
-          {templates.map((template, index) => (
+          {landingTemplates.map((template, index) => (
+            // A solid background, so a card stacked on top hides the buttons of the one behind.
             <article
               data-stack-card
               key={template.id}
               style={{ top: `${110 + index * 22}px` }}
-              className="group text-ink-2 sticky top-27.5 overflow-hidden rounded-3xl bg-transparent pr-4"
+              className="group text-ink-2 bg-accent sticky top-27.5 overflow-hidden rounded-3xl pr-4"
             >
               <PortfolioTemplatePreviewFrame
                 compact

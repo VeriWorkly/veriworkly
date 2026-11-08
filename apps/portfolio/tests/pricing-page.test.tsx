@@ -11,7 +11,7 @@ import {
 } from "@/features/pricing/components/PricingAccount";
 import type { PlanKey } from "@/features/pricing/data/offers";
 import FaqAccordionItem from "@/features/faq/components/FaqAccordionItem";
-import TemplateLinksSection from "@/components/landing/TemplateLinksSection";
+import TemplateLinksSection, { landingTemplates } from "@/components/landing/TemplateLinksSection";
 
 const checkoutHref = "https://app.example/checkout?productKey=bundle&interval=annual";
 
@@ -138,6 +138,22 @@ describe("landing template links (P-080)", () => {
     expect(html).toContain("Signal and Atelier are free on yourname.veriworkly.com");
     expect(html).toContain("Nimbus and Cipher come with Creator Pro");
     expect(html.match(/>Creator Pro</g)).toHaveLength(2);
-    expect(html.match(/>Free</g)).toHaveLength(2);
+    expect(html.match(/>Free</g)).toHaveLength(1);
+  });
+
+  it("features only Cipher, Atelier and Nimbus, with solid stacked cards", () => {
+    const html = renderToStaticMarkup(<TemplateLinksSection />);
+
+    expect(landingTemplates.map((template) => template.id)).toEqual([
+      "cipher",
+      "atelier",
+      "nimbus",
+    ]);
+    expect(html).not.toContain('href="/templates/signal"');
+    expect(html).toContain('href="/templates"');
+
+    const cards = html.match(/<article[^>]*data-stack-card[^>]*>/g) ?? [];
+    expect(cards).toHaveLength(3);
+    for (const card of cards) expect(card).toMatch(/class="[^"]*\bbg-accent\b/);
   });
 });
