@@ -23,7 +23,7 @@ export default function TemplateFaqs({ faqs, templateName }: FaqProps) {
   if (!faqs || faqs.length === 0) return null;
 
   return (
-    <section className="mx-auto w-[min(1200px,calc(100%-48px))] pb-24">
+    <section className="mx-auto w-[min(1200px,calc(100%-48px))] py-24 md:py-32">
       <div className="border-ink-2 bg-panel rounded-4xl border-2 p-6 shadow-[14px_16px_0_rgba(37,99,235,0.12)] sm:p-8">
         <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr]">
           <div>

@@ -12,7 +12,10 @@ import { StructureRail } from "@/components/dashboard/editor/StructureRail";
 import { ContentCanvas } from "@/components/dashboard/editor/ContentCanvas";
 import { PortfolioEditorWorkspace } from "@/components/dashboard/editor/PortfolioEditorWorkspace";
 import {
+  LivePortfolioPreview,
+  OpenEditorButton,
   isEditorMessage,
+  isStandalone,
   previewProject,
   showsBadge,
   standaloneGuestContent,
@@ -468,6 +471,23 @@ describe("editor preview follows the live rules (P-059)", () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+
+  // A full-page preview offers a way back to the editor; the editor's own frame does not.
+  it("offers the editor only on a preview opened in its own tab", () => {
+    const self: { parent: unknown } = { parent: {} };
+    expect(isStandalone(self)).toBe(false);
+    self.parent = self;
+    expect(isStandalone(self)).toBe(true);
+
+    expect(renderToStaticMarkup(<OpenEditorButton />)).toMatch(
+      /<a[^>]*href="\/editor"[^>]*>.*Open in editor<\/a>/,
+    );
+    // The server cannot tell, so it never renders the button into the editor's frame.
+    const html = renderToStaticMarkup(
+      <LivePortfolioPreview initialContent={completeContent} canPublish={false} />,
+    );
+    expect(html).not.toContain("Open in editor");
   });
 });
 

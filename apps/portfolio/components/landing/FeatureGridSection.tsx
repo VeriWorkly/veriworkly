@@ -1,4 +1,11 @@
+import Image from "next/image";
 import { Check, Globe2, MousePointer2, PencilLine, Search, Sparkles } from "lucide-react";
+
+// The two templates the "Change the mood" card names, shown as real screenshots.
+const moodCards = [
+  { name: "Signal", image: "/templates/signal-template-preview.png", tilt: "-rotate-3" },
+  { name: "Atelier", image: "/templates/atelier-template-preview.png", tilt: "rotate-3" },
+];
 
 const FeatureGridSection = () => {
   return (
@@ -126,15 +133,31 @@ const FeatureGridSection = () => {
               </p>
             </div>
 
-            <div className="flex h-3/4 w-[27%] -rotate-3 flex-col justify-between rounded-2xl bg-[#f2efe5] p-5 text-[#11110f] transition duration-500 hover:-translate-y-3 max-sm:h-64 max-sm:w-[calc(50%-0.5rem)]">
-              <span className="text-[9px] font-bold uppercase">Signal</span>
-              <strong className="text-6xl tracking-[-0.08em]">Aa</strong>
-            </div>
+            {moodCards.map((card) => (
+              <figure
+                key={card.name}
+                className={`group/mood flex h-3/4 w-[27%] flex-col overflow-hidden rounded-2xl border border-white/15 bg-[#f2efe5] shadow-[0_24px_60px_rgba(0,0,0,0.45)] transition duration-500 hover:-translate-y-3 max-sm:h-64 max-sm:w-[calc(50%-0.5rem)] ${card.tilt}`}
+              >
+                <figcaption className="flex h-8 shrink-0 items-center gap-1.5 border-b border-black/10 bg-white px-3 text-[#11110f]">
+                  <span className="size-2 rounded-full bg-[#ff5f57]" aria-hidden="true" />
+                  <span className="size-2 rounded-full bg-[#febc2e]" aria-hidden="true" />
+                  <span className="size-2 rounded-full bg-[#28c840]" aria-hidden="true" />
+                  <span className="ml-auto text-[9px] font-bold tracking-[0.12em] uppercase">
+                    {card.name}
+                  </span>
+                </figcaption>
 
-            <div className="bg-accent text-accent-ink flex h-3/4 w-[27%] rotate-3 flex-col justify-between rounded-2xl p-5 transition duration-500 hover:-translate-y-3 max-sm:h-64 max-sm:w-[calc(50%-0.5rem)]">
-              <span className="text-[9px] font-bold uppercase">Atelier</span>
-              <strong className="text-6xl tracking-[-0.08em]">Aa</strong>
-            </div>
+                <div className="relative flex-1 overflow-hidden">
+                  <Image
+                    fill
+                    src={card.image}
+                    alt={`${card.name} portfolio template`}
+                    sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 240px"
+                    className="object-cover object-left-top transition duration-700 group-hover/mood:scale-105"
+                  />
+                </div>
+              </figure>
+            ))}
           </article>
         </div>
       </div>

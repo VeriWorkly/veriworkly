@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { PencilLine } from "lucide-react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { parsePortfolioContent, type PortfolioContent, type TemplateId } from "@/lib/portfolio";
 import { templateLoaders } from "@/template-library/registry";
@@ -41,12 +43,36 @@ export function isEditorMessage(
   );
 }
 
+/** Opened in its own tab (Preview), not inside the editor's preview frame. */
+export function isStandalone(self: { parent: unknown }) {
+  return self.parent === self;
+}
+
 /**
  * A guest's draft lives only in this browser, so the server renders the default. Opened on its
  * own (Preview, not the editor's frame, which posts the live content), it shows the saved draft.
  */
 export function standaloneGuestContent(self: { parent: unknown }) {
-  return self.parent === self ? (loadPortfolioCache()?.content ?? null) : null;
+  return isStandalone(self) ? (loadPortfolioCache()?.content ?? null) : null;
+}
+
+const noSubscription = () => () => {};
+
+/**
+ * Back to the editor from a full-page preview. Bottom right, raised clear of the templates' own
+ * corner widgets (Signal's theme switch), and above template chrome such as Cipher's full-screen
+ * window (z-index 1000).
+ */
+export function OpenEditorButton() {
+  return (
+    <Link
+      href="/editor"
+      className="fixed right-4 bottom-24 z-1100 inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/55 px-4 py-2.5 text-sm font-bold text-white shadow-[0_12px_32px_rgba(0,0,0,0.3)] backdrop-blur-md backdrop-saturate-150 transition hover:-translate-y-0.5 hover:bg-black/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:right-8"
+    >
+      <PencilLine size={16} aria-hidden="true" />
+      Open in editor
+    </Link>
+  );
 }
 
 export function LivePortfolioPreview({
@@ -60,6 +86,12 @@ export function LivePortfolioPreview({
 }) {
   const [content, setContent] = useState(initialContent);
   const [pageId, setPageId] = useState<string | null>(null);
+  // False on the server, so the button never shows inside the editor's frame, even for a moment.
+  const standalone = useSyncExternalStore(
+    noSubscription,
+    () => isStandalone(window),
+    () => false,
+  );
 
   useEffect(() => {
     const cached = guest ? standaloneGuestContent(window) : null;
@@ -87,6 +119,7 @@ export function LivePortfolioPreview({
     <>
       <Template project={previewProject(content, pageId)} />
       {showsBadge(content, canPublish) ? <Watermark /> : null}
+      {standalone ? <OpenEditorButton /> : null}
     </>
   );
 }
